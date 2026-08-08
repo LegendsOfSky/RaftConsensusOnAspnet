@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RaftConsensusOnAspnet.RaftConsensus.Core/RaftConsensusOnAspnet.RaftConsensus.Core.csproj" Id="b34335f9-fc3f-4013-947f-5ce6519d604f" />
+    <Project Path="src/RaftConsensusOnAspnet.RaftConsensus/RaftConsensusOnAspnet.RaftConsensus.csproj" Id="4ae35b9f-a02a-4ece-b87c-fcbb38f640ff" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/DebugConsole/DebugConsole.csproj" Id="c5d092fb-e1fa-439d-bc18-1d1e4d444021" />
+    <Project Path="test/RaftConsensusOnAspnet.RaftConsensus.Core.Test/RaftConsensusOnAspnet.RaftConsensus.Core.Test.csproj" Id="11852d8f-53c9-4289-85ce-43283b3dac61" />
+  </Folder>
+</Solution>

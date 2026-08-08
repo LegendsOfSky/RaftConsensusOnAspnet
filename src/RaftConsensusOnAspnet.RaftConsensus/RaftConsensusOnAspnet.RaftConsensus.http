@@ -1,0 +1,6 @@
+@RaftConsensusOnAspnet.RaftConsensus_HostAddress = http://localhost:5133
+
+GET {{RaftConsensusOnAspnet.RaftConsensus_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
