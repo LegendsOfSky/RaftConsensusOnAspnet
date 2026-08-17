@@ -57,3 +57,4 @@ TestResult.xml
 nunit-*.xml
 /.vs
 /src/RaftConsensusOnAspnet.RaftConsensus/RaftConsensusOnAspnet.RaftConsensus.csproj.user
+/RaftConsensusOnAspnet.sln.DotSettings.user
