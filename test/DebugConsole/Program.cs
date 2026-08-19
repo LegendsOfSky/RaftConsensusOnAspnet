@@ -1159,10 +1159,7 @@ internal class Program
             Console.WriteLine(MaxTestTimeExceedMsg);
             return false;
         }
-        Task[] stopAllRaftNodes = new Task[nodes.Length];
-        for (int i = 0; i < nodes.Length; i++)
-            stopAllRaftNodes[i] = nodes[i].StopAsync();
-        await Task.WhenAll(stopAllRaftNodes);
+        Array.ForEach(nodes , node => node.Stop());
         await Task.WhenAll(raftStartTasks);
         Trace.Listeners.Clear();
 

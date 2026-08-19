@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
@@ -33,14 +34,13 @@ public class RaftNode
     private int lastApplied;
     private Dictionary<Guid , int> nextIndecies;
     private Dictionary<Guid , int> matchIndecies;
-    private readonly Channel<bool> stopSignalChannel = Channel.CreateBounded<bool>(1);
-
-    private event EventHandler? NodeCountChangedEvent;
-    private event EventHandler? RevertToFollowerEvent;
-    private event EventHandler? ElectionIntervalChangedEvent;
-    private event EventHandler? HeartBeatIntervalChangedEvent;
-    private event EventHandler? HeartBeatReceivedEvent;
-    private event EventHandler? NewEntryCommittedEvent;
+    private TaskCompletionSource? stopRaftTcs;
+    private TaskCompletionSource changeElectionIntervalTcs;
+    private TaskCompletionSource changeHeartBeatIntervalTcs;
+    private TaskCompletionSource changeNodeCountTcs;
+    private TaskCompletionSource revertToFollowerTcs;
+    private TaskCompletionSource receiveHeartBeatTcs;
+    private TaskCompletionSource commitNewEntryTcs;
 
 
     public RaftNode(int electionTimeOutIntervalIn , int heartBeatIntervalIn , int nodeCountIn)
@@ -67,20 +67,25 @@ public class RaftNode
         S_nodeIdToDebugPos.Add(NodeId , S_nodeIdToDebugPos.Count);
         VoteRequestReplyChannel = Channel.CreateUnbounded<VoteRequestReply>();
         AppendEntriesReplyChannel = Channel.CreateUnbounded<AppendEntriesReply>();
+
+        changeElectionIntervalTcs  = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        changeHeartBeatIntervalTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        changeNodeCountTcs         = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        revertToFollowerTcs        = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        receiveHeartBeatTcs        = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        commitNewEntryTcs          = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     }
     
 
-    public async Task StopAsync() => await stopSignalChannel.Writer.WriteAsync(true);
+    public void Stop() => stopRaftTcs?.TrySetResult();
 
     public async Task StartAsync()
     {
-        logEntries.Add(new LogEntry
-        {
-            Term = 0 ,
-        });
+        stopRaftTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        logEntries.Add(new LogEntry { Term = 0 });
         while (true)
         {
-            if (stopSignalChannel.Reader.Count != 0 && await stopSignalChannel.Reader.ReadAsync())
+            if (stopRaftTcs.Task.IsCompleted)
                 return;
 
             switch (Role)
@@ -101,7 +106,8 @@ public class RaftNode
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN (interval = {electionTimeoutIntervalIn})");
 
         electionTimeoutInterval = electionTimeoutIntervalIn;
-        ElectionIntervalChangedEvent?.Invoke(this , EventArgs.Empty);
+        changeElectionIntervalTcs.TrySetResult();
+        changeElectionIntervalTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     public void SetHeartBeatInterval(int heartBeatIntervalIn)
@@ -112,15 +118,18 @@ public class RaftNode
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN (interval = {heartBeatIntervalIn})");
 
         heartBeatInterval = heartBeatIntervalIn;
-        HeartBeatIntervalChangedEvent?.Invoke(this , EventArgs.Empty);
+        changeHeartBeatIntervalTcs.TrySetResult();
+        changeHeartBeatIntervalTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     public void UpdateRaftClusterNodeCount(int nodeCountIn)
     {
         nodeCount = nodeCountIn;
-        NodeCountChangedEvent?.Invoke(this , EventArgs.Empty);
+        changeNodeCountTcs.TrySetResult();
+        changeNodeCountTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
+    // TODO refactoring to reduce congitive complexity
     public async Task<(bool Success , bool WrongNode , bool? KeyFound)> ProposeAsync(LogEntryOperation operation , string? key , object? value)
     {
         int nodeIntId = S_nodeIdToDebugPos[NodeId];
@@ -174,34 +183,18 @@ public class RaftNode
         int thisLogIndex = logEntries.IndexOf(entry);
         while (true)
         {
-            TaskCompletionSource revertToFollowerTcs = new TaskCompletionSource();
-            EventHandler? revertToFollowerHandler = null;
-            revertToFollowerHandler = (_ , _) =>
-            {
-                RevertToFollowerEvent -= revertToFollowerHandler;
-                revertToFollowerTcs.TrySetResult();
-            };
-            RevertToFollowerEvent += revertToFollowerHandler;
-
-            TaskCompletionSource entriesAppendedTcs = new TaskCompletionSource();
-            EventHandler? entriesAppendedHandler = null;
-            entriesAppendedHandler = (_ , _) =>
-            {
-                NewEntryCommittedEvent -= entriesAppendedHandler;
-                entriesAppendedTcs.TrySetResult();
-            };
-            NewEntryCommittedEvent += entriesAppendedHandler;
-
+            Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
+            Task waitForNewEntriesCommitedSiganl = commitNewEntryTcs.Task;
             Task finishedTask = await Task.WhenAny(
-                    revertToFollowerTcs.Task ,
-                    entriesAppendedTcs.Task
+                    waitForRevertToFollowerSignal ,
+                    waitForNewEntriesCommitedSiganl
                 );
-            if (finishedTask == revertToFollowerTcs.Task)
+            if (finishedTask == waitForRevertToFollowerSignal)
             {
                 Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Cannot handle new propose because this node is not raft leader.");
                 return (false , true , null);
             }
-            if (finishedTask == entriesAppendedTcs.Task && commitIndex >= thisLogIndex)
+            if (finishedTask == waitForNewEntriesCommitedSiganl && commitIndex >= thisLogIndex)
             {
                 switch (operation)
                 {
@@ -252,11 +245,6 @@ public class RaftNode
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Handle vote request from node {nodeIntId}");
 
-        if (args.ReceiverId != NodeId)
-        {
-            throw new NotImplementedException();
-        }
-
         VoteRequestReply reply = new VoteRequestReply()
         {
             ReceiverId = args.RequesterId ,
@@ -264,6 +252,12 @@ public class RaftNode
             ReplierTerm = CurrentTerm ,
             VoteGranted = false ,
         };
+
+        if (args.ReceiverId != NodeId)
+        {
+            Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Incorrect receiver. Request will be ignored.");
+            return reply;
+        }
 
         /* reject when requester has lower term */
         if (args.RequesterTerm < CurrentTerm)
@@ -282,7 +276,8 @@ public class RaftNode
             {
                 case NodeRole.Follower:
                     Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Heart beat signal received. (TODO)");
-                    HeartBeatReceivedEvent?.Invoke(this , EventArgs.Empty);
+                    receiveHeartBeatTcs.TrySetResult();
+                    receiveHeartBeatTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                     break;
 
                 case NodeRole.Leader:
@@ -290,7 +285,8 @@ public class RaftNode
                     goto case NodeRole.Candidate;
                 case NodeRole.Candidate:
                     Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Higher term found, revert to follower.");
-                    RevertToFollowerEvent?.Invoke(this , EventArgs.Empty);
+                    revertToFollowerTcs.TrySetResult();
+                    revertToFollowerTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                     break;
 
                 default:
@@ -329,11 +325,6 @@ public class RaftNode
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Handle append entries request from node {nodeIntId}");
 
-        if (args.ReceiverId != NodeId)
-        {
-            throw new NotImplementedException();
-        }
-
         AppendEntriesReply reply = new AppendEntriesReply
         {
             ReceiverId = args.RequesterId ,
@@ -343,6 +334,12 @@ public class RaftNode
             AppendSuccess = false ,
             MatchIndex = commitIndex ,
         };
+
+        if (args.ReceiverId != NodeId)
+        {
+            Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Incorrect receiver. Request will be ignored.");
+            return reply;
+        }
 
         if (args.RequesterTerm < CurrentTerm)
         {
@@ -357,12 +354,14 @@ public class RaftNode
         {
             case NodeRole.Follower:
                 Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Heart beat signal received");
-                HeartBeatReceivedEvent?.Invoke(this , EventArgs.Empty);
+                receiveHeartBeatTcs.TrySetResult();
+                receiveHeartBeatTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 break;
 
             case NodeRole.Candidate:
                 Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Revert to follower (Candidate -> Follower).");
-                RevertToFollowerEvent?.Invoke(this , EventArgs.Empty);
+                revertToFollowerTcs.TrySetResult();
+                revertToFollowerTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 break;
 
             case NodeRole.Leader:
@@ -417,27 +416,9 @@ public class RaftNode
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"runAsFollower",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
 
-        TaskCompletionSource waitForHeartBeatReceivedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        EventHandler? waitForHeartBeatReceivedEvent = null;
-        waitForHeartBeatReceivedEvent = (_ , _) =>
-        {
-            HeartBeatReceivedEvent -= waitForHeartBeatReceivedEvent;
-            waitForHeartBeatReceivedTcs.TrySetResult();
-        };
-        HeartBeatReceivedEvent += waitForHeartBeatReceivedEvent;
-
-        TaskCompletionSource waitForElectionIntervalChangeTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        EventHandler? waitForElectionIntervalChangeEvent = null;
-        waitForElectionIntervalChangeEvent = (_ , _) =>
-        {
-            ElectionIntervalChangedEvent -= waitForElectionIntervalChangeEvent;
-            waitForElectionIntervalChangeTcs.TrySetResult();
-        };
-        ElectionIntervalChangedEvent += waitForElectionIntervalChangeEvent;
-
         Task waitForElectionTimerEnd = Task.Delay(electionTimeoutInterval);
-        Task waitForHeartBeatReceived = waitForHeartBeatReceivedTcs.Task;
-        Task waitForElectionIntervalChange = waitForElectionIntervalChangeTcs.Task;
+        Task waitForHeartBeatReceived = receiveHeartBeatTcs.Task;
+        Task waitForElectionIntervalChange = changeElectionIntervalTcs.Task;
         Task completedTask = await Task.WhenAny(
                 waitForElectionTimerEnd ,
                 waitForHeartBeatReceived ,
@@ -485,26 +466,8 @@ public class RaftNode
             Task waitForElectionTimerEnd = Task.Delay(electionTimeoutInterval);
             while (true)
             {
-                TaskCompletionSource waitForRevertToFollowerSignalTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                EventHandler? waitForRevertToFollowerSignalEvent = null;
-                waitForRevertToFollowerSignalEvent = (_ , _) =>
-                {
-                    RevertToFollowerEvent -= waitForRevertToFollowerSignalEvent;
-                    waitForRevertToFollowerSignalTcs.TrySetResult();
-                };
-                RevertToFollowerEvent += waitForRevertToFollowerSignalEvent;
-
-                TaskCompletionSource waitForElectionIntervalChangeTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                EventHandler? waitForElectionIntervalChangeEvent = null;
-                waitForElectionIntervalChangeEvent = (_ , _) =>
-                {
-                    ElectionIntervalChangedEvent -= waitForElectionIntervalChangeEvent;
-                    waitForElectionIntervalChangeTcs.TrySetResult();
-                };
-                ElectionIntervalChangedEvent += waitForElectionIntervalChangeEvent;
-
-                Task waitForRevertToFollowerSignal = waitForRevertToFollowerSignalTcs.Task;
-                Task waitForElectionIntervalChange = waitForElectionIntervalChangeTcs.Task;
+                Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
+                Task waitForElectionIntervalChange = changeElectionIntervalTcs.Task;
                 Task<VoteRequestReply> waitForNewVoteRequestReply = VoteRequestReplyChannel.Reader.ReadAsync().AsTask();
                 Task completedTask = await Task.WhenAny(
                         waitForElectionTimerEnd ,
@@ -597,23 +560,15 @@ public class RaftNode
             using CancellationTokenSource cts = new CancellationTokenSource();
             Task<AppendEntriesReply> waitForNewAppendEntriesRequestReply = AppendEntriesReplyChannel.Reader.ReadAsync(cts.Token).AsTask();
 
-            TaskCompletionSource waitForRevertToFollowerSignalTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            EventHandler? waitForRevertToFollowerSignalEvent = null;
-            waitForRevertToFollowerSignalEvent = (_ , _) =>
-            {
-                RevertToFollowerEvent -= waitForRevertToFollowerSignalEvent;
-                waitForRevertToFollowerSignalTcs.TrySetResult();
-            };
-            RevertToFollowerEvent += waitForRevertToFollowerSignalEvent;
-
             Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Wait for replis of append entries requests.");
+            Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
             Task completedTask = await Task.WhenAny(
                     waitForHeartBeatTimerEnd ,
-                    waitForRevertToFollowerSignalTcs.Task ,
+                    waitForRevertToFollowerSignal ,
                     waitForNewAppendEntriesRequestReply
                 );
             await cts.CancelAsync();
-            if (completedTask == waitForRevertToFollowerSignalTcs.Task)
+            if (completedTask == waitForRevertToFollowerSignal)
             {
                 Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Revert to follower.");
                 (Role , LeaderId) = (NodeRole.Follower , null);
@@ -646,7 +601,8 @@ public class RaftNode
                 if (newCommitIndex != commitIndex)
                 {
                     commitIndex = newCommitIndex;
-                    NewEntryCommittedEvent?.Invoke(this , EventArgs.Empty);
+                    commitNewEntryTcs.TrySetResult();
+                    commitNewEntryTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 }
                 Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Commit index has been set to {newCommitIndex}.");
             }
