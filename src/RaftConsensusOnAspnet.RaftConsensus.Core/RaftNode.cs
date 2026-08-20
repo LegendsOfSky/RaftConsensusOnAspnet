@@ -1,37 +1,34 @@
 ﻿using System.Diagnostics;
-using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Utils;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core;
 
 public class RaftNode
 {
-    public Guid? LeaderId { get; private set; }
     public int CurrentTerm { get; private set; }
+    public Guid? LeaderId { get; private set; }
     public IReadOnlyList<LogEntry> LogEntries => logEntries;
 
-    public static Dictionary<Guid , int> S_nodeIdToDebugPos = new Dictionary<Guid , int>();
-
+    /// <summary> Debug purpose, messing this up has no any effect on Raft behaviour. (except printing invalid debug logs) </summary>
+    public static Dictionary<Guid , int> S_NodeIdToDebugPos = new Dictionary<Guid , int>();
     public readonly Guid NodeId;
     public NodeRole Role;
     public Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task<bool>> AppendEntriesToOtherNodes;
-    public Channel<AppendEntriesReply> AppendEntriesReplyChannel;
     public Func<Guid , int , int , Task<bool>> SendVoteRequestToOtherNodes;
+    public Channel<AppendEntriesReply> AppendEntriesReplyChannel;
     public Channel<VoteRequestReply> VoteRequestReplyChannel;
 
     private readonly List<LogEntry> logEntries;
     private int nodeCount;
-    private Guid? voteFor;
-    private int? votingTerm;
     private int electionTimeoutInterval;
     private int heartBeatInterval;
     private int commitIndex;
     private int lastApplied;
+    private int? votingTerm;
+    private Guid? voteFor;
     private Dictionary<Guid , int> nextIndecies;
     private Dictionary<Guid , int> matchIndecies;
     private TaskCompletionSource? stopRaftTcs;
@@ -64,7 +61,7 @@ public class RaftNode
         electionTimeoutInterval = electionTimeOutIntervalIn;
         heartBeatInterval = heartBeatIntervalIn;
 
-        S_nodeIdToDebugPos.Add(NodeId , S_nodeIdToDebugPos.Count);
+        S_NodeIdToDebugPos.Add(NodeId , S_NodeIdToDebugPos.Count);
         VoteRequestReplyChannel = Channel.CreateUnbounded<VoteRequestReply>();
         AppendEntriesReplyChannel = Channel.CreateUnbounded<AppendEntriesReply>();
 
@@ -75,7 +72,7 @@ public class RaftNode
         receiveHeartBeatTcs        = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         commitNewEntryTcs          = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     }
-    
+
 
     public void Stop() => stopRaftTcs?.TrySetResult();
 
@@ -93,14 +90,14 @@ public class RaftNode
                 case NodeRole.Follower:  await RunAsFollowerAsync();  break;
                 case NodeRole.Candidate: await RunAsCandidateAsync(); break;
                 case NodeRole.Leader:    await RunAsLeaderAsync();    break;
-                default: throw new UnreachableException();
+                default:                 throw new UnreachableException();
             }
         }
     }
 
     public void SetElectionTimeoutInterval(int electionTimeoutIntervalIn)
     {
-        int nodeIntId = S_nodeIdToDebugPos[NodeId];
+        int nodeIntId = S_NodeIdToDebugPos[NodeId];
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"SetElectionTimeout",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN (interval = {electionTimeoutIntervalIn})");
@@ -112,7 +109,7 @@ public class RaftNode
 
     public void SetHeartBeatInterval(int heartBeatIntervalIn)
     {
-        int nodeIntId = S_nodeIdToDebugPos[NodeId];
+        int nodeIntId = S_NodeIdToDebugPos[NodeId];
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"SetHeartBeatInterval",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN (interval = {heartBeatIntervalIn})");
@@ -129,14 +126,14 @@ public class RaftNode
         changeNodeCountTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
-    // TODO refactoring to reduce congitive complexity
     public async Task<(bool Success , bool WrongNode , bool? KeyFound)> ProposeAsync(LogEntryOperation operation , string? key , object? value)
     {
-        int nodeIntId = S_nodeIdToDebugPos[NodeId];
+        int nodeIntId = S_NodeIdToDebugPos[NodeId];
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"Propose",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
 
+        /* Ignore new propose when this node is not leader. */
         if (LeaderId != NodeId)
         {
             Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Cannot handle new propose because this node is not raft leader.");
@@ -149,36 +146,13 @@ public class RaftNode
             return (true , false , null);
         }
 
-        if (operation == LogEntryOperation.Delete)
+        if (operation == LogEntryOperation.Delete && !CheckKeyExist(key , logEntries.Count))
         {
-            int checkIndex = logEntries.Count;
-            bool keyExistBeforeDelete = false;
-            while (!keyExistBeforeDelete && --checkIndex >= 0)
-            {
-                if (logEntries[checkIndex].Key != key)
-                    continue;
-
-                switch (logEntries[checkIndex].Operation)
-                {
-                    case LogEntryOperation.Put:
-                        keyExistBeforeDelete = true;
-                        break;
-
-                    case LogEntryOperation.Delete:
-                        Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Multiple delete detected.");
-                        return (false , false , false);
-
-                    default: throw new UnreachableException();
-                }
-            }
-            if (!keyExistBeforeDelete)
-            {
-                Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: No such key to delete.");
-                return (false , false , false);
-            }
+            Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: No such key to delete.");
+            return (false , false , false);
         }
 
-        LogEntry entry = new LogEntry { Term = CurrentTerm , Operation = operation, Key = key , Value = value };
+        LogEntry entry = new LogEntry { Term = CurrentTerm , Operation = operation , Key = key , Value = value };
         logEntries.Add(entry);
         int thisLogIndex = logEntries.IndexOf(entry);
         while (true)
@@ -195,29 +169,24 @@ public class RaftNode
                 return (false , true , null);
             }
             if (finishedTask == waitForNewEntriesCommitedSiganl && commitIndex >= thisLogIndex)
-            {
                 switch (operation)
                 {
                     case LogEntryOperation.Put:
                         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Propose {key} success (put).");
-                        for (int i = thisLogIndex - 1; i >= 0; i--)
-                            if (logEntries[i].Key == key && logEntries[i].Operation == LogEntryOperation.Put)
-                                return (true , false , true);
-                        return (true , false , false);
-                    
+                        return (true , false , CheckKeyExist(key , thisLogIndex));
+
                     case LogEntryOperation.Delete:
                         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Propose {key} success (delete).");
                         return (true , false , true);
 
                     default: throw new UnreachableException();
                 }
-            }
         }
     }
 
     public (bool Success , bool KeyFound , object? Value) GetValue(string key)
     {
-        int nodeIntId = S_nodeIdToDebugPos[NodeId];
+        int nodeIntId = S_NodeIdToDebugPos[NodeId];
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"GetValue",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
@@ -239,7 +208,7 @@ public class RaftNode
 
     public VoteRequestReply HandleVoteRequest(VoteRequestArgs args)
     {
-        int nodeIntId = S_nodeIdToDebugPos[NodeId];
+        int nodeIntId = S_NodeIdToDebugPos[NodeId];
         string routePrefix = ComputeRoutePrefix(NodeId , args.ReceiverId , args.RequesterId);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"HandleVoteRequest",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
@@ -297,7 +266,7 @@ public class RaftNode
         /* reject when this node has vote for others */
         if (votingTerm == CurrentTerm && voteFor != null && voteFor != args.RequesterId)
         {
-            Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: This node has voted for other node ({S_nodeIdToDebugPos[voteFor.Value]}), vote request rejected.");
+            Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: This node has voted for other node ({S_NodeIdToDebugPos[voteFor.Value]}), vote request rejected.");
             return reply;
         }
 
@@ -311,7 +280,7 @@ public class RaftNode
 
         Debug.WriteLine(
                 "{0} {1}: By default, reject vote request (thisCommitIndex {2}, otherCommitIndex {3}, thisLastTerm {4}, otherLastTerm {5})." ,
-                DateTime.Now.TimeOfDay ,loggingprefix ,
+                DateTime.Now.TimeOfDay , loggingprefix ,
                 commitIndex , args.RequesterLastLogIndex , logEntries[commitIndex].Term , args.RequesterLastLogTerm
             );
         return reply;
@@ -319,7 +288,7 @@ public class RaftNode
 
     public AppendEntriesReply HandleAppendEntries(AppendEntriesArgs args)
     {
-        int nodeIntId = S_nodeIdToDebugPos[args.RequesterId];
+        int nodeIntId = S_NodeIdToDebugPos[args.RequesterId];
         string routePrefix = ComputeRoutePrefix(NodeId , args.ReceiverId , args.RequesterId);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"HandleAppendEntries",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
@@ -347,7 +316,7 @@ public class RaftNode
             return reply;
         }
 
-        Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Update leader to node {S_nodeIdToDebugPos[args.RequesterId]}");
+        Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Update leader to node {S_NodeIdToDebugPos[args.RequesterId]}");
         LeaderId = args.RequesterId;
 
         switch (Role)
@@ -411,7 +380,7 @@ public class RaftNode
 
     private async Task RunAsFollowerAsync()
     {
-        int nodeIntId = S_nodeIdToDebugPos[NodeId];
+        int nodeIntId = S_NodeIdToDebugPos[NodeId];
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"runAsFollower",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
@@ -446,7 +415,7 @@ public class RaftNode
 
     private async Task RunAsCandidateAsync()
     {
-        int nodeIntId = S_nodeIdToDebugPos[NodeId];
+        int nodeIntId = S_NodeIdToDebugPos[NodeId];
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"runAsCandidate",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
@@ -468,11 +437,13 @@ public class RaftNode
             {
                 Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
                 Task waitForElectionIntervalChange = changeElectionIntervalTcs.Task;
+                Task waitForNodeCountChange = changeNodeCountTcs.Task;
                 Task<VoteRequestReply> waitForNewVoteRequestReply = VoteRequestReplyChannel.Reader.ReadAsync().AsTask();
                 Task completedTask = await Task.WhenAny(
                         waitForElectionTimerEnd ,
                         waitForRevertToFollowerSignal ,
                         waitForElectionIntervalChange ,
+                        waitForNodeCountChange ,
                         waitForNewVoteRequestReply
                     );
                 if (completedTask == waitForElectionTimerEnd)
@@ -491,6 +462,11 @@ public class RaftNode
                     Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Election timer reset.");
                     break;
                 }
+                if (completedTask == waitForNodeCountChange)
+                {
+                    Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Node count changed, restart election.");
+                    return;
+                }
                 if (completedTask == waitForNewVoteRequestReply)
                 {
                     VoteRequestReply reply = await waitForNewVoteRequestReply;
@@ -507,23 +483,19 @@ public class RaftNode
 
                     Debug.WriteLine($"{DateTime.Now.TimeOfDay} {replyLoggingprefix}: Processing vote reply.");
                     if (reply.ReplierTerm < CurrentTerm)
-                    {
                         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {replyLoggingprefix}: Ignore for votes from previous term {reply.ReplierTerm}.");
-                    }
                     else
                     {
                         voteReceived++;
                         if (!reply.VoteGranted)
-                        {
-                            Debug.WriteLine($"{DateTime.Now.TimeOfDay} {replyLoggingprefix}: Being rejected from node {S_nodeIdToDebugPos[reply.ReplierId]}.");
-                        }
+                            Debug.WriteLine($"{DateTime.Now.TimeOfDay} {replyLoggingprefix}: Being rejected from node {S_NodeIdToDebugPos[reply.ReplierId]}.");
                         else
                         {
                             voteGranted++;
                             Debug.WriteLine(
                                     "{0} {1}: Vote granted from node {2} ({3}/{4}/{5})." ,
                                     DateTime.Now.TimeOfDay , replyLoggingprefix ,
-                                    S_nodeIdToDebugPos[reply.ReplierId] , voteGranted , voteReceived , nodeCount
+                                    S_NodeIdToDebugPos[reply.ReplierId] , voteGranted , voteReceived , nodeCount
                                 );
 
                             if (voteGranted >= (nodeCount / 2 + 1))
@@ -531,10 +503,8 @@ public class RaftNode
                                 Debug.WriteLine($"{DateTime.Now.TimeOfDay} {replyLoggingprefix}: Enough votes received.");
                                 Role = NodeRole.Leader;
                                 LeaderId = NodeId;
-
                                 Debug.WriteLine($"{DateTime.Now.TimeOfDay} {replyLoggingprefix}: Becoming leader.");
                                 InitializeLeaderRequiredField();
-
                                 return;
                             }
                         }
@@ -546,7 +516,7 @@ public class RaftNode
 
     private async Task RunAsLeaderAsync()
     {
-        int nodeIntId = S_nodeIdToDebugPos[NodeId];
+        int nodeIntId = S_NodeIdToDebugPos[NodeId];
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"runAsLeader",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
@@ -557,17 +527,14 @@ public class RaftNode
         Task waitForHeartBeatTimerEnd = Task.Delay(heartBeatInterval);
         while (true)
         {
-            using CancellationTokenSource cts = new CancellationTokenSource();
-            Task<AppendEntriesReply> waitForNewAppendEntriesRequestReply = AppendEntriesReplyChannel.Reader.ReadAsync(cts.Token).AsTask();
-
             Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Wait for replis of append entries requests.");
             Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
+            Task waitForNewAppendEntriesRequestReply = AppendEntriesReplyChannel.Reader.WaitToReadAsync().AsTask();
             Task completedTask = await Task.WhenAny(
                     waitForHeartBeatTimerEnd ,
                     waitForRevertToFollowerSignal ,
                     waitForNewAppendEntriesRequestReply
                 );
-            await cts.CancelAsync();
             if (completedTask == waitForRevertToFollowerSignal)
             {
                 Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Revert to follower.");
@@ -581,8 +548,8 @@ public class RaftNode
             }
             if (completedTask == waitForNewAppendEntriesRequestReply)
             {
-                AppendEntriesReply reply = waitForNewAppendEntriesRequestReply.Result;
-                Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: New reply received from node {S_nodeIdToDebugPos[reply.ReceiverId]}.");
+                AppendEntriesReply reply = await AppendEntriesReplyChannel.Reader.ReadAsync();
+                Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: New reply received from node {S_NodeIdToDebugPos[reply.ReceiverId]}.");
 
                 Guid replyNodeId = reply.ReplierId;
                 int replyMatchIndex = reply.MatchIndex;
@@ -592,12 +559,12 @@ public class RaftNode
                     nextIndecies[replyNodeId] = Math.Max(nextIndecies.GetValueOrDefault(replyNodeId , logEntries.Count) - 1 , 1);
 
                 int newCommitIndex = matchIndecies
-                    .Where(
-                            (_ , candidateCommitIndex) => matchIndecies.Count(kvp => kvp.Value >= candidateCommitIndex) >= nextIndecies.Count / 2
+                   .Where(
+                            (_ , candidateCommitIndex) => matchIndecies.Count(kvp => kvp.Value >= candidateCommitIndex) >= nodeCount / 2
                         )
-                    .Where((_ , candidateNextIndex) => logEntries[candidateNextIndex].Term == CurrentTerm)
-                    .DefaultIfEmpty(new KeyValuePair<Guid , int>(Guid.Empty , 0))
-                    .Max(kvp => kvp.Value);
+                   .Where((_ , candidateNextIndex) => logEntries[candidateNextIndex].Term == CurrentTerm)
+                   .DefaultIfEmpty(new KeyValuePair<Guid , int>(Guid.Empty , 0))
+                   .Max(kvp => kvp.Value);
                 if (newCommitIndex != commitIndex)
                 {
                     commitIndex = newCommitIndex;
@@ -611,15 +578,12 @@ public class RaftNode
 
     private void InitializeLeaderRequiredField()
     {
-        int nodeIntId = S_nodeIdToDebugPos[NodeId];
+        int nodeIntId = S_NodeIdToDebugPos[NodeId];
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"initLeaderReqField",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
 
-        nextIndecies = new Dictionary<Guid , int>(nodeCount)
-        {
-            [Guid.Empty] = logEntries.Count  ,
-        };
+        nextIndecies = new Dictionary<Guid , int>(nodeCount) { [Guid.Empty] = logEntries.Count };
         matchIndecies = new Dictionary<Guid , int>(nodeCount);
     }
 
@@ -628,26 +592,38 @@ public class RaftNode
         if (logEntries.Count > startIndex)
             logEntries.RemoveRange(startIndex , logEntries.Count - startIndex);
         else if (logEntries.Count < startIndex)
-            throw new InvalidOperationException($"Append entries failed because of missing logs.");
+            throw new InvalidOperationException("Append entries failed because of missing logs.");
 
         logEntries.AddRange(entriesToAppend);
         return true;
     }
 
+    private bool CheckKeyExist(string key , int checkBeforeIndex)
+    {
+        while (--checkBeforeIndex >= 0)
+            if (logEntries[checkBeforeIndex].Key == key)
+                switch (logEntries[checkBeforeIndex].Operation)
+                {
+                    case LogEntryOperation.Put:    return true;
+                    case LogEntryOperation.Delete: return false;
+                }
+        return false;
+    }
+
     private static string ComputeRoutePrefix(Guid loggingNodeId , Guid? sourceNodeId , Guid? targetNodeId)
     {
-        int resultLength = S_nodeIdToDebugPos.Count * 2 - 1;
+        int resultLength = S_NodeIdToDebugPos.Count * 2 - 1;
         StringBuilder resultBuilder = new StringBuilder(resultLength).Append(' ' , resultLength);
 
-        int sourcePos = sourceNodeId is null ? -1 : S_nodeIdToDebugPos[sourceNodeId.Value];
+        int sourcePos = sourceNodeId is null ? -1 : S_NodeIdToDebugPos[sourceNodeId.Value];
         if (sourceNodeId is not null)
             resultBuilder[sourcePos * 2] = 'O';
-        int targetPos = targetNodeId is null ? -1 : S_nodeIdToDebugPos[targetNodeId.Value];
+        int targetPos = targetNodeId is null ? -1 : S_NodeIdToDebugPos[targetNodeId.Value];
         if (sourceNodeId is not null)
             resultBuilder[targetPos * 2] = 'O';
-        int loggingPos = S_nodeIdToDebugPos[loggingNodeId];
+        int loggingPos = S_NodeIdToDebugPos[loggingNodeId];
         resultBuilder[loggingPos * 2] = 'X';
-        
+
         /* Drawing arrow */
         if (sourceNodeId is not null && targetNodeId is not null)
         {
@@ -666,6 +642,6 @@ public class RaftNode
 
     ~RaftNode()
     {
-        S_nodeIdToDebugPos.Remove(NodeId);
+        S_NodeIdToDebugPos.Remove(NodeId);
     }
 }

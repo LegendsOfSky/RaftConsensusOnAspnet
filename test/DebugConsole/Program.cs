@@ -42,7 +42,7 @@ internal class Program
         Console.WriteLine(SpacingBetweenTests);
         testCaseStates.Add((9 , "testOneSimpleDelete" , await RunTestCase9TestOneSimpleDeleteAsync()));
         Console.WriteLine(SpacingBetweenTests);
-        testCaseStates.Add((10 , "testDeleteNonExistKey" , await RunTestCase10TestDeleteNonExistKeyAsync())); 
+        testCaseStates.Add((10 , "testDeleteNonExistKey" , await RunTestCase10TestDeleteNonExistKeyAsync()));
         Console.WriteLine(SpacingBetweenTests);
 
 
@@ -54,7 +54,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase1TestOneCandidateOneRoundElectionAsync()
     {
-        RaftNode.S_nodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
             new RaftNode(10000 , 10000 , 5) ,
@@ -103,7 +103,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase2TestOneCandidateStartTwoElectionAsync()
     {
-        RaftNode.S_nodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
             new RaftNode(10000 , 10000 , 5) ,
@@ -158,7 +158,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase3TestTwoCandidateForElectionAsync()
     {
-        RaftNode.S_nodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
             new RaftNode(10000 , 10000 , 5) ,
@@ -213,7 +213,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase4TestSplitVoteAsync()
     {
-        RaftNode.S_nodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
             new RaftNode(10000 , 10000 , 5) ,
@@ -290,7 +290,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase5TestAllForElectionAsync()
     {
-        RaftNode.S_nodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
             new RaftNode(10000 , 10000 , 5) ,
@@ -348,34 +348,34 @@ internal class Program
             await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
 
             // T = 1500
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
 
             // T = 1500
-            await connections[1 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[1 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[1 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[1 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
+            await connections[1 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[1 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[1 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[1 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
 
             // T = 1500
-            await connections[2 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[2 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[2 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[2 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
+            await connections[2 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[2 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[2 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[2 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
 
             // T = 1500
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
+            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
 
             // T = 1500
-            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500});
+            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
+            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
 
             // T = 1600
             await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
@@ -405,7 +405,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase6TestLeaderRevertToFollowerAsync()
     {
-        RaftNode.S_nodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
             new RaftNode(10000 , 10000 , 5) ,
@@ -476,7 +476,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase7TestOneSimplePutAsync()
     {
-        RaftNode.S_nodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
             new RaftNode(10000 , 10000 , 5) ,
@@ -488,9 +488,9 @@ internal class Program
         return await CreateAndRunTestCaseAsync(7 , "testOneSimplePut" , nodes , ManipulateNodes , CreateConfig);
 
 
-        async Task<(bool Success, string DebugMsg)> ManipulateNodes()
+        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
         {
-            (bool manipulationPassed , StringBuilder debugMsgBuilder)= (true , new StringBuilder());
+            (bool manipulationPassed , StringBuilder debugMsgBuilder) = (true , new StringBuilder());
             Task watchDogTimer = Task.Delay(MaxTestTime);
 
             await Task.Delay(2000);
@@ -502,7 +502,7 @@ internal class Program
             nodes[0].SetHeartBeatInterval(1000);
 
             await Task.Delay(1500);
-            Task<(bool Success, bool WrongNode , bool? KeyFound)>[] proposeTasks =
+            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] proposeTasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
                 nodes[1].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
@@ -602,7 +602,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase8TestOneSimpleUpdateAsync()
     {
-        RaftNode.S_nodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
             new RaftNode(10000 , 10000 , 5) ,
@@ -628,7 +628,7 @@ internal class Program
             nodes[0].SetHeartBeatInterval(1000);
 
             await Task.Delay(1500);
-            Task<(bool Success, bool WrongNode , bool? KeyFound)>[] propose1Tasks =
+            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
                 nodes[1].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
@@ -638,7 +638,7 @@ internal class Program
             ];
 
             await Task.Delay(1000);
-            Task<(bool Success, bool WrongNode , bool? KeyFound)>[] propose2Tasks =
+            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 2) ,
                 nodes[1].ProposeAsync(LogEntryOperation.Put , "test" , 2) ,
@@ -655,7 +655,7 @@ internal class Program
 
             /* Check propose 1 (Term 1: Put <test: 1>). */
             await Task.Delay(2000);
-            if (await propose1Tasks[0] is not { Success: true, WrongNode: false , KeyFound: false })
+            if (await propose1Tasks[0] is not { Success: true , WrongNode: false , KeyFound: false })
             {
                 debugMsgBuilder.Append(
                         string.Format(
@@ -666,7 +666,7 @@ internal class Program
                 manipulationPassed = false;
             }
             for (int i = 1; i < nodes.Length; i++)
-                if (await propose1Tasks[i] is not { Success: false, WrongNode: true})
+                if (await propose1Tasks[i] is not { Success: false , WrongNode: true })
                 {
                     debugMsgBuilder.Append(
                             string.Format(
@@ -678,7 +678,7 @@ internal class Program
                 }
 
             /* Check propose 2 (Term 1: Put <test: 2>). */
-            if (await propose2Tasks[0] is not { Success: true, WrongNode: false , KeyFound: true })
+            if (await propose2Tasks[0] is not { Success: true , WrongNode: false , KeyFound: true })
             {
                 debugMsgBuilder.Append(
                         string.Format(
@@ -689,7 +689,7 @@ internal class Program
                 manipulationPassed = false;
             }
             for (int i = 1; i < nodes.Length; i++)
-                if (await propose2Tasks[i] is not { Success: false, WrongNode: true })
+                if (await propose2Tasks[i] is not { Success: false , WrongNode: true })
                 {
                     debugMsgBuilder.Append(
                             string.Format(
@@ -774,7 +774,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase9TestOneSimpleDeleteAsync()
     {
-        RaftNode.S_nodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
             new RaftNode(10000 , 10000 , 5) ,
@@ -800,7 +800,7 @@ internal class Program
             nodes[0].SetHeartBeatInterval(1000);
 
             await Task.Delay(1500);
-            Task<(bool Success, bool WrongNode , bool? KeyFound)>[] propose1Tasks =
+            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
                 nodes[1].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
@@ -810,7 +810,7 @@ internal class Program
             ];
 
             await Task.Delay(1000);
-            Task<(bool Success, bool WrongNode, bool? KeyFound)>[] propose2Tasks =
+            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Delete , "test" , null) ,
                 nodes[1].ProposeAsync(LogEntryOperation.Delete , "test" , null) ,
@@ -827,7 +827,7 @@ internal class Program
 
             /* Check propose 1 (Term 1: Put <test: 1>). */
             await Task.Delay(4000);
-            if (await propose1Tasks[0] is not { Success: true, WrongNode: false , KeyFound: false })
+            if (await propose1Tasks[0] is not { Success: true , WrongNode: false , KeyFound: false })
             {
                 debugMsgBuilder.Append(
                         string.Format(
@@ -838,7 +838,7 @@ internal class Program
                 manipulationPassed = false;
             }
             for (int i = 1; i < nodes.Length; i++)
-                if (await propose1Tasks[i] is not { Success: false, WrongNode: true })
+                if (await propose1Tasks[i] is not { Success: false , WrongNode: true })
                 {
                     debugMsgBuilder.Append(
                             string.Format(
@@ -850,7 +850,7 @@ internal class Program
                 }
 
             /* Check propose 2 (Term 1: Delete <test: 2>). */
-            if (await propose2Tasks[0] is not { Success: true, WrongNode: false , KeyFound: true })
+            if (await propose2Tasks[0] is not { Success: true , WrongNode: false , KeyFound: true })
             {
                 debugMsgBuilder.Append(
                         string.Format(
@@ -861,7 +861,7 @@ internal class Program
                 manipulationPassed = false;
             }
             for (int i = 1; i < nodes.Length; i++)
-                if (await propose2Tasks[i] is not { Success: false, WrongNode: true })
+                if (await propose2Tasks[i] is not { Success: false , WrongNode: true })
                 {
                     debugMsgBuilder.Append(
                             string.Format(
@@ -953,7 +953,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase10TestDeleteNonExistKeyAsync()
     {
-        RaftNode.S_nodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
             new RaftNode(10000 , 10000 , 5) ,
@@ -979,7 +979,7 @@ internal class Program
             nodes[0].SetHeartBeatInterval(1000);
 
             await Task.Delay(1500);
-            Task<(bool Success, bool WrongNode , bool? KeyFound)>[] propose1Tasks =
+            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
                 nodes[1].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
@@ -989,7 +989,7 @@ internal class Program
             ];
 
             await Task.Delay(1000);
-            Task<(bool Success, bool WrongNode , bool? KeyFound)>[] propose2Tasks =
+            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Delete , "test2" , null) ,
                 nodes[1].ProposeAsync(LogEntryOperation.Delete , "test2" , null) ,
@@ -1006,7 +1006,7 @@ internal class Program
 
             /* Check propose 1 (Term 1: Put <test: 1>). */
             await Task.Delay(1000);
-            if (await propose1Tasks[0] is not { Success: true, WrongNode: false , KeyFound: false })
+            if (await propose1Tasks[0] is not { Success: true , WrongNode: false , KeyFound: false })
             {
                 debugMsgBuilder.Append(
                         string.Format(
@@ -1270,7 +1270,7 @@ internal class Program
                     : string.Format(
                             "node {0} <- {1}: AppendEntries -- term: {2}, leaderId: {3}, prevLogIdx: {4}, prevLogTerm: {5}, entries: [{6}], leaderCommit: {7}" ,
                             source , target ,
-                            appendSend.Term , RaftNode.S_nodeIdToDebugPos[appendSend.LeaderId] , appendSend.PreviousLogIndex , appendSend.PreviousLogTerm ,
+                            appendSend.Term , RaftNode.S_NodeIdToDebugPos[appendSend.LeaderId] , appendSend.PreviousLogIndex , appendSend.PreviousLogTerm ,
                             new StringBuilder().AppendJoin(' ' , appendSend.Entries.Select(entry => entry.ToString())) ,
                             appendSend.LeaderCommit
                         );
@@ -1333,7 +1333,7 @@ internal class Program
             DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
             await Task.Delay(expectSendPackage.Delay);
             Console.WriteLine(
-                    MessagePackageToString(RaftNode.S_nodeIdToDebugPos[args.RequesterId] , RaftNode.S_nodeIdToDebugPos[args.ReceiverId] , expectSendPackage)
+                    MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , expectSendPackage)
                 );
             if (expectSendPackage.MessageDropped)
                 return true;
@@ -1358,8 +1358,8 @@ internal class Program
             await Task.Delay(expectRecvPackage.Delay);
             (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
             DebugLogs.Add((expectRecvPackage , actualRecvPackage , DateTime.Now));
-            Console.WriteLine( 
-                    MessagePackageToString(RaftNode.S_nodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_nodeIdToDebugPos[reply.ReplierId] , expectRecvPackage)
+            Console.WriteLine(
+                    MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , expectRecvPackage)
                 );
             if (!expectRecvPackage.MessageDropped)
                 await Source.VoteRequestReplyChannel.Writer.WriteAsync(reply);
@@ -1405,7 +1405,7 @@ internal class Program
             DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
             await Task.Delay(expectSendPackage.Delay);
             Console.WriteLine(
-                    MessagePackageToString(RaftNode.S_nodeIdToDebugPos[args.RequesterId] , RaftNode.S_nodeIdToDebugPos[args.ReceiverId] , expectSendPackage)
+                    MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , expectSendPackage)
                 );
             if (expectSendPackage.MessageDropped)
                 return true;
@@ -1432,7 +1432,7 @@ internal class Program
             (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
             DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
             Console.WriteLine(
-                    MessagePackageToString(RaftNode.S_nodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_nodeIdToDebugPos[reply.ReplierId] , expectRecvPackageBase)
+                    MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , expectRecvPackageBase)
                 );
             if (!expectRecvPackageBase.MessageDropped)
                 await Source.AppendEntriesReplyChannel.Writer.WriteAsync(reply);
@@ -1449,7 +1449,7 @@ internal class Program
 
         public record VoteRequestSendPackage : MessagePackageBase
         {
-            public int LastLogIndex ;
+            public int LastLogIndex;
             public int LastLogTerm;
         }
 
