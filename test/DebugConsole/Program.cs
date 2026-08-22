@@ -1209,8 +1209,8 @@ internal class Program
             (DateTime Time , int sourceIndex , int targetIndex , MessagePackageBase Expected , MessagePackageBase Actual)[] logs =
             [
                 .. from connection in connections.Cast<NetworkConnection>()
-                   let sourceIndex = nodes.IndexOf(connection.Source)
-                   let targetIndex = nodes.IndexOf(connection.Target)
+                   let sourceIndex = Array.IndexOf(nodes , connection.Source)
+                   let targetIndex = Array.IndexOf(nodes , connection.Target)
                    from log in connection.DebugLogs
                    orderby log.Time
                    select (log.Time , sourceIndex , targetIndex , log.Expected , log.Actual) ,
@@ -1231,8 +1231,8 @@ internal class Program
             [
                 .. from connection in connections.Cast<NetworkConnection>()
                    where connection.Source == nodes[firstErrorSource]
-                   let sourceIndex = nodes.IndexOf(connection.Source)
-                   let targetIndex = nodes.IndexOf(connection.Target)
+                   let sourceIndex = Array.IndexOf(nodes , connection.Source)
+                   let targetIndex = Array.IndexOf(nodes , connection.Target)
                    from log in connection.DebugLogs
                    orderby log.Time
                    select (log.Time , sourceIndex , targetIndex , log.Expected , log.Actual) ,
