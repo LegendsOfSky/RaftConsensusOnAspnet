@@ -8,18 +8,22 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core;
 
 public class RaftNode
 {
-    public int CurrentTerm { get; private set; }
+    public int CurrentTerm
+    {
+        get => File.Exists($"{NodeId}.Term") && int.TryParse(File.ReadAllText($"{NodeId}.Term") , out int result) ? result : 0;
+        private set => File.WriteAllText($"{NodeId}.Term" , value.ToString());
+    }
     public Guid? LeaderId { get; private set; }
     public IReadOnlyList<LogEntry> LogEntries => logEntries;
 
     /// <summary> Debug purpose, messing this up has no any effect on Raft behaviour. (except printing invalid debug logs) </summary>
     public static Dictionary<Guid , int> S_NodeIdToDebugPos = new Dictionary<Guid , int>();
     public readonly Guid NodeId;
+    public readonly Channel<AppendEntriesReply> AppendEntriesReplyChannel;
+    public readonly Channel<VoteRequestReply> VoteRequestReplyChannel;
     public NodeRole Role;
     public Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task<bool>> AppendEntriesToOtherNodes;
     public Func<Guid , int , int , Task<bool>> SendVoteRequestToOtherNodes;
-    public Channel<AppendEntriesReply> AppendEntriesReplyChannel;
-    public Channel<VoteRequestReply> VoteRequestReplyChannel;
 
     private readonly List<LogEntry> logEntries;
     private int nodeCount;
