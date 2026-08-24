@@ -3,6 +3,8 @@ using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Channels;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntres;
 using static DebugConsole.Program.NetworkConnection;
 
 
@@ -577,7 +579,7 @@ internal class Program
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
             await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
 
-            LogEntry entry = new LogEntry(1 , LogEntryOperation.Put , "test" , 1);
+            LogEntry entry = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry] , LeaderId = nodes[0].NodeId });
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry] , LeaderId = nodes[0].NodeId });
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry] , LeaderId = nodes[0].NodeId });
@@ -741,7 +743,7 @@ internal class Program
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
             await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
 
-            LogEntry entry1 = new LogEntry(1 , LogEntryOperation.Put , "test" , 1);
+            LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
@@ -749,7 +751,7 @@ internal class Program
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
 
-            LogEntry entry2 = new LogEntry(1 , LogEntryOperation.Put , "test" , 2);
+            LogEntry entry2 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 2);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1 , entry2] , LeaderId = nodes[0].NodeId , LeaderCommit = 1 });
@@ -912,7 +914,7 @@ internal class Program
             await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
 
             // heart beat #1
-            LogEntry entry1 = new LogEntry(1 , LogEntryOperation.Put , "test" , 1);
+            LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
@@ -920,7 +922,7 @@ internal class Program
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
 
             // heart beat #2
-            LogEntry entry2 = new LogEntry(1 , LogEntryOperation.Delete , "test" , null);
+            LogEntry entry2 = new Int32LogEntry(1 , LogEntryOperation.Delete , "test" , null);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1 , entry2] , LeaderId = nodes[0].NodeId , MessageDropped = true });
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [         entry2] , LeaderId = nodes[0].NodeId , MessageDropped = true , PreviousLogIndex = 1 , PreviousLogTerm = 1 });
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1 , entry2] , LeaderId = nodes[0].NodeId });
@@ -1070,7 +1072,7 @@ internal class Program
             await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
 
             // heart beat #1
-            LogEntry entry1 = new LogEntry(1 , LogEntryOperation.Put , "test" , 1);
+            LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
@@ -1079,7 +1081,7 @@ internal class Program
             await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 , MessageDropped = true });
 
             // heart beat #2
-            LogEntry entry2 = new LogEntry(1 , LogEntryOperation.Delete , "test2" , null);
+            LogEntry entry2 = new Int32LogEntry(1 , LogEntryOperation.Delete , "test2" , null);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
@@ -1321,48 +1323,54 @@ internal class Program
                 LastLogTerm = args.RequesterLastLogTerm ,
             };
 
-            MessagePackageBase expectSendPackageBase = await ExpectedMessagesChannel.Reader.ReadAsync();
-            if (expectSendPackageBase is not VoteRequestSendPackage expectSendPackage)
+            if (ExpectedMessagesChannel.Reader.Count > 0)
             {
-                DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
-                HasMismatchMessage = true;
-                return false;
-            }
+                MessagePackageBase expectSendPackageBase = await ExpectedMessagesChannel.Reader.ReadAsync();
+                if (expectSendPackageBase is not VoteRequestSendPackage expectSendPackage)
+                {
+                    DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
+                    HasMismatchMessage = true;
+                    return false;
+                }
 
-            (actualSendPackage.Delay , actualSendPackage.MessageDropped) = (expectSendPackage.Delay , expectSendPackage.MessageDropped);
-            DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
-            await Task.Delay(expectSendPackage.Delay);
-            Console.WriteLine(
-                    MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , expectSendPackage)
-                );
-            if (expectSendPackage.MessageDropped)
-                return true;
+                (actualSendPackage.Delay , actualSendPackage.MessageDropped) = (expectSendPackage.Delay , expectSendPackage.MessageDropped);
+                DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
+                await Task.Delay(expectSendPackage.Delay);
+                Console.WriteLine(
+                        MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , expectSendPackage)
+                    );
+                if (expectSendPackage.MessageDropped)
+                    return true;
+            }
 
             VoteRequestReply reply = Target.HandleVoteRequest(args);  // forward request to actual raft node
-            VoteRequestReceivePackage actualRecvPackage = new VoteRequestReceivePackage
-            {
-                MessageDropped = true ,
-                Term = reply.ReplierTerm ,
 
-                Granted = reply.VoteGranted ,
-            };
-
-            MessagePackageBase expectRecvPackageBase = await ExpectedMessagesChannel.Reader.ReadAsync();
-            if (expectRecvPackageBase is not VoteRequestReceivePackage expectRecvPackage)
+            if (ExpectedMessagesChannel.Reader.Count > 0)
             {
-                DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-                HasMismatchMessage = true;
-                return false;
+                VoteRequestReceivePackage actualRecvPackage = new VoteRequestReceivePackage
+                {
+                    MessageDropped = true ,
+                    Term = reply.ReplierTerm ,
+
+                    Granted = reply.VoteGranted ,
+                };
+                MessagePackageBase expectRecvPackageBase = await ExpectedMessagesChannel.Reader.ReadAsync();
+                if (expectRecvPackageBase is not VoteRequestReceivePackage expectRecvPackage)
+                {
+                    DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
+                    HasMismatchMessage = true;
+                    return false;
+                }
+
+                await Task.Delay(expectRecvPackage.Delay);
+                (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
+                DebugLogs.Add((expectRecvPackage , actualRecvPackage , DateTime.Now));
+                Console.WriteLine(
+                        MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , expectRecvPackage)
+                    );
+                if (!expectRecvPackage.MessageDropped)
+                    await Source.VoteRequestReplyChannel.Writer.WriteAsync(reply);
             }
-
-            await Task.Delay(expectRecvPackage.Delay);
-            (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
-            DebugLogs.Add((expectRecvPackage , actualRecvPackage , DateTime.Now));
-            Console.WriteLine(
-                    MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , expectRecvPackage)
-                );
-            if (!expectRecvPackage.MessageDropped)
-                await Source.VoteRequestReplyChannel.Writer.WriteAsync(reply);
             return true;
         }
 
@@ -1393,49 +1401,58 @@ internal class Program
                 Entries = args.Entries ,
             };
 
-            MessagePackageBase expectSendPackageBase = await ExpectedMessagesChannel.Reader.ReadAsync();
-            if (expectSendPackageBase is not AppendEntriesSendPackage expectSendPackage)
+            if (ExpectedMessagesChannel.Reader.Count > 0)
             {
-                DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
-                HasMismatchMessage = true;
-                return false;
-            }
+                MessagePackageBase expectSendPackageBase = await ExpectedMessagesChannel.Reader.ReadAsync();
+                if (expectSendPackageBase is not AppendEntriesSendPackage expectSendPackage)
+                {
+                    DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
+                    HasMismatchMessage = true;
+                    return false;
+                }
 
-            (actualSendPackage.Delay , actualSendPackage.MessageDropped) = (expectSendPackage.Delay , expectSendPackage.MessageDropped);
-            DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
-            await Task.Delay(expectSendPackage.Delay);
-            Console.WriteLine(
-                    MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , expectSendPackage)
-                );
-            if (expectSendPackage.MessageDropped)
-                return true;
+                (actualSendPackage.Delay , actualSendPackage.MessageDropped) = (expectSendPackage.Delay , expectSendPackage.MessageDropped);
+                DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
+                await Task.Delay(expectSendPackage.Delay);
+                Console.WriteLine(
+                        MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , expectSendPackage)
+                    );
+                if (expectSendPackage.MessageDropped)
+                    return true;
+            }
 
             AppendEntriesReply reply = Target.HandleAppendEntries(args);  // forward request to actual raft node
-            AppendEntriesReceivePackage actualRecvPackage = new AppendEntriesReceivePackage
-            {
-                MessageDropped = true ,
-                Term = reply.ReplierTerm ,
 
-                Success = reply.AppendSuccess ,
-                MatchIndex = reply.MatchIndex ,
-            };
-
-            MessagePackageBase expectRecvPackageBase = await ExpectedMessagesChannel.Reader.ReadAsync();
-            if (expectRecvPackageBase is not AppendEntriesReceivePackage expectRecvPackage)
+            if (ExpectedMessagesChannel.Reader.Count > 0)
             {
+                AppendEntriesReceivePackage actualRecvPackage = new AppendEntriesReceivePackage
+                {
+                    MessageDropped = true ,
+                    Term = reply.ReplierTerm ,
+
+                    Success = reply.AppendSuccess ,
+                    MatchIndex = reply.MatchIndex ,
+                };
+
+                MessagePackageBase expectRecvPackageBase = await ExpectedMessagesChannel.Reader.ReadAsync();
+                if (expectRecvPackageBase is not AppendEntriesReceivePackage expectRecvPackage)
+                {
+                    DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
+                    HasMismatchMessage = true;
+                    return false;
+                }
+
+                await Task.Delay(expectRecvPackageBase.Delay);
+                (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
                 DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-                HasMismatchMessage = true;
-                return false;
+                Console.WriteLine(
+                        MessagePackageToString(
+                                RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , expectRecvPackageBase
+                            )
+                    );
+                if (!expectRecvPackageBase.MessageDropped)
+                    await Source.AppendEntriesReplyChannel.Writer.WriteAsync(reply);
             }
-
-            await Task.Delay(expectRecvPackageBase.Delay);
-            (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
-            DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-            Console.WriteLine(
-                    MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , expectRecvPackageBase)
-                );
-            if (!expectRecvPackageBase.MessageDropped)
-                await Source.AppendEntriesReplyChannel.Writer.WriteAsync(reply);
             return true;
         }
 

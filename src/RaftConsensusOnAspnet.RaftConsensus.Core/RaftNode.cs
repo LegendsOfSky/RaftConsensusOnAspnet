@@ -2,6 +2,8 @@
 using System.Text;
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntres;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core;
@@ -25,7 +27,7 @@ public class RaftNode
     public Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task<bool>> AppendEntriesToOtherNodes;
     public Func<Guid , int , int , Task<bool>> SendVoteRequestToOtherNodes;
 
-    private readonly List<LogEntry> logEntries;
+    private LogEntryList logEntries;
     private int nodeCount;
     private int electionTimeoutInterval;
     private int heartBeatInterval;
@@ -55,7 +57,7 @@ public class RaftNode
 
         /* Persistent state */
         CurrentTerm = 0;
-        logEntries = new List<LogEntry>();
+        logEntries = new LogEntryList(NodeId);
 
         /* Volatile state */
         commitIndex = 0;
@@ -83,7 +85,7 @@ public class RaftNode
     public async Task StartAsync()
     {
         stopRaftTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        logEntries.Add(new LogEntry { Term = 0 });
+        AppendLogEntry(new LogEntry { Term = 0 });
         while (true)
         {
             if (stopRaftTcs.Task.IsCompleted)
@@ -156,9 +158,9 @@ public class RaftNode
             return (false , false , false);
         }
 
-        LogEntry entry = new LogEntry { Term = CurrentTerm , Operation = operation , Key = key , Value = value };
-        logEntries.Add(entry);
-        int thisLogIndex = logEntries.IndexOf(entry);
+        LogEntry entry = new Int32LogEntry(CurrentTerm , operation , key , (int?)value);  // FIX use hard code casting instead of temporary cast
+        AppendLogEntry(entry);
+        int thisLogIndex = logEntries.Index().First(kvp => kvp.Item == entry).Index;
         while (true)
         {
             Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
@@ -200,8 +202,8 @@ public class RaftNode
                 switch (logEntries[i].Operation)
                 {
                     case LogEntryOperation.Put:
-                        Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Value founded ({key}: {logEntries[i].Value}).");
-                        return (true , true , logEntries[i].Value);
+                        Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Value founded ({key}: {logEntries[i].GetValue()}).");
+                        return (true , true , logEntries[i].GetValue());
                     case LogEntryOperation.Delete:
                         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: This value (key = {key}) has been deleted.");
                         return (true , false , null);
@@ -360,7 +362,7 @@ public class RaftNode
         if (logEntries[args.PreviousLogIndex].Term != args.PreviousLogTerm)
         {
             Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Remove conflicting logs and subsequent logs (Impl Ref #3).");
-            logEntries.RemoveRange(args.PreviousLogIndex , logEntries.Count - args.PreviousLogIndex);
+            RemoveLogEntriesAtRange(args.PreviousLogIndex , logEntries.Count - args.PreviousLogIndex);
             return reply;
         }
 
@@ -591,6 +593,23 @@ public class RaftNode
         matchIndecies = new Dictionary<Guid , int>(nodeCount);
     }
 
+    private bool CheckKeyExist(string key , int checkBeforeIndex)
+    {
+        while (--checkBeforeIndex >= 0)
+            if (logEntries[checkBeforeIndex].Key == key)
+                switch (logEntries[checkBeforeIndex].Operation)
+                {
+                    case LogEntryOperation.Put:    return true;
+                    case LogEntryOperation.Delete: return false;
+                }
+        return false;
+    }
+
+    private void AppendLogEntry(LogEntry entry)
+    {
+        logEntries.Add(entry);
+    }
+
     private bool AppendEntries(IReadOnlyList<LogEntry> entriesToAppend , int startIndex)
     {
         if (logEntries.Count > startIndex)
@@ -602,16 +621,9 @@ public class RaftNode
         return true;
     }
 
-    private bool CheckKeyExist(string key , int checkBeforeIndex)
+    private void RemoveLogEntriesAtRange(int start , int count)
     {
-        while (--checkBeforeIndex >= 0)
-            if (logEntries[checkBeforeIndex].Key == key)
-                switch (logEntries[checkBeforeIndex].Operation)
-                {
-                    case LogEntryOperation.Put:    return true;
-                    case LogEntryOperation.Delete: return false;
-                }
-        return false;
+        logEntries.RemoveRange(start , count);
     }
 
     private static string ComputeRoutePrefix(Guid loggingNodeId , Guid? sourceNodeId , Guid? targetNodeId)

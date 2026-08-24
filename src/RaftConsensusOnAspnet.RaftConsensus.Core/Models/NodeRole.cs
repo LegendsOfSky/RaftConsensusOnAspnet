@@ -1,4 +1,4 @@
-﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core;
+﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models;
 
 public enum NodeRole
 {

@@ -1,4 +1,7 @@
-﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
+﻿using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntres;
+
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
 
 public record AppendEntriesArgs : RequestMessageBase
 {
