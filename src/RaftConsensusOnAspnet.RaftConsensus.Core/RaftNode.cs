@@ -160,7 +160,7 @@ public class RaftNode
 
         LogEntry entry = new Int32LogEntry(CurrentTerm , operation , key , (int?)value);  // FIX use hard code casting instead of temporary cast
         AppendLogEntry(entry);
-        int thisLogIndex = logEntries.Index().First(kvp => kvp.Item == entry).Index;
+        int thisLogIndex = logEntries.Index().First(kvp => Equals(kvp.Item , entry)).Index;
         while (true)
         {
             Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
