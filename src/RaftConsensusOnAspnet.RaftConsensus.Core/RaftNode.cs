@@ -3,7 +3,7 @@ using System.Text;
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntres;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core;

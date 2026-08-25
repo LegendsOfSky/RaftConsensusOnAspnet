@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntres;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 using static DebugConsole.Program.NetworkConnection;
 
 

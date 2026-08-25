@@ -1,6 +1,7 @@
 using System.Collections;
 
-namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntres;
+
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
 {

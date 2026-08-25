@@ -1,4 +1,4 @@
-﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntres;
+﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 public class LogEntry
 {

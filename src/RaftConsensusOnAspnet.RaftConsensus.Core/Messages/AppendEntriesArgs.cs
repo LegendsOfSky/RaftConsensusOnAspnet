@@ -1,5 +1,6 @@
 ﻿using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntres;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
+
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
 
