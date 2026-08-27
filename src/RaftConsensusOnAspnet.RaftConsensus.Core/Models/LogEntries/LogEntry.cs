@@ -10,11 +10,11 @@ public class LogEntry
     public string? Key { get; internal set; }
     public LogEntryOperation Operation { get; internal set; }
 
-    internal Guid Guid;
+    private const string LogType = "NonValue";
 
     protected static readonly Dictionary<string , Func<Guid , int , LogEntryOperation , string , string? , string? , LogEntry>> s_parsingFunctions = [];
 
-    private const string LogType = "NonValue";
+    internal Guid Guid;
 
 
     static LogEntry()
@@ -26,11 +26,11 @@ public class LogEntry
 
     public LogEntry() { }
 
-    public LogEntry(int term , LogEntryOperation operation , string? key)
-    {
-        Term = term;
-        Key = key;
+    public LogEntry(int term , LogEntryOperation operation , string? key) : this(Guid.NewGuid() ,  term , operation , key) { }
 
+    public LogEntry(Guid guid , int term , LogEntryOperation operation , string? key)
+    {
+        (Guid , Term , Key) = (guid , term , key);
         if (operation != LogEntryOperation.None && operation != LogEntryOperation.Delete)
             throw new InvalidOperationException();
         Operation = operation;
@@ -45,6 +45,7 @@ public class LogEntry
 
         if (!s_parsingFunctions.TryGetValue(logType , out Func<Guid , int , LogEntryOperation , string , string? , string? , LogEntry>? parsingFunction))
             throw new FormatException();
+
         return parsingFunction.Invoke(guidIn , term , operation , logType , key , serializedValue);
     }
 
@@ -79,4 +80,7 @@ public class LogEntry
             && Key       == comparingEntry.Key
             && Operation == comparingEntry.Operation;
     }
+
+    /// <inheritdoc />
+    public override int GetHashCode() => HashCode.Combine(Guid);
 }

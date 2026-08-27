@@ -14,13 +14,13 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry> , IDisposa
     public bool IsReadOnly => false;
     public int Count => ReadFromDatabase().Count;
 
-    private readonly string filePath;
     private readonly SqliteConnection connection;
+    private bool disposed;
 
 
     public LogEntryList(Guid nodeIdIn , bool clearEntries = false)
     {
-        filePath = $"{RaftNode.DataPath}/{nodeIdIn}.db";
+        string filePath = $"{RaftNode.DataPath}/{nodeIdIn}.db";
 
         connection = new SqliteConnection($"Data Source={filePath}");
         connection.Open();
@@ -183,14 +183,6 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry> , IDisposa
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    private void ReleaseUnmanagedResources() { }
-
-    private void Dispose(bool disposing)
-    {
-        ReleaseUnmanagedResources();
-        if (disposing) { connection.Dispose(); }
-    }
-
     /// <inheritdoc />
     public void Dispose()
     {
@@ -198,18 +190,32 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry> , IDisposa
         GC.SuppressFinalize(this);
     }
 
-    private async ValueTask DisposeCoreAsync()
-    {
-        ReleaseUnmanagedResources();
-
-        await connection.DisposeAsync();
-    }
-
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        await DisposeCoreAsync();
+        await DisposeAsyncCore().ConfigureAwait(false);
+        Dispose(false);
         GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposed)
+            return;
+
+        if (disposing)
+            connection.Dispose();
+
+        disposed = true;
+    }
+
+    protected virtual async ValueTask DisposeAsyncCore()
+    {
+        if (disposed)
+            return;
+
+        await connection.DisposeAsync().ConfigureAwait(false);
+        disposed = true;
     }
     #endregion
 

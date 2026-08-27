@@ -10,24 +10,21 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core;
 
 public class RaftNode
 {
-    public int CurrentTerm;
-    // {
-    //    get => File.Exists($"data/{NodeId}.Term") && int.TryParse(File.ReadAllText($"data/{NodeId}.Term") , out int result) ? result : 0;
-    //    private set => File.WriteAllText($"data/{NodeId}.Term" , value.ToString());
-    // }
+    public int CurrentTerm { get; private set; }
+    public NodeRole Role { get; private set; }
     public Guid? LeaderId { get; private set; }
     public IReadOnlyList<LogEntry> LogEntries => logEntries;
 
     public const string DataPath = "data/db";
+
     /// <summary> Debug purpose, messing this up has no any effect on Raft behaviour. (except printing invalid debug logs) </summary>
-    public static Dictionary<Guid , int> S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+    public static Dictionary<Guid , int> S_NodeIdToDebugPos = [];
+
     public readonly Guid NodeId;
     public readonly Channel<AppendEntriesReply> AppendEntriesReplyChannel;
     public readonly Channel<VoteRequestReply> VoteRequestReplyChannel;
-    public NodeRole Role;
-    public Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task<bool>> AppendEntriesToOtherNodes;
-    public Func<Guid , int , int , Task<bool>> SendVoteRequestToOtherNodes;
-
+    public Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task<bool>>? AppendEntriesToOtherNodes;
+    public Func<Guid , int , int , Task<bool>>? SendVoteRequestToOtherNodes;
     private readonly LogEntryList logEntries;
     private int nodeCount;
     private int electionTimeoutInterval;
@@ -103,7 +100,7 @@ public class RaftNode
                 case NodeRole.Follower:  await RunAsFollowerAsync();  break;
                 case NodeRole.Candidate: await RunAsCandidateAsync(); break;
                 case NodeRole.Leader:    await RunAsLeaderAsync();    break;
-                default:                 throw new UnreachableException();
+                default: throw new UnreachableException();
             }
         }
     }
@@ -264,7 +261,11 @@ public class RaftNode
 
                 case NodeRole.Leader:
                     LeaderId = null;
-                    goto case NodeRole.Candidate;
+                    Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Higher term found, revert to follower.");
+                    revertToFollowerTcs.TrySetResult();
+                    revertToFollowerTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    break;
+
                 case NodeRole.Candidate:
                     Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Higher term found, revert to follower.");
                     revertToFollowerTcs.TrySetResult();

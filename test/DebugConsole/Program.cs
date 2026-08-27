@@ -3,7 +3,6 @@ using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Channels;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 using static DebugConsole.Program.NetworkConnection;
 
@@ -56,7 +55,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase1TestOneCandidateOneRoundElectionAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
             new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
@@ -105,7 +104,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase2TestOneCandidateStartTwoElectionAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
             new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
@@ -160,7 +159,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase3TestTwoCandidateForElectionAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
             new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
@@ -215,7 +214,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase4TestSplitVoteAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
             new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
@@ -292,7 +291,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase5TestAllForElectionAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
             new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
@@ -407,7 +406,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase6TestLeaderRevertToFollowerAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
             new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
@@ -478,7 +477,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase7TestOneSimplePutAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
             new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
@@ -604,7 +603,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase8TestOneSimpleUpdateAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
             new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
@@ -776,7 +775,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase9TestOneSimpleDeleteAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
             new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
@@ -955,7 +954,7 @@ internal class Program
 
     private static async Task<bool> RunTestCase10TestDeleteNonExistKeyAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
+        RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
             new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
@@ -981,23 +980,25 @@ internal class Program
             nodes[0].SetHeartBeatInterval(1000);
 
             await Task.Delay(1500);
+            const string Propose1Key = "test";
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
             [
-                nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
+                nodes[0].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
+                nodes[1].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
+                nodes[2].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
+                nodes[3].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
+                nodes[4].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
             ];
 
             await Task.Delay(1000);
+            const string Propose2Key = "test2";
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
             [
-                nodes[0].ProposeAsync(LogEntryOperation.Delete , "test2" , null) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Delete , "test2" , null) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Delete , "test2" , null) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Delete , "test2" , null) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Delete , "test2" , null) ,
+                nodes[0].ProposeAsync(LogEntryOperation.Delete , Propose2Key , null) ,
+                nodes[1].ProposeAsync(LogEntryOperation.Delete , Propose2Key , null) ,
+                nodes[2].ProposeAsync(LogEntryOperation.Delete , Propose2Key , null) ,
+                nodes[3].ProposeAsync(LogEntryOperation.Delete , Propose2Key , null) ,
+                nodes[4].ProposeAsync(LogEntryOperation.Delete , Propose2Key , null) ,
             ];
 
             /* Wait for all task to finish. */
@@ -1081,7 +1082,6 @@ internal class Program
             await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 , MessageDropped = true });
 
             // heart beat #2
-            LogEntry entry2 = new Int32LogEntry(1 , LogEntryOperation.Delete , "test2" , null);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
@@ -1149,7 +1149,7 @@ internal class Program
 
         /* Wait to finalize the test case. */
         List<Task> waitForExpectMsgChannelReaderCloses = new List<Task>(connections.Length);
-        foreach (NetworkConnection connection in connections.Cast<NetworkConnection>())
+        foreach (NetworkConnection connection in connections)
         {
             connection.ExpectedMessagesChannel.Writer.Complete();
             waitForExpectMsgChannelReaderCloses.Add(connection.ExpectedMessagesChannel.Reader.Completion);
@@ -1251,40 +1251,38 @@ internal class Program
 
     private static string MessagePackageToString(int source , int target , MessagePackageBase message)
     {
-        switch (message)
+        return message switch
         {
-            case VoteRequestSendPackage voteSend:
-                return voteSend.MessageDropped
+            VoteRequestSendPackage voteSend
+                => voteSend.MessageDropped
                     ? $"node {source}: dropped RequestVote to {target}"
                     : string.Format(
                             "node {0} <- {1}: RequestVote -- term: {2}, candidateId: {3}, lastLogIdx: {4}, lastLogTerm: {5}" ,
                             target , source , voteSend.Term , source , voteSend.LastLogIndex , voteSend.LastLogTerm
-                        );
+                        ) ,
 
-            case VoteRequestReceivePackage voteRecv:
-                return voteRecv.MessageDropped
+            VoteRequestReceivePackage voteRecv
+                => voteRecv.MessageDropped
                     ? $"node {target}: dropped RequestVoteResponse to {source}"
-                    : $"node {target} -> {source}: {(voteRecv.Granted ? "granted" : "reject")}, term: {voteRecv.Term}";
+                    : $"node {target} -> {source}: {(voteRecv.Granted ? "granted" : "reject")}, term: {voteRecv.Term}" ,
 
-            case AppendEntriesSendPackage appendSend:
-                return appendSend.MessageDropped
+            AppendEntriesSendPackage appendSend
+                => appendSend.MessageDropped
                     ? $"node {source}: dropped AppendEntries to {target}"
                     : string.Format(
                             "node {0} <- {1}: AppendEntries -- term: {2}, leaderId: {3}, prevLogIdx: {4}, prevLogTerm: {5}, entries: [{6}], leaderCommit: {7}" ,
-                            source , target ,
-                            appendSend.Term , RaftNode.S_NodeIdToDebugPos[appendSend.LeaderId] , appendSend.PreviousLogIndex , appendSend.PreviousLogTerm ,
-                            new StringBuilder().AppendJoin(' ' , appendSend.Entries.Select(entry => entry.ToString())) ,
-                            appendSend.LeaderCommit
-                        );
+                            source , target , appendSend.Term ,
+                            RaftNode.S_NodeIdToDebugPos[appendSend.LeaderId] , appendSend.PreviousLogIndex , appendSend.PreviousLogTerm ,
+                            new StringBuilder().AppendJoin(' ' , appendSend.Entries.Select(entry => entry.ToString())) , appendSend.LeaderCommit
+                        ) ,
 
-            case AppendEntriesReceivePackage appendRecv:
-                return appendRecv.MessageDropped
+            AppendEntriesReceivePackage appendRecv
+                => appendRecv.MessageDropped
                     ? $"node {target}: dropped AppendEntriesReponse to {source}"
-                    : $"node {target} -> {source}: {(appendRecv.Success ? "success" : "failed")}, term: {appendRecv.Term}, matchIdx: {appendRecv.MatchIndex}";
+                    : $"node {target} -> {source}: {(appendRecv.Success ? "success" : "failed")}, term: {appendRecv.Term}, matchIdx: {appendRecv.MatchIndex}" ,
 
-            default:
-                return "";
-        }
+            _ => "" ,
+        };
     }
 
 
@@ -1481,7 +1479,7 @@ internal class Program
             public int LeaderCommit;
             public int PreviousLogIndex;
             public int PreviousLogTerm;
-            public IReadOnlyList<LogEntry> Entries;
+            public required IReadOnlyList<LogEntry> Entries;
 
 
             /// <inheritdoc />

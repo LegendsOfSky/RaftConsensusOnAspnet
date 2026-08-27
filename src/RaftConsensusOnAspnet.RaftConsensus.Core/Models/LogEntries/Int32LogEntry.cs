@@ -1,11 +1,8 @@
-using System.Runtime.CompilerServices;
-
-
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 public class Int32LogEntry : LogEntry
 {
-    public int? Value;
+    public int? Value { get; init; }
 
     private const string LogType = "Int32";
 
@@ -21,13 +18,19 @@ public class Int32LogEntry : LogEntry
         (Operation , Key , Value) = (operation , key , value);
     }
 
+    public Int32LogEntry(Guid guid , int term , LogEntryOperation operation , string key , int? value)
+    {
+        (Guid , Term , Operation) = (guid , term , operation);
+        (Key , Value) = (key , value);
+    }
+
 
     public new static LogEntry Parse(
         Guid guidIn , int term , LogEntryOperation operation , string _ , string? key , string? serializedValue)
         => key is null
             ? throw new ArgumentNullException(nameof(key))
             : operation is LogEntryOperation.None or LogEntryOperation.Delete
-                ? new Int32LogEntry(term , operation , key , null) { Guid = guidIn }
+                ? new Int32LogEntry(guidIn , term , operation , key , null)
                 : serializedValue is null
                     ? throw new ArgumentNullException(nameof(serializedValue))
                     : new Int32LogEntry(term , operation , key , int.Parse(serializedValue));
@@ -39,7 +42,7 @@ public class Int32LogEntry : LogEntry
     public override string GetLogType() => LogType;
 
     /// <inheritdoc />
-    public override string? SerializeValue() => Value is null ? null : Value.ToString();
+    public override string? SerializeValue() => Value?.ToString();
 
     /// <inheritdoc />
     public override string ToString() => Operation == LogEntryOperation.None
@@ -58,4 +61,7 @@ public class Int32LogEntry : LogEntry
             && Operation == comparingEntry.Operation
             && Value     == comparingEntry.Value;
     }
+
+    /// <inheritdoc />
+    public override int GetHashCode() => HashCode.Combine(Guid);
 }
