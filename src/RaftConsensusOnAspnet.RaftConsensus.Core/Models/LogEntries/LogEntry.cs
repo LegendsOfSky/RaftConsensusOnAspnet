@@ -1,4 +1,8 @@
-﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
+﻿using System.Reflection;
+using System.Runtime.CompilerServices;
+
+
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 public class LogEntry
 {
@@ -6,11 +10,19 @@ public class LogEntry
     public string? Key { get; internal set; }
     public LogEntryOperation Operation { get; internal set; }
 
-    protected static readonly Dictionary<string , Func<string , LogEntry>> s_deserializingFunctions = new Dictionary<string , Func<string , LogEntry>>();
-    protected Guid guid;
+    internal Guid Guid;
+
+    protected static readonly Dictionary<string , Func<Guid , int , LogEntryOperation , string , string? , string? , LogEntry>> s_parsingFunctions = [];
 
     private const string LogType = "NonValue";
 
+
+    static LogEntry()
+    {
+        IEnumerable<Type> subTypes = Assembly.GetExecutingAssembly().GetTypes().Where(t => t.IsSubclassOf(typeof(LogEntry)) && !t.IsAbstract);
+        foreach (Type type in subTypes)
+            RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+    }
 
     public LogEntry() { }
 
@@ -25,6 +37,17 @@ public class LogEntry
     }
 
 
+    public static LogEntry Parse(
+        Guid guidIn , int term , LogEntryOperation operation , string logType , string? key , string? serializedValue)
+    {
+        if (logType == LogType)
+            return new LogEntry(term , operation , key) { Guid = guidIn };
+
+        if (!s_parsingFunctions.TryGetValue(logType , out Func<Guid , int , LogEntryOperation , string , string? , string? , LogEntry>? parsingFunction))
+            throw new FormatException();
+        return parsingFunction.Invoke(guidIn , term , operation , logType , key , serializedValue);
+    }
+
     public bool MemberWiseEqualityCheck(object? obj)
     {
         if (obj is not LogEntry other)
@@ -38,34 +61,20 @@ public class LogEntry
 
     public virtual object? GetValue() => throw new NotSupportedException();
 
-    public virtual string Serialize() => $"{LogType} {guid} {Term} {Operation} {Key}";
+    public virtual string GetLogType() => LogType;
 
-    public static LogEntry Deserialize(string raw)
-    {
-        string[] fragments = raw.Split(' ');
-        if (fragments[0] != LogType)
-        {
-            if (!s_deserializingFunctions.TryGetValue(fragments[0], out Func<string, LogEntry>? deserializeFunction))
-                throw new FormatException();
-            return deserializeFunction.Invoke(raw);
-        }
-
-        if (!Guid.TryParse(fragments[1] , out Guid guid))
-            throw new FormatException();
-        if (!int.TryParse(fragments[2] , out int term) || !Enum.TryParse(fragments[3] , out LogEntryOperation operation))
-            throw new FormatException();
-        return new LogEntry(term , operation , fragments[3]) { guid = guid };
-    }
+    public virtual string? SerializeValue() => null;
 
     /// <inheritdoc />
     public override string ToString() => $"Term {Term}: None";
 
+    /// <inheritdoc />
     public override bool Equals(object? obj)
     {
         if (obj is not LogEntry comparingEntry)
             return false;
 
-        return guid      == comparingEntry.guid
+        return Guid      == comparingEntry.Guid
             && Term      == comparingEntry.Term
             && Key       == comparingEntry.Key
             && Operation == comparingEntry.Operation;

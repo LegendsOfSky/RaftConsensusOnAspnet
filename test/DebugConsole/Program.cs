@@ -59,11 +59,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(1 , "testOneCandidateOneRoundElection" , nodes , ManipulateNodes , CreateConfig);
 
@@ -108,11 +108,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(2 , "testOneCandidateStartTwoElection" , nodes , ManipulateNodes , CreateConfig);
 
@@ -163,11 +163,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(3 , "testTwoCandidateForElection" , nodes , ManipulateNodes , CreateConfig);
 
@@ -218,11 +218,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(4 , "testSplitVote" , nodes , ManipulateNodes , CreateConfig);
 
@@ -295,11 +295,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(5 , "testAllForElection" , nodes , ManipulateNodes , CreateConfig);
 
@@ -410,11 +410,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(6 , "testOneCandidateOneRoundElection" , nodes , ManipulateNodes , CreateConfig);
 
@@ -481,11 +481,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(7 , "testOneSimplePut" , nodes , ManipulateNodes , CreateConfig);
 
@@ -607,11 +607,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(8 , "testOneSimpleUpdate" , nodes , ManipulateNodes , CreateConfig);
 
@@ -779,11 +779,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(9 , "testOneSimpleDelete" , nodes , ManipulateNodes , CreateConfig);
 
@@ -958,11 +958,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = new Dictionary<Guid , int>();
         RaftNode[] nodes =
         [
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
-            new RaftNode(10000 , 10000 , 5) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(10 , "testDeleteNonExistKey" , nodes , ManipulateNodes , CreateConfig);
 

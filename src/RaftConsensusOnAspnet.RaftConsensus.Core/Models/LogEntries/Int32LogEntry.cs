@@ -1,3 +1,6 @@
+using System.Runtime.CompilerServices;
+
+
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 public class Int32LogEntry : LogEntry
@@ -9,7 +12,7 @@ public class Int32LogEntry : LogEntry
 
     static Int32LogEntry()
     {
-        s_deserializingFunctions[LogType] = Deserialize;
+        s_parsingFunctions[LogType] = Parse;
     }
 
     public Int32LogEntry(int term , LogEntryOperation operation , string key , int? value)
@@ -19,37 +22,37 @@ public class Int32LogEntry : LogEntry
     }
 
 
-    public new static LogEntry Deserialize(string raw)
-    {
-        string[] fragments = raw.Split(' ');
-        if (!Guid.TryParse(fragments[1] , out Guid guid))
-            throw new FormatException();
-        if (!int.TryParse(fragments[2] , out int term) || !Enum.TryParse(fragments[3] , out LogEntryOperation operation))
-            throw new FormatException();
-        (int? value , string rawValue) = (null , fragments[5]);
-        if (rawValue != "Null")
-        {
-            if (!int.TryParse(rawValue , out int parseResult))
-                throw new FormatException();
-            value = parseResult;
-        }
-        return new Int32LogEntry(term , operation , fragments[4] , value) { guid = guid };
-    }
+    public new static LogEntry Parse(
+        Guid guidIn , int term , LogEntryOperation operation , string _ , string? key , string? serializedValue)
+        => key is null
+            ? throw new ArgumentNullException(nameof(key))
+            : operation is LogEntryOperation.None or LogEntryOperation.Delete
+                ? new Int32LogEntry(term , operation , key , null) { Guid = guidIn }
+                : serializedValue is null
+                    ? throw new ArgumentNullException(nameof(serializedValue))
+                    : new Int32LogEntry(term , operation , key , int.Parse(serializedValue));
 
+    /// <inheritdoc />
     public override object? GetValue() => Value;
 
-    public override string Serialize() => $"{LogType} {guid} {Term} {Operation} {Key} {(Value is null ? "Null" : Value)}";
+    /// <inheritdoc />
+    public override string GetLogType() => LogType;
 
+    /// <inheritdoc />
+    public override string? SerializeValue() => Value is null ? null : Value.ToString();
+
+    /// <inheritdoc />
     public override string ToString() => Operation == LogEntryOperation.None
         ? base.ToString()
         : $"Term {Term}: <{Key}: {(Value is null ? "Null" : Value)}>";
 
+    /// <inheritdoc />
     public override bool Equals(object? obj)
     {
         if (obj is not Int32LogEntry comparingEntry)
             return false;
 
-        return guid      == comparingEntry.guid
+        return Guid      == comparingEntry.Guid
             && Term      == comparingEntry.Term
             && Key       == comparingEntry.Key
             && Operation == comparingEntry.Operation

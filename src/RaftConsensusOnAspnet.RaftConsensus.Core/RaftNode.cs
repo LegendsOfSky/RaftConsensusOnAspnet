@@ -10,14 +10,15 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core;
 
 public class RaftNode
 {
-    public int CurrentTerm
-    {
-        get => File.Exists($"{NodeId}.Term") && int.TryParse(File.ReadAllText($"{NodeId}.Term") , out int result) ? result : 0;
-        private set => File.WriteAllText($"{NodeId}.Term" , value.ToString());
-    }
+    public int CurrentTerm;
+    // {
+    //    get => File.Exists($"data/{NodeId}.Term") && int.TryParse(File.ReadAllText($"data/{NodeId}.Term") , out int result) ? result : 0;
+    //    private set => File.WriteAllText($"data/{NodeId}.Term" , value.ToString());
+    // }
     public Guid? LeaderId { get; private set; }
     public IReadOnlyList<LogEntry> LogEntries => logEntries;
 
+    public const string DataPath = "data/db";
     /// <summary> Debug purpose, messing this up has no any effect on Raft behaviour. (except printing invalid debug logs) </summary>
     public static Dictionary<Guid , int> S_NodeIdToDebugPos = new Dictionary<Guid , int>();
     public readonly Guid NodeId;
@@ -27,7 +28,7 @@ public class RaftNode
     public Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task<bool>> AppendEntriesToOtherNodes;
     public Func<Guid , int , int , Task<bool>> SendVoteRequestToOtherNodes;
 
-    private LogEntryList logEntries;
+    private readonly LogEntryList logEntries;
     private int nodeCount;
     private int electionTimeoutInterval;
     private int heartBeatInterval;
@@ -46,10 +47,16 @@ public class RaftNode
     private TaskCompletionSource commitNewEntryTcs;
 
 
-    public RaftNode(int electionTimeOutIntervalIn , int heartBeatIntervalIn , int nodeCountIn)
+    public RaftNode(int electionTimeOutIntervalIn , int heartBeatIntervalIn , int nodeCountIn , bool removeExistData = false)
+        : this(Guid.NewGuid() , electionTimeOutIntervalIn , heartBeatIntervalIn , nodeCountIn , removeExistData) { }
+
+    public RaftNode(Guid guid , int electionTimeOutIntervalIn , int heartBeatIntervalIn , int nodeCountIn , bool removeExistData = false)
     {
+        if (!Directory.Exists(DataPath))
+            Directory.CreateDirectory(DataPath);
+
         /* Identity (Volatile) */
-        NodeId = Guid.NewGuid();
+        NodeId = guid;
         Role = NodeRole.Follower;
 
         /* Raft cluster info (Volatile) */
@@ -57,7 +64,7 @@ public class RaftNode
 
         /* Persistent state */
         CurrentTerm = 0;
-        logEntries = new LogEntryList(NodeId);
+        logEntries = new LogEntryList(NodeId , removeExistData);
 
         /* Volatile state */
         commitIndex = 0;
@@ -71,12 +78,12 @@ public class RaftNode
         VoteRequestReplyChannel = Channel.CreateUnbounded<VoteRequestReply>();
         AppendEntriesReplyChannel = Channel.CreateUnbounded<AppendEntriesReply>();
 
-        changeElectionIntervalTcs  = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        changeElectionIntervalTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         changeHeartBeatIntervalTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        changeNodeCountTcs         = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        revertToFollowerTcs        = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        receiveHeartBeatTcs        = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        commitNewEntryTcs          = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        changeNodeCountTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        revertToFollowerTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        receiveHeartBeatTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        commitNewEntryTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
 
@@ -659,5 +666,6 @@ public class RaftNode
     ~RaftNode()
     {
         S_NodeIdToDebugPos.Remove(NodeId);
+        logEntries.Dispose();
     }
 }
