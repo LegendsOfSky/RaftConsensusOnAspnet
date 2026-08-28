@@ -24,7 +24,10 @@ public class LogEntry
             RuntimeHelpers.RunClassConstructor(type.TypeHandle);
     }
 
-    public LogEntry() { }
+    public LogEntry()
+    {
+        Guid = Guid.NewGuid();
+    }
 
     public LogEntry(int term , LogEntryOperation operation , string? key) : this(Guid.NewGuid() ,  term , operation , key) { }
 
@@ -41,7 +44,7 @@ public class LogEntry
         Guid guidIn , int term , LogEntryOperation operation , string logType , string? key , string? serializedValue)
     {
         if (logType == LogType)
-            return new LogEntry(term , operation , key) { Guid = guidIn };
+            return new LogEntry(guidIn , term , operation , key);
 
         if (!s_parsingFunctions.TryGetValue(logType , out Func<Guid , int , LogEntryOperation , string , string? , string? , LogEntry>? parsingFunction))
             throw new FormatException();

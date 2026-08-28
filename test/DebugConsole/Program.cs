@@ -20,6 +20,9 @@ internal class Program
         const string SpacingBetweenTests = "\n\n\n\n\n\n";
 
         Directory.CreateDirectory("debug");
+        foreach (string filePath in Directory.GetFiles("debug"))
+            File.Delete(filePath);
+
         List<(int testId , string TestName , bool Success)> testCaseStates = [];
 
         /* Leader election tests. */
@@ -1327,6 +1330,7 @@ internal class Program
                 if (expectSendPackageBase is not VoteRequestSendPackage expectSendPackage)
                 {
                     DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
+                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Source.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Target.NodeId]}: Expect VoteRequestSendPackage, but get {expectSendPackageBase.GetType()}");
                     HasMismatchMessage = true;
                     return false;
                 }
@@ -1356,6 +1360,7 @@ internal class Program
                 if (expectRecvPackageBase is not VoteRequestReceivePackage expectRecvPackage)
                 {
                     DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
+                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: Expect VoteRequestSendPackage, but get {expectRecvPackageBase.GetType()}");
                     HasMismatchMessage = true;
                     return false;
                 }
@@ -1405,6 +1410,7 @@ internal class Program
                 if (expectSendPackageBase is not AppendEntriesSendPackage expectSendPackage)
                 {
                     DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
+                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Source.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Target.NodeId]}: Expect VoteRequestSendPackage, but get {expectSendPackageBase.GetType()}");
                     HasMismatchMessage = true;
                     return false;
                 }
@@ -1436,6 +1442,7 @@ internal class Program
                 if (expectRecvPackageBase is not AppendEntriesReceivePackage expectRecvPackage)
                 {
                     DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
+                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: Expect VoteRequestSendPackage, but get {expectRecvPackageBase.GetType()}");
                     HasMismatchMessage = true;
                     return false;
                 }

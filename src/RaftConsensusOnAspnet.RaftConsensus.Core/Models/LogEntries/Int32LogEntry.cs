@@ -15,6 +15,7 @@ public class Int32LogEntry : LogEntry
     public Int32LogEntry(int term , LogEntryOperation operation , string key , int? value)
     {
         Term = term;
+        Guid = Guid.NewGuid();
         (Operation , Key , Value) = (operation , key , value);
     }
 
@@ -33,7 +34,7 @@ public class Int32LogEntry : LogEntry
                 ? new Int32LogEntry(guidIn , term , operation , key , null)
                 : serializedValue is null
                     ? throw new ArgumentNullException(nameof(serializedValue))
-                    : new Int32LogEntry(term , operation , key , int.Parse(serializedValue));
+                    : new Int32LogEntry(guidIn , term , operation , key , int.Parse(serializedValue));
 
     /// <inheritdoc />
     public override object? GetValue() => Value;
