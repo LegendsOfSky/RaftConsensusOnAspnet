@@ -238,7 +238,7 @@ internal class Program
             nodes[3].SetElectionTimeoutInterval(2000);
             nodes[4].SetElectionTimeoutInterval(3000);
             await Task.Delay(2100);
-            nodes[3].SetElectionTimeoutInterval(300);
+            nodes[3].SetElectionTimeoutInterval(600);
             return (true , "");
         }
 
@@ -250,11 +250,11 @@ internal class Program
             await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
 
             // T = 2000
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 600 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 600 });
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 600 });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 600 });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 600 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 900 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 900 });
+            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 900 });
+            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 900 });
+            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 900 });
 
             // T = 2000
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });

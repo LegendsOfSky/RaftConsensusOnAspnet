@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Threading.Channels;
 using Microsoft.Data.Sqlite;
@@ -12,7 +13,15 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core;
 
 public class RaftNode
 {
-    public int CurrentTerm { get; private set; }
+    public int CurrentTerm
+    {
+        get;
+        private set
+        {
+            WriteCurrentTermToDb(value);
+            field = ReadCurrentTermFromDb();
+        }
+    }
     public NodeRole Role { get; private set; }
     public Guid? LeaderId { get; private set; }
     public IReadOnlyList<LogEntry> LogEntries => logEntries;
@@ -193,9 +202,7 @@ public class RaftNode
                 }
         }
     }
-    #endregion
 
-    #region Manipulate Raft node state
     public void SetElectionTimeoutInterval(int electionTimeoutIntervalIn)
     {
         int nodeIntId = S_NodeIdToDebugPos[NodeId];
@@ -427,6 +434,20 @@ public class RaftNode
         matchIndecies = new Dictionary<Guid , int>(nodeCount);
     }
 
+    private int ReadCurrentTermFromDb()
+    {
+        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
+        using SqliteCommand getCurrentTerm = new SqliteCommand(
+                $"""
+                SELECT Value
+                FROM {TableName}
+                WHERE Key = 'CurrentTerm';
+                """ , connection
+            );
+        using SqliteDataReader reader = getCurrentTerm.ExecuteReader();
+        return reader.Read() ? int.Parse(reader.GetString(0)) : 0;
+    }
+
     private async Task RunAsCandidateAsync()
     {
         int nodeIntId = S_NodeIdToDebugPos[NodeId];
@@ -627,7 +648,47 @@ public class RaftNode
         }
     }
 
-    /// <summary> Debug purpose only. </summary>
+    private void WriteCurrentTermToDb(int currentTerm)
+    {
+        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
+        using SqliteTransaction transaction = connection.BeginTransaction();
+        try
+        {
+            using SqliteCommand getCurrentTerm = new SqliteCommand(
+                    $"""
+                     SELECT Key , Value
+                     FROM {TableName}
+                     WHERE Key = 'CurrentTerm';
+                     """ , connection , transaction
+                );
+            using SqliteDataReader reader = getCurrentTerm.ExecuteReader();
+
+            using SqliteCommand setCurrentTerm = new SqliteCommand(
+                    reader.Read()
+                        ? $"""
+                            UPDATE RaftNodeState
+                            SET Value = '{currentTerm}'
+                            WHERE Key = 'CurrentTerm';
+                            """
+                        : $"""
+                            INSERT INTO RaftNodeState (Key , Value)
+                            VALUES ('CurrentTerm' , '{CurrentTerm}');
+                            """ ,
+                    connection , transaction
+                );
+            setCurrentTerm.ExecuteNonQuery();
+
+            transaction.Commit();
+        }
+        catch (Exception e)
+        {
+            Trace.WriteLine($"Cannot write new entries to database. Error: \n{e}");
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    #region Debug Helper
     private static string ComputeRoutePrefix(Guid loggingNodeId , Guid? sourceNodeId , Guid? targetNodeId)
     {
         int resultLength = S_NodeIdToDebugPos.Count * 2 - 1;
@@ -656,7 +717,7 @@ public class RaftNode
 
         return resultBuilder.ToString();
     }
-
+    #endregion
 
     ~RaftNode()
     {
