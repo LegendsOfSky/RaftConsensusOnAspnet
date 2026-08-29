@@ -59,7 +59,7 @@ public class RaftNode
 
         /* Initialize database pragma and schema */
         dbFilePath = $"{DataPath}/{NodeId}.db";
-        using SqliteConnection connection = DbHelper.CreateNewConnection($"{dbFilePath}.Term");
+        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
         using SqliteCommand createTable = connection.CreateCommand();
         createTable.CommandText = $"""
             CREATE TABLE IF NOT EXISTS {TableName} (
@@ -68,7 +68,6 @@ public class RaftNode
             );
             """;
         createTable.ExecuteNonQuery();
-        connection.Close();
 
         /* Basic raft fields */
         Role = NodeRole.Follower;
@@ -388,7 +387,7 @@ public class RaftNode
         }
 
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Append new entries (Impl Ref #4).");
-        if (!logEntries.AppendEntriesAt(args.Entries , args.PreviousLogIndex + 1))
+        if (!logEntries.TryEraseAndAppendEntriesAt(args.Entries , args.PreviousLogIndex + 1))
         {
             Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Append new entries failed.");
             return reply;
