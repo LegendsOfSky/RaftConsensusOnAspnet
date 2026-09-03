@@ -1,6 +1,7 @@
 ﻿using RaftConsensusOnAspnet.RaftConsensus.Core;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Text;
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
@@ -220,11 +221,11 @@ internal class Program
         RaftNode.S_NodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 1000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 1000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 1000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 1000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 1000 , 5 , true) ,
         ];
         return await CreateAndRunTestCaseAsync(4 , "testSplitVote" , nodes , ManipulateNodes , CreateConfig);
 
@@ -238,7 +239,7 @@ internal class Program
             nodes[3].SetElectionTimeoutInterval(2000);
             nodes[4].SetElectionTimeoutInterval(3000);
             await Task.Delay(2100);
-            nodes[3].SetElectionTimeoutInterval(600);
+            nodes[3].SetElectionTimeoutInterval(300);
             return (true , "");
         }
 
@@ -261,27 +262,26 @@ internal class Program
             await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true , MessageDropped = true });
             await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
 
-            // T = 2400
+            // T = 2400 (node 3 election restart)
             await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
             await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
             await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
             await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
+            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true } );
+            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true } );
+            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true } );
+            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true } );
 
-            // T = 2400
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[3].NodeId });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[3].NodeId });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[3].NodeId });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[3].NodeId });
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
+            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , LeaderId = nodes[3].NodeId , Entries = [] });
+            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , LeaderId = nodes[3].NodeId , Entries = [] });
+            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , LeaderId = nodes[3].NodeId , Entries = [] });
+            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , LeaderId = nodes[3].NodeId , Entries = [] });
+            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true , MatchIndex = 0});
+            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true , MatchIndex = 0});
+            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true , MatchIndex = 0});
+            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true , MatchIndex = 0});
 
-            // T = 2600
+            // T = 2900
             await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = false });
             await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = false });
             await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = false });
@@ -315,6 +315,10 @@ internal class Program
             nodes[3].SetElectionTimeoutInterval(1000);
             nodes[4].SetElectionTimeoutInterval(1000);
             await Task.Delay(1600);
+            nodes[0].SetElectionTimeoutInterval(5000);
+            nodes[1].SetElectionTimeoutInterval(5000);
+            nodes[2].SetElectionTimeoutInterval(5000);
+            nodes[3].SetElectionTimeoutInterval(5000);
             nodes[4].SetElectionTimeoutInterval(300);
             return (true , "");
         }
@@ -1123,7 +1127,7 @@ internal class Program
         Trace.Listeners.Clear();
         Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
         Trace.Listeners.Add(new TextWriterTraceListener($"debug/{testId:D2}_{testName}.log"));
-        Debug.AutoFlush = true;
+        Debug.AutoFlush = true; 
         Console.WriteLine($"Begin test {testId} ({testName})");
 
         /* Prepare test enviroment. */
@@ -1274,7 +1278,7 @@ internal class Program
                     ? $"node {source}: dropped AppendEntries to {target}"
                     : string.Format(
                             "node {0} <- {1}: AppendEntries -- term: {2}, leaderId: {3}, prevLogIdx: {4}, prevLogTerm: {5}, entries: [{6}], leaderCommit: {7}" ,
-                            source , target , appendSend.Term ,
+                            target , source , appendSend.Term ,
                             RaftNode.S_NodeIdToDebugPos[appendSend.LeaderId] , appendSend.PreviousLogIndex , appendSend.PreviousLogTerm ,
                             new StringBuilder().AppendJoin(' ' , appendSend.Entries.Select(entry => entry.ToString())) , appendSend.LeaderCommit
                         ) ,
@@ -1304,7 +1308,7 @@ internal class Program
         }
 
 
-        public async Task<bool> HandleVoteRequestAsync(Guid requesterId , int commitIndex , int previousLogTerm)
+        public async Task HandleVoteRequestAsync(Guid requesterId , int commitIndex , int previousLogTerm)
         {
             VoteRequestArgs args = new VoteRequestArgs
             {
@@ -1330,19 +1334,24 @@ internal class Program
                 if (expectSendPackageBase is not VoteRequestSendPackage expectSendPackage)
                 {
                     DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
-                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Source.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Target.NodeId]}: Expect VoteRequestSendPackage, but get {expectSendPackageBase.GetType()}");
+                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} <- {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: VoteRequestSendPackage sent, but test case expect {expectSendPackageBase.GetType()} ({DateTime.Now.TimeOfDay})");
                     HasMismatchMessage = true;
-                    return false;
                 }
-
-                (actualSendPackage.Delay , actualSendPackage.MessageDropped) = (expectSendPackage.Delay , expectSendPackage.MessageDropped);
-                DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
-                await Task.Delay(expectSendPackage.Delay);
-                Console.WriteLine(
-                        MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , expectSendPackage)
-                    );
-                if (expectSendPackage.MessageDropped)
-                    return true;
+                else
+                {
+                    (actualSendPackage.Delay , actualSendPackage.MessageDropped) = (expectSendPackage.Delay , expectSendPackage.MessageDropped);
+                    DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
+                    if (expectSendPackage.Delay != 0)
+                        Console.WriteLine(
+                                $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , actualSendPackage)} BEGIN (Delay = {expectSendPackage.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                            );
+                    await Task.Delay(expectSendPackage.Delay);
+                    Console.WriteLine(
+                            $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , actualSendPackage)}{(expectSendPackage.Delay != 0 ? $" ARRIVE (Delay = {expectSendPackage.Delay}, Time = {DateTime.Now.TimeOfDay})" : "")}"
+                        );
+                    if (expectSendPackage.MessageDropped)
+                        return;
+                }
             }
 
             VoteRequestReply reply = Target.HandleVoteRequest(args);  // forward request to actual raft node
@@ -1351,7 +1360,6 @@ internal class Program
             {
                 VoteRequestReceivePackage actualRecvPackage = new VoteRequestReceivePackage
                 {
-                    MessageDropped = true ,
                     Term = reply.ReplierTerm ,
 
                     Granted = reply.VoteGranted ,
@@ -1360,24 +1368,29 @@ internal class Program
                 if (expectRecvPackageBase is not VoteRequestReceivePackage expectRecvPackage)
                 {
                     DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: Expect VoteRequestSendPackage, but get {expectRecvPackageBase.GetType()}");
+                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: VoteRequestReceivePackage sent, but test case expect {expectRecvPackageBase.GetType()} ({DateTime.Now.TimeOfDay})");
                     HasMismatchMessage = true;
-                    return false;
-                }
-
-                await Task.Delay(expectRecvPackage.Delay);
-                (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
-                DebugLogs.Add((expectRecvPackage , actualRecvPackage , DateTime.Now));
-                Console.WriteLine(
-                        MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , expectRecvPackage)
-                    );
-                if (!expectRecvPackage.MessageDropped)
                     await Source.VoteRequestReplyChannel.Writer.WriteAsync(reply);
+                }
+                else
+                {
+                    if (expectRecvPackage.Delay != 0)
+                        Console.WriteLine(
+                                $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , actualRecvPackage)} BEGIN (Delay = {expectRecvPackage.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                            );
+                    await Task.Delay(expectRecvPackage.Delay);
+                    (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
+                    DebugLogs.Add((expectRecvPackage , actualRecvPackage , DateTime.Now));
+                    Console.WriteLine(
+                            $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , actualRecvPackage)}{(expectRecvPackage.Delay != 0 ? $" ARRIVE (Delay = {expectRecvPackage.Delay}, Time = {DateTime.Now.TimeOfDay})" : "")}"
+                        );
+                    if (!expectRecvPackage.MessageDropped)
+                        await Source.VoteRequestReplyChannel.Writer.WriteAsync(reply);
+                }
             }
-            return true;
         }
 
-        public async Task<bool> HandleAppendEntriesAsync(
+        public async Task HandleAppendEntriesAsync(
             Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndecies)
         {
             int nextIndex = nextIndecies.TryGetValue(Target.NodeId , out int i) ? i : nextIndecies[Guid.Empty];
@@ -1410,19 +1423,24 @@ internal class Program
                 if (expectSendPackageBase is not AppendEntriesSendPackage expectSendPackage)
                 {
                     DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
-                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Source.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Target.NodeId]}: Expect VoteRequestSendPackage, but get {expectSendPackageBase.GetType()}");
+                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} <- {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: AppendEntriesSendPackage sent, but test case expect {expectSendPackageBase.GetType()} ({DateTime.Now.TimeOfDay})");
                     HasMismatchMessage = true;
-                    return false;
                 }
-
-                (actualSendPackage.Delay , actualSendPackage.MessageDropped) = (expectSendPackage.Delay , expectSendPackage.MessageDropped);
-                DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
-                await Task.Delay(expectSendPackage.Delay);
-                Console.WriteLine(
-                        MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , expectSendPackage)
-                    );
-                if (expectSendPackage.MessageDropped)
-                    return true;
+                else
+                {
+                    (actualSendPackage.Delay , actualSendPackage.MessageDropped) = (expectSendPackage.Delay , expectSendPackage.MessageDropped);
+                    DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
+                    if (expectSendPackage.Delay != 0)
+                        Console.WriteLine(
+                                $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , actualSendPackage)} BEGIN (Delay = {expectSendPackage.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                            );
+                    await Task.Delay(expectSendPackage.Delay);
+                    Console.WriteLine(
+                            $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , actualSendPackage)}{(expectSendPackage.Delay != 0 ? $" ARRIVE (Delay = {expectSendPackage.Delay}, Time = {DateTime.Now.TimeOfDay})" : "")}"
+                        );
+                    if (expectSendPackage.MessageDropped)
+                        return;
+                }
             }
 
             AppendEntriesReply reply = Target.HandleAppendEntries(args);  // forward request to actual raft node
@@ -1431,7 +1449,6 @@ internal class Program
             {
                 AppendEntriesReceivePackage actualRecvPackage = new AppendEntriesReceivePackage
                 {
-                    MessageDropped = true ,
                     Term = reply.ReplierTerm ,
 
                     Success = reply.AppendSuccess ,
@@ -1442,23 +1459,25 @@ internal class Program
                 if (expectRecvPackageBase is not AppendEntriesReceivePackage expectRecvPackage)
                 {
                     DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: Expect VoteRequestSendPackage, but get {expectRecvPackageBase.GetType()}");
+                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: AppendEntriesReceivePackage sent, but test case expect {expectRecvPackageBase.GetType()} ({DateTime.Now.TimeOfDay})");
                     HasMismatchMessage = true;
-                    return false;
                 }
-
-                await Task.Delay(expectRecvPackageBase.Delay);
-                (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
-                DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-                Console.WriteLine(
-                        MessagePackageToString(
-                                RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , expectRecvPackageBase
-                            )
-                    );
-                if (!expectRecvPackageBase.MessageDropped)
-                    await Source.AppendEntriesReplyChannel.Writer.WriteAsync(reply);
+                else
+                {
+                    if (expectRecvPackageBase.Delay != 0)
+                        Console.WriteLine(
+                                $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , actualRecvPackage)} BEGIN (Delay = {expectRecvPackageBase.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                            );
+                    await Task.Delay(expectRecvPackageBase.Delay);
+                    (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
+                    DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
+                    Console.WriteLine(
+                            $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , actualRecvPackage)}{(expectRecvPackageBase.Delay != 0 ? $" ARRIVE (Delay = {expectRecvPackageBase.Delay}, Time = {DateTime.Now.TimeOfDay}) " : "")}"
+                        );
+                    if (!expectRecvPackageBase.MessageDropped)
+                        await Source.AppendEntriesReplyChannel.Writer.WriteAsync(reply);
+                }
             }
-            return true;
         }
 
 

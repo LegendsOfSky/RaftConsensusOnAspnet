@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Threading.Channels;
 using Microsoft.Data.Sqlite;
@@ -25,7 +24,15 @@ public class RaftNode
     public NodeRole Role { get; private set; }
     public Guid? LeaderId { get; private set; }
     public IReadOnlyList<LogEntry> LogEntries => logEntries;
-    private (Guid VoteFor , int TermOfVote) VoteInfo { get; set; }
+    private (Guid VoteFor , int TermOfVote) VoteInfo
+    {
+        get;
+        set
+        {
+            WriteVoteInfoToDb(value.VoteFor , value.TermOfVote);
+            field = ReadVoteInfoFromDb();
+        }
+    }
 
     public const string DataPath = "data";
     private const string TableName = "RaftNodeState";
@@ -36,8 +43,8 @@ public class RaftNode
     public readonly Guid NodeId;
     public readonly Channel<AppendEntriesReply> AppendEntriesReplyChannel;
     public readonly Channel<VoteRequestReply> VoteRequestReplyChannel;
-    public Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task<bool>>? AppendEntriesToOtherNodes;
-    public Func<Guid , int , int , Task<bool>>? SendVoteRequestToOtherNodes;
+    public Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task>? AppendEntriesToOtherNodes;
+    public Func<Guid , int , int , Task>? SendVoteRequestToOtherNodes;
     private readonly string dbFilePath;
     private readonly LogEntryList logEntries;
     private int nodeCount;
@@ -321,11 +328,11 @@ public class RaftNode
 
     public AppendEntriesReply HandleAppendEntries(AppendEntriesArgs args)
     {
-        int nodeIntId = S_NodeIdToDebugPos[args.RequesterId];
+        int nodeIntId = S_NodeIdToDebugPos[NodeId];
         string routePrefix = ComputeRoutePrefix(NodeId , args.ReceiverId , args.RequesterId);
         string loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"HandleAppendEntries",-20}>";
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
-        Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Handle append entries request from node {nodeIntId}");
+        Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Handle append entries request from node {S_NodeIdToDebugPos[args.RequesterId]}");
 
         AppendEntriesReply reply = new AppendEntriesReply
         {
@@ -448,6 +455,31 @@ public class RaftNode
         return reader.Read() ? int.Parse(reader.GetString(0)) : 0;
     }
 
+    private (Guid VoteFor , int TermOfVote) ReadVoteInfoFromDb()
+    {
+        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
+        using SqliteCommand getVoteInfo = new SqliteCommand(
+                $"""
+                SELECT Key , Value
+                FROM {TableName}
+                WHERE Key = 'VoteFor' OR Key = 'TermOfVote';
+                """ , connection
+            );
+        using SqliteDataReader reader = getVoteInfo.ExecuteReader();
+        (Guid voteFor , int termOfVote) = (Guid.Empty , -1);
+        while (reader.Read())
+        {
+            string key = reader.GetString(0);
+            if (key == "VoteFor")
+                voteFor = reader.GetGuid(1);
+            else if (key == "TermOfVote")
+                termOfVote = int.Parse(reader.GetString(1));
+        }
+        return voteFor == Guid.Empty || termOfVote == -1
+            ? (Guid.Empty , -1)
+            : (voteFor , termOfVote);
+    }
+
     private async Task RunAsCandidateAsync()
     {
         int nodeIntId = S_NodeIdToDebugPos[NodeId];
@@ -459,21 +491,29 @@ public class RaftNode
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Advancing to term {CurrentTerm}.");
         loggingprefix = $"<{routePrefix} Node {nodeIntId} Term {CurrentTerm} {"runAsCandidate",-20}>";
 
+        Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Sending vote request to other nodes.");
         VoteInfo = (NodeId , CurrentTerm);
-        SendVoteRequestToOtherNodes?.Invoke(NodeId , commitIndex , logEntries[commitIndex].Term);
+        if (SendVoteRequestToOtherNodes is null)
+            throw new ArgumentNullException(nameof(SendVoteRequestToOtherNodes));
+        List<Task> requestTasks =
+        [
+            ..  from Func<Guid , int , int , Task> requestFunction
+                    in SendVoteRequestToOtherNodes.GetInvocationList()
+                select requestFunction.Invoke(NodeId , commitIndex , logEntries[commitIndex].Term) ,
+        ];
 
         int voteGranted = 1 , voteReceived = 1;
         while (true)
         {
+            Task waitForElectionTimerEnd = Task.Delay(electionTimeoutInterval);
             Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Start waiting for vote replies until {electionTimeoutInterval} of election timer runs out.");
 
-            Task waitForElectionTimerEnd = Task.Delay(electionTimeoutInterval);
             while (true)
             {
                 Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
                 Task waitForElectionIntervalChange = changeElectionIntervalTcs.Task;
                 Task waitForNodeCountChange = changeNodeCountTcs.Task;
-                Task<VoteRequestReply> waitForNewVoteRequestReply = VoteRequestReplyChannel.Reader.ReadAsync().AsTask();
+                Task waitForNewVoteRequestReply = VoteRequestReplyChannel.Reader.WaitToReadAsync().AsTask();
                 Task completedTask = await Task.WhenAny(
                         waitForElectionTimerEnd ,
                         waitForRevertToFollowerSignal ,
@@ -504,7 +544,7 @@ public class RaftNode
                 }
                 if (completedTask == waitForNewVoteRequestReply)
                 {
-                    VoteRequestReply reply = await waitForNewVoteRequestReply;
+                    VoteRequestReply reply = await VoteRequestReplyChannel.Reader.ReadAsync();
                     string replyRoutePrefix = ComputeRoutePrefix(NodeId , reply.ReplierId , reply.ReceiverId);
                     string replyLoggingprefix = $"<{replyRoutePrefix} Node {nodeIntId} Term {CurrentTerm} {"runAsCandidate",-20}>";
 
@@ -594,12 +634,19 @@ public class RaftNode
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: BEGIN");
 
         Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Sending append entries request to other nodes.");
-        AppendEntriesToOtherNodes?.Invoke(NodeId , commitIndex , logEntries , nextIndecies);
+        if (AppendEntriesToOtherNodes is null)
+            throw new ArgumentNullException(nameof(AppendEntriesToOtherNodes));
+        List<Task> appendTasks =
+        [
+            ..  from Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task> appendFunction
+                    in AppendEntriesToOtherNodes.GetInvocationList()
+                select appendFunction.Invoke(NodeId , commitIndex , logEntries , nextIndecies) ,
+        ];
 
         Task waitForHeartBeatTimerEnd = Task.Delay(heartBeatInterval);
         while (true)
         {
-            Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Wait for replis of append entries requests.");
+            Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: Wait for replies of append entries requests.");
             Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
             Task waitForNewAppendEntriesRequestReply = AppendEntriesReplyChannel.Reader.WaitToReadAsync().AsTask();
             Task completedTask = await Task.WhenAny(
@@ -621,7 +668,7 @@ public class RaftNode
             if (completedTask == waitForNewAppendEntriesRequestReply)
             {
                 AppendEntriesReply reply = await AppendEntriesReplyChannel.Reader.ReadAsync();
-                Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: New reply received from node {S_NodeIdToDebugPos[reply.ReceiverId]}.");
+                Debug.WriteLine($"{DateTime.Now.TimeOfDay} {loggingprefix}: New reply received from node {S_NodeIdToDebugPos[reply.ReplierId]}.");
 
                 Guid replyNodeId = reply.ReplierId;
                 int replyMatchIndex = reply.MatchIndex;
@@ -688,6 +735,68 @@ public class RaftNode
         }
     }
 
+    private void WriteVoteInfoToDb(Guid voteFor , int termOfVote)
+    {
+        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
+        using SqliteTransaction transaction = connection.BeginTransaction();
+        try
+        {
+            using SqliteCommand getVoteFor = new SqliteCommand(
+                    $"""
+                    SELECT Key
+                    FROM {TableName}
+                    WHERE Key = 'VoteFor';
+                    """ , connection , transaction
+                );
+            using SqliteDataReader getVoteForReader = getVoteFor.ExecuteReader();
+            using SqliteCommand setVoteFor = new SqliteCommand(
+                    getVoteForReader.Read()
+                        ?  $"""
+                            UPDATE {TableName}
+                            SET Value = '{voteFor.ToString()}'
+                            WHERE Key = 'VoteFor';
+                            """
+                        :  $"""
+                            INSERT INTO {TableName} (Key , Value)
+                            VALUES ('VoteFor' , '{voteFor.ToString()}');
+                            """ ,
+                    connection , transaction
+                );
+            setVoteFor.ExecuteNonQuery();
+
+            using SqliteCommand getTermOfVote = new SqliteCommand(
+                    $"""
+                    SELECT Key
+                    FROM {TableName}
+                    WHERE Key = 'TermOfVote';
+                    """ , connection , transaction
+                );
+            using SqliteDataReader getTermOfVoteReader = getTermOfVote.ExecuteReader();
+            using SqliteCommand setTermOfVote = new SqliteCommand(
+                    getTermOfVoteReader.Read()
+                        ? $"""
+                            UPDATE {TableName}
+                            SET Value = '{termOfVote}'
+                            WHERE Key = 'TermOfVote';
+                            """
+                        : $"""
+                            INSERT INTO {TableName} (Key , Value)
+                            VALUES ('TermOfVote' , '{termOfVote}');
+                            """ ,
+                    connection , transaction
+                );
+            setTermOfVote.ExecuteNonQuery();
+
+            transaction.Commit();
+        }
+        catch (Exception e)
+        {
+            Trace.WriteLine($"Cannot write new entries to database. Error: \n{e}");
+            transaction.Rollback();
+            throw;
+        }
+    }
+
     #region Debug Helper
     private static string ComputeRoutePrefix(Guid loggingNodeId , Guid? sourceNodeId , Guid? targetNodeId)
     {
@@ -718,6 +827,7 @@ public class RaftNode
         return resultBuilder.ToString();
     }
     #endregion
+
 
     ~RaftNode()
     {
