@@ -3,7 +3,7 @@
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Misc;
 
-internal static class DbHelper
+public static class DbHelper
 {
     public static SqliteConnection CreateNewConnection(string dbFilePath)
     {

@@ -10,7 +10,7 @@ public class LogEntry
     public string? Key { get; internal set; }
     public LogEntryOperation Operation { get; internal set; }
 
-    private const string LogType = "NonValue";
+    public const string LogType = "NonValue";
 
     protected static readonly Dictionary<string , Func<Guid , int , LogEntryOperation , string , string? , string? , LogEntry>> s_parsingFunctions = [];
 

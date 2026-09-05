@@ -4,7 +4,7 @@ public class Int32LogEntry : LogEntry
 {
     public int? Value { get; init; }
 
-    private const string LogType = "Int32";
+    public const string LogType = "Int32";
 
 
     static Int32LogEntry()

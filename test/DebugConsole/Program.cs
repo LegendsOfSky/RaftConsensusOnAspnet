@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Text;
 using System.Threading.Channels;
+using Microsoft.Data.Sqlite;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Misc;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 using static DebugConsole.Program.NetworkConnection;
 
@@ -48,6 +50,9 @@ internal class Program
         testCaseStates.Add((9 , "testOneSimpleDelete" , await RunTestCase9TestOneSimpleDeleteAsync()));
         Console.WriteLine(SpacingBetweenTests);
         testCaseStates.Add((10 , "testDeleteNonExistKey" , await RunTestCase10TestDeleteNonExistKeyAsync()));
+        Console.WriteLine(SpacingBetweenTests);
+
+        testCaseStates.Add((11 , "testCase11TestStateMachineValueSync" , await RunTestCase11TestStateMachineValueSyncAsync()));
         Console.WriteLine(SpacingBetweenTests);
 
 
@@ -518,7 +523,7 @@ internal class Program
                 nodes[3].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
                 nodes[4].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
             ];
-            if (Task.WhenAny(watchDogTimer , Task.WhenAll(proposeTasks)) == watchDogTimer)
+            if (await Task.WhenAny(watchDogTimer , Task.WhenAll(proposeTasks)) == watchDogTimer)
                 return (false , MaxTestTimeExceedMsg);
 
             /* Verify propose. */
@@ -567,23 +572,7 @@ internal class Program
 
         async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
         {
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+            connections = await ConfigurateNetworkForLeaderElectionAsync(connections , nodes[0]);
 
             LogEntry entry = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry] , LeaderId = nodes[0].NodeId });
@@ -656,8 +645,8 @@ internal class Program
             ];
 
             /* Wait for all task to finish. */
-            bool propose1Finished = Task.WhenAny(watchDogTimer , Task.WhenAll(propose1Tasks)) != watchDogTimer;
-            bool propose2Finished = Task.WhenAny(watchDogTimer , Task.WhenAll(propose2Tasks)) != watchDogTimer;
+            bool propose1Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose1Tasks)) != watchDogTimer;
+            bool propose2Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose2Tasks)) != watchDogTimer;
             if (!propose1Finished || !propose2Finished)
                 return (false , MaxTestTimeExceedMsg);
 
@@ -731,23 +720,7 @@ internal class Program
 
         async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
         {
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+            connections = await ConfigurateNetworkForLeaderElectionAsync(connections , nodes[0]);
 
             LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
@@ -807,29 +780,30 @@ internal class Program
             nodes[4].SetElectionTimeoutInterval(4000);
             nodes[0].SetHeartBeatInterval(1000);
 
-            await Task.Delay(1500);
+            await Task.Delay(1700);
+            const string ProposeKey = "test";
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
             [
-                nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
+                nodes[0].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
+                nodes[1].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
+                nodes[2].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
+                nodes[3].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
+                nodes[4].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
             ];
 
             await Task.Delay(1000);
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
             [
-                nodes[0].ProposeAsync(LogEntryOperation.Delete , "test" , null) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Delete , "test" , null) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Delete , "test" , null) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Delete , "test" , null) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Delete , "test" , null) ,
+                nodes[0].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
+                nodes[1].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
+                nodes[2].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
+                nodes[3].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
+                nodes[4].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
             ];
 
             /* Wait for all task to finish. */
-            bool propose1Finished = Task.WhenAny(watchDogTimer , Task.WhenAll(propose1Tasks)) != watchDogTimer;
-            bool propose2Finished = Task.WhenAny(watchDogTimer , Task.WhenAll(propose2Tasks)) != watchDogTimer;
+            bool propose1Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose1Tasks)) != watchDogTimer;
+            bool propose2Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose2Tasks)) != watchDogTimer;
             if (!propose1Finished || !propose2Finished)
                 return (false , MaxTestTimeExceedMsg);
 
@@ -901,23 +875,7 @@ internal class Program
 
         async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
         {
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+            connections = await ConfigurateNetworkForLeaderElectionAsync(connections , nodes[0]);
 
             // heart beat #1
             LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
@@ -986,7 +944,7 @@ internal class Program
             nodes[4].SetElectionTimeoutInterval(4000);
             nodes[0].SetHeartBeatInterval(1000);
 
-            await Task.Delay(1500);
+            await Task.Delay(1700);
             const string Propose1Key = "test";
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
             [
@@ -1009,8 +967,8 @@ internal class Program
             ];
 
             /* Wait for all task to finish. */
-            bool propose1Finished = Task.WhenAny(watchDogTimer , Task.WhenAll(propose1Tasks)) != watchDogTimer;
-            bool propose2Finished = Task.WhenAny(watchDogTimer , Task.WhenAll(propose2Tasks)) != watchDogTimer;
+            bool propose1Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose1Tasks)) != watchDogTimer;
+            bool propose2Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose2Tasks)) != watchDogTimer;
             if (!propose1Finished || !propose2Finished)
                 return (false , MaxTestTimeExceedMsg);
 
@@ -1061,23 +1019,7 @@ internal class Program
 
         async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
         {
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+            connections = await ConfigurateNetworkForLeaderElectionAsync(connections , nodes[0]);
 
             // heart beat #1
             LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
@@ -1118,6 +1060,236 @@ internal class Program
 
             return connections;
         }
+    }
+
+    private static async Task<bool> RunTestCase11TestStateMachineValueSyncAsync()
+    {
+        RaftNode.S_NodeIdToDebugPos = [];
+        RaftNode[] nodes =
+        [
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+        ];
+        return await CreateAndRunTestCaseAsync(11 , "testStateMachineValueSync" , nodes , ManipulateNodes , CreateConfig);
+
+
+        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        {
+            (bool manipulationPassed , StringBuilder debugMsgBuilder) = (true , new StringBuilder());
+            Task watchDogTimer = Task.Delay(MaxTestTime);
+
+            await Task.Delay(2000);
+            nodes[0].SetElectionTimeoutInterval(1000);
+            nodes[1].SetElectionTimeoutInterval(4000);
+            nodes[2].SetElectionTimeoutInterval(4000);
+            nodes[3].SetElectionTimeoutInterval(4000);
+            nodes[4].SetElectionTimeoutInterval(4000);
+            nodes[0].SetHeartBeatInterval(1000);
+
+            await Task.Delay(1500);
+            const string ProposeKey = "test";
+
+            /* Propose (Term 1: Put <test: 1>). Then check if propose success and state machine values correct. */
+            Task<(bool Success , bool WrongNode , bool? KeyFound)> propose1Tasks = nodes[0].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1);
+            bool propose1Finished = await Task.WhenAny(watchDogTimer , propose1Tasks) != watchDogTimer;
+            if (!propose1Finished)
+                return (false , MaxTestTimeExceedMsg);
+            if (await propose1Tasks is not { Success: true , WrongNode: false , KeyFound: false })
+            {
+                debugMsgBuilder.Append(
+                        string.Format(
+                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                                (await propose1Tasks).Success , (await propose1Tasks).WrongNode
+                            )
+                    );
+                manipulationPassed = false;
+            }
+            await Task.Delay(1200);
+            foreach (RaftNode node in nodes.Where(node => node.LastAppliedLogEntryIndex != 1))
+            {
+                debugMsgBuilder.Append(
+                        $"State machine values out of sync with log entries at node {RaftNode.S_NodeIdToDebugPos[node.NodeId]} propose 1 (lastApplyIndex: expect 1, get {node.LastAppliedLogEntryIndex}).\n"
+                    );
+                manipulationPassed = false;
+            }
+            CheckNodeStateMachineValues(1);
+
+            /* Propose (Term 1: Put <test: 2>). Then check if propose success and state machine values correct. */
+            Task<(bool Success , bool WrongNode , bool? KeyFound)> propose2Tasks = nodes[0].ProposeAsync(LogEntryOperation.Put , ProposeKey , 2);
+            bool propose2Finished = await Task.WhenAny(watchDogTimer , propose2Tasks) != watchDogTimer;
+            if (!propose2Finished)
+                return (false , MaxTestTimeExceedMsg);
+            if (await propose2Tasks is not { Success: true, WrongNode: false, KeyFound: true })
+            {
+                debugMsgBuilder.Append(
+                        string.Format(
+                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                                (await propose2Tasks).Success , (await propose2Tasks).WrongNode
+                            )
+                    );
+                manipulationPassed = false;
+            }
+            await Task.Delay(1200);
+            foreach (RaftNode node in nodes.Where(node => node.LastAppliedLogEntryIndex != 2))
+            {
+                debugMsgBuilder.Append(
+                        $"State machine values out of sync with log entries at node {RaftNode.S_NodeIdToDebugPos[node.NodeId]} propose 2 (lastApplyIndex: expect 2, get {node.LastAppliedLogEntryIndex}).\n"
+                    );
+                manipulationPassed = false;
+            }
+            CheckNodeStateMachineValues(2);
+
+            /* Propose (Term 1: Delete <test: null>). Then check if propose success and state machine values correct. */
+            Task<(bool Success , bool WrongNode , bool? KeyFound)> propose3Tasks = nodes[0].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null);
+            bool propose3Finished = await Task.WhenAny(watchDogTimer , propose3Tasks) != watchDogTimer;
+            if (!propose3Finished)
+                return (false , MaxTestTimeExceedMsg);
+            if (await propose3Tasks is not { Success: true, WrongNode: false, KeyFound: true })
+            {
+                debugMsgBuilder.Append(
+                        string.Format(
+                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                                (await propose3Tasks).Success , (await propose3Tasks).WrongNode
+                            )
+                    );
+                manipulationPassed = false;
+            }
+            await Task.Delay(1200);
+            foreach (RaftNode node in nodes.Where(node => node.LastAppliedLogEntryIndex != 3))
+            {
+                debugMsgBuilder.Append(
+                        $"State machine values out of sync with log entries at node {RaftNode.S_NodeIdToDebugPos[node.NodeId]} propose 2 (lastApplyIndex: expect 2, get {node.LastAppliedLogEntryIndex}).\n"
+                    );
+                manipulationPassed = false;
+            }
+            CheckNodeStateMachineValues(null);
+
+            return (manipulationPassed , debugMsgBuilder.ToString());
+
+
+            void CheckNodeStateMachineValues(int? expectResult)
+            {
+                foreach (RaftNode node in nodes)
+                {
+                    using SqliteConnection connection = DbHelper.CreateNewConnection($"{RaftNode.DataPath}/{node.NodeId}.db");
+
+                    using SqliteCommand getRecordCount = new SqliteCommand($"SELECT COUNT(*) FROM {LogEntryList.StateMachineValuesTableName};" , connection);
+                    int recordCount = Convert.ToInt32(getRecordCount.ExecuteScalar());
+                    int expectRecordCount = expectResult is null ? 0 : 1;
+                    if (recordCount != expectRecordCount)
+                    {
+                        debugMsgBuilder.Append($"Unmatch record count in node {RaftNode.S_NodeIdToDebugPos[node.NodeId]}. Expect number of record in {LogEntryList.StateMachineValuesTableName} is {expectRecordCount}, but get {recordCount}\n");
+                        manipulationPassed = false;
+                        continue;
+                    }
+
+                    if (expectResult is not null)
+                    {
+                        using SqliteCommand getRecords = new SqliteCommand($"SELECT Key , Value , Type FROM {LogEntryList.StateMachineValuesTableName};" , connection);
+                        using SqliteDataReader recordsReader = getRecords.ExecuteReader();
+                        recordsReader.Read();
+                        string key   = recordsReader.GetString(0);
+                        int    value = int.Parse(recordsReader.GetString(1));
+                        string type  = recordsReader.GetString(2);
+                        if ((key , value , type) != ("test" , expectResult , Int32LogEntry.LogType))
+                        {
+                            debugMsgBuilder.Append($"Unmatch record count in node {RaftNode.S_NodeIdToDebugPos[node.NodeId]}. Expect (\"test\", {expectResult}, {Int32LogEntry.LogType}), but get (\"{key}\", {value}, \"{type}\")\n");
+                            manipulationPassed = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
+        {
+            connections = await ConfigurateNetworkForLeaderElectionAsync(connections , nodes[0]);
+
+            // heart beat #1 and #2
+            LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+
+            // heart beat #3 and #4
+            LogEntry entry2 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 2);
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
+
+            // heart beat #5 amd #6
+            LogEntry entry3 = new Int32LogEntry(1 , LogEntryOperation.Delete , "test" , null);
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry3] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry3] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry3] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry3] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 3 , PreviousLogTerm = 1 , LeaderCommit = 3 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 3 , PreviousLogTerm = 1 , LeaderCommit = 3 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 3 , PreviousLogTerm = 1 , LeaderCommit = 3 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 3 , PreviousLogTerm = 1 , LeaderCommit = 3 });
+            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
+            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
+            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
+            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
+
+            return connections;
+        }
+    }
+
+    private static async Task<NetworkConnection[,]> ConfigurateNetworkForLeaderElectionAsync(NetworkConnection[,] connections , RaftNode winningNode)
+    {
+        await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
+        await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
+        await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
+        await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
+        await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
+        await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
+        await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
+        await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
+
+        await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = winningNode.NodeId });
+        await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = winningNode.NodeId });
+        await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = winningNode.NodeId });
+        await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = winningNode.NodeId });
+        await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+        await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+        await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+        await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+
+        return connections;
     }
 
     private static async Task<bool> CreateAndRunTestCaseAsync(

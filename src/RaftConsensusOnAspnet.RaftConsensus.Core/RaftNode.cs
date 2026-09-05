@@ -21,6 +21,7 @@ public class RaftNode
             field = ReadCurrentTermFromDb();
         }
     }
+    public int LastAppliedLogEntryIndex => logEntries.LastAppliedIndex;
     public NodeRole Role { get; private set; }
     public Guid? LeaderId { get; private set; }
     public IReadOnlyList<LogEntry> LogEntries => logEntries;
@@ -51,7 +52,6 @@ public class RaftNode
     private int electionTimeoutInterval;
     private int heartBeatInterval;
     private int commitIndex;
-    private int lastApplied;
     private Dictionary<Guid , int> nextIndecies;
     private Dictionary<Guid , int> matchIndecies;
     private TaskCompletionSource? stopRaftTcs;
@@ -88,7 +88,8 @@ public class RaftNode
         /* Basic raft fields */
         Role = NodeRole.Follower;
         nodeCount = nodeCountIn;
-        (CurrentTerm , commitIndex , lastApplied) = (0 , 0 , 0);
+        CurrentTerm = 0;
+        commitIndex = 0;
         (nextIndecies , matchIndecies) = ([] , []);
         VoteInfo = (Guid.Empty , 0);
         (electionTimeoutInterval , heartBeatInterval) = (electionTimeOutIntervalIn , heartBeatIntervalIn);
@@ -113,19 +114,23 @@ public class RaftNode
     {
         stopRaftTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         logEntries.Add(new LogEntry { Term = 0 });
+        Task logEntriesSync = logEntries.StartSynchronizingStateMachineValueAsync();
         while (true)
         {
             if (stopRaftTcs.Task.IsCompleted)
-                return;
+                break;
 
             switch (Role)
             {
-                case NodeRole.Follower:  await RunAsFollowerAsync(); break;
+                case NodeRole.Follower:  await RunAsFollowerAsync();  break;
                 case NodeRole.Candidate: await RunAsCandidateAsync(); break;
-                case NodeRole.Leader:    await RunAsLeaderAsync(); break;
-                default:                 throw new UnreachableException();
+                case NodeRole.Leader:    await RunAsLeaderAsync();    break;
+                default: throw new UnreachableException();
             }
         }
+
+        logEntries.StopSynchronizingStateMachineValue();
+        await logEntriesSync;
     }
 
     public void Stop() => stopRaftTcs?.TrySetResult();
@@ -152,6 +157,20 @@ public class RaftNode
         return (false , false , null);
     }
 
+    /// <returns>
+    ///     A tuple indicates:
+    ///     <list type="table">
+    ///         <item> <term> Success </term>
+    ///             <description> The propose has finished with no error. </description>
+    ///         </item>
+    ///         <item> <term> WrongNode </term>
+    ///             <description> The node is not leader. </description>
+    ///         </item>
+    ///         <item> <term> KeyFound </term>
+    ///             <description> The key exist before this propose. Null if there is nothing to propose or this node is not raft leader. </description>
+    ///         </item>
+    ///     </list>
+    /// </returns>>
     public async Task<(bool Success , bool WrongNode , bool? KeyFound)> ProposeAsync(LogEntryOperation operation , string? key , object? value)
     {
         int nodeIntId = S_NodeIdToDebugPos[NodeId];

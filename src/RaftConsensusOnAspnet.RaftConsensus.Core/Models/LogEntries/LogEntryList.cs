@@ -16,37 +16,83 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
     }
     public bool IsReadOnly => false;
     public int Count => CachedLogEntries.Count;
+    public int LastAppliedIndex { get; private set; } = -1;
     [NotNull] private IReadOnlyList<LogEntry>? CachedLogEntries
     {
         get => field ??= ReadFromDatabase();
         set => field = value is null ? null : field;
     }
 
+    public const string StateMachineValuesTableName = "StateMachineValues";
+    private const int StateMachineValueSyncCooldownInterval = 500;
+
     private readonly string dbFilePath;
+    private TaskCompletionSource? stopStateMachineSyncTcs;
 
 
     public LogEntryList(string filePath , bool clearEntries = false)
     {
         dbFilePath = filePath;
         using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-        using SqliteCommand createTable = connection.CreateCommand();
-        createTable.CommandText = """
-            CREATE TABLE IF NOT EXISTS LogEntries (
-                Id        INTEGER NOT NULL UNIQUE ,
-                Guid      TEXT    NOT NULL UNIQUE ,
-                Term      INTEGER NOT NULL ,
-                Operation INTEGER NOT NULL ,
-                LogType   TEXT    NOT NULL ,
-                Key       TEXT ,
-                Value     TEXT
+
+        using SqliteCommand createLogEntryMetadata = new SqliteCommand(
+                """
+                CREATE TABLE IF NOT EXISTS LogEntryMeta (
+                    Key   TEXT ,
+                    Value TEXT
+                );
+                """ , connection
             );
-            """;
-        createTable.ExecuteNonQuery();
+        createLogEntryMetadata.ExecuteNonQuery();
+
+        using SqliteCommand createLogEntriesTable = new SqliteCommand(
+                """
+                CREATE TABLE IF NOT EXISTS LogEntries (
+                    Id        INTEGER NOT NULL UNIQUE ,
+                    Guid      TEXT    NOT NULL UNIQUE ,
+                    Term      INTEGER NOT NULL ,
+                    Operation INTEGER NOT NULL ,
+                    LogType   TEXT    NOT NULL ,
+                    Key       TEXT ,
+                    Value     TEXT
+                );
+                """ , connection
+            );
+        createLogEntriesTable.ExecuteNonQuery();
+
+        using SqliteCommand createStateMachineValuesTable = new SqliteCommand(
+                $"""
+                CREATE TABLE IF NOT EXISTS {StateMachineValuesTableName} (
+                    Key   TEXT NOT NULL UNIQUE ,
+                    Value TEXT NOT NULL ,
+                    Type  TEXT NOT NULL
+                );
+                """ , connection
+            );
+        createStateMachineValuesTable.ExecuteNonQuery();
 
         if (clearEntries)
             Clear();
     }
 
+
+    #region Parallel services
+    public async Task StartSynchronizingStateMachineValueAsync()
+    {
+        stopStateMachineSyncTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task stop = stopStateMachineSyncTcs.Task;
+        while (true)
+        {
+            await Task.Run(ApplyEntries);
+
+            Task finishedTask = await Task.WhenAny(Task.Delay(StateMachineValueSyncCooldownInterval) , stop);
+            if (finishedTask == stop)
+                break;
+        }
+    }
+
+    public void StopSynchronizingStateMachineValue() => stopStateMachineSyncTcs?.TrySetResult();
+    #endregion
 
     public void AddRange(IEnumerable<LogEntry> newEntries)
     {
@@ -89,6 +135,66 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
             throw;
         }
         CachedLogEntries = null;
+    }
+
+    public void ApplyEntries()
+    {
+        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
+        using SqliteTransaction transaction = connection.BeginTransaction();
+        try
+        {
+            using SqliteCommand deleteExistValues = new SqliteCommand($"DELETE FROM {StateMachineValuesTableName};" , connection , transaction);
+            deleteExistValues.ExecuteNonQuery();
+
+            using SqliteCommand applyEntryToDb = new SqliteCommand(
+                    $"""
+                    INSERT INTO {StateMachineValuesTableName} (Key , Value , Type)
+                    VALUES ($key , $value , $type);
+                    """ , connection , transaction
+                );
+            SqliteParameter varKey   = applyEntryToDb.Parameters.Add("$key"   , SqliteType.Text);
+            SqliteParameter varValue = applyEntryToDb.Parameters.Add("$value" , SqliteType.Text);
+            SqliteParameter varType  = applyEntryToDb.Parameters.Add("$type"  , SqliteType.Text);
+            HashSet<string> appliedKeys = [];
+            List<LogEntry> logEntries = ReadFromDatabaseUsingConnection(connection , transaction);
+            foreach (LogEntry entry in logEntries.Reverse<LogEntry>())
+            {
+                if (entry.Key is null || appliedKeys.Contains(entry.Key))
+                    continue;
+
+                if (entry.GetLogType() == LogEntry.LogType)
+                {
+                    if (entry.Operation == LogEntryOperation.Delete)
+                        appliedKeys.Add(entry.Key);
+                    continue;
+                }
+
+                switch (entry.Operation)
+                {
+                    case LogEntryOperation.Put:
+                        varKey.Value = entry.Key;
+                        varValue.Value = entry.SerializeValue();
+                        varType.Value = entry.GetLogType();
+                        applyEntryToDb.ExecuteNonQuery();
+                        break;
+
+                    case LogEntryOperation.Delete: break;
+
+                    default: continue;
+                }
+                appliedKeys.Add(entry.Key);
+            }
+
+            transaction.Commit();
+
+            LastAppliedIndex = logEntries.Count - 1;
+        }
+        catch (Exception e)
+        {
+            Trace.WriteLine($"Cannot apply log entries to state machine database. Error: \n{e}");
+            transaction.Rollback();
+            throw;
+        }
     }
 
     /// <remarks> <b>REMARKS:</b> Removes all entries after startIndex. </remarks>
@@ -191,10 +297,17 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
 
     private List<LogEntry> ReadFromDatabase()
     {
-        List<LogEntry> entries = [];
         using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
+        return ReadFromDatabaseUsingConnection(connection);
+    }
+
+    private List<LogEntry> ReadFromDatabaseUsingConnection(SqliteConnection connection , SqliteTransaction? transaction = null)
+    {
+        List<LogEntry> entries = [];
         using SqliteCommand readLogEntries = connection.CreateCommand();
         readLogEntries.CommandText = "SELECT Id , Guid , Term , Operation , LogType , Key , Value FROM LogEntries ORDER BY Id;";
+        if (transaction is not null)
+            readLogEntries.Transaction = transaction;
         using SqliteDataReader reader = readLogEntries.ExecuteReader();
         while (reader.Read())
         {
@@ -259,7 +372,6 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         CachedLogEntries = null;
     }
-
 
     #region Interface implementations
     public void Add(LogEntry entry)
