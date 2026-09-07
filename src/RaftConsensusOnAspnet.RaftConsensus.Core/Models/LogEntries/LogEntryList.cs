@@ -27,23 +27,16 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
     private const int StateMachineValueSyncCooldownInterval = 500;
 
     private readonly string dbFilePath;
+    private readonly TraceSource debugTrace;
+    private readonly TraceSource standardTrace;
     private TaskCompletionSource? stopStateMachineSyncTcs;
 
 
-    public LogEntryList(string filePath , bool clearEntries = false)
+    public LogEntryList(string filePath , Guid nodeId , bool clearEntries = false ,
+                        IEnumerable<TraceListener>? standardTraceListenersIn = null , IEnumerable<TraceListener>? debugTraceListenersIn = null)
     {
         dbFilePath = filePath;
         using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-
-        using SqliteCommand createLogEntryMetadata = new SqliteCommand(
-                """
-                CREATE TABLE IF NOT EXISTS LogEntryMeta (
-                    Key   TEXT ,
-                    Value TEXT
-                );
-                """ , connection
-            );
-        createLogEntryMetadata.ExecuteNonQuery();
 
         using SqliteCommand createLogEntriesTable = new SqliteCommand(
                 """
@@ -73,16 +66,28 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
 
         if (clearEntries)
             Clear();
+
+        /* Setup logging */
+        standardTrace = new TraceSource($"{"LogEntry",-12}.{nodeId}" , SourceLevels.All);  // <--+-< standard trace
+        standardTrace.Listeners.Clear();                                                   //    |
+        foreach (TraceListener listener in standardTraceListenersIn ?? [])                 //    |
+            standardTrace.Listeners.Add(listener);  // <-----------------------------------------+
+        debugTrace = new TraceSource($"{"LogEntry",-12}.{nodeId}" , SourceLevels.All);  // <--+-< debug trace
+        debugTrace.Listeners.Clear();                                                   //    |
+        foreach (TraceListener listener in debugTraceListenersIn ?? [])                 //    |
+            debugTrace.Listeners.Add(listener);  // <-----------------------------------------+
     }
 
 
     #region Parallel services
     public async Task StartSynchronizingStateMachineValueAsync()
     {
+        standardTrace.TraceEvent(TraceEventType.Start , 0 , "State machine values sync start.");
         stopStateMachineSyncTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Task stop = stopStateMachineSyncTcs.Task;
         while (true)
         {
+            debugTrace.TraceEvent(TraceEventType.Verbose , 0 , "Syncing state machine values.");
             await Task.Run(ApplyEntries);
 
             Task finishedTask = await Task.WhenAny(Task.Delay(StateMachineValueSyncCooldownInterval) , stop);
@@ -91,7 +96,11 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
     }
 
-    public void StopSynchronizingStateMachineValue() => stopStateMachineSyncTcs?.TrySetResult();
+    public void StopSynchronizingStateMachineValue()
+    {
+        standardTrace.TraceEvent(TraceEventType.Start , 0 , "State machine values sync stop.");
+        stopStateMachineSyncTcs?.TrySetResult();
+    }
     #endregion
 
     public void AddRange(IEnumerable<LogEntry> newEntries)
@@ -130,7 +139,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.TraceError($"Cannot add new log entry to database. Error: \n{e}");
+            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot add new log entry to database. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -169,7 +178,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.TraceError($"Cannot apply log entries to state machine database. Error: \n{e}");
+            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot apply log entries to state machine database. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -180,7 +189,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
     {
         if (Count < startIndex)
         {
-            Trace.TraceWarning("Append entries failed because of missing logs");
+            standardTrace.TraceEvent(TraceEventType.Warning , 0 , "Append entries failed because of missing logs");
             return false;
         }
 
@@ -230,7 +239,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.TraceError($"Cannot insert new log entry (start at {startIndex}) to database. Error: \n{e}");
+            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot insert new log entry (start at {startIndex}) to database. Error: \n{e}");
             transaction.Rollback();
             return false;
         }
@@ -270,7 +279,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.TraceError($"Cannot remove log entries from {start} to {start + count}(Exclusive). Error: \n{e}");
+            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot remove log entries from {start} to {start + count}(Exclusive). Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -348,7 +357,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.TraceError($"Cannot write new entries to database. Error: \n{e}");
+            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot write new entries to database. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -384,7 +393,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.TraceError($"Cannot add new log entry to database. Error: \n{e}");
+            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot add new log entry to database. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -436,7 +445,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.TraceError($"Cannot insert new log entry to database. Error: \n{e}");
+            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot insert new log entry to database. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -481,7 +490,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.TraceError($"Cannot remove log entries at {index}. Error: \n{e}");
+            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot remove log entries at {index}. Error: \n{e}");
             transaction.Rollback();
             throw;
         }

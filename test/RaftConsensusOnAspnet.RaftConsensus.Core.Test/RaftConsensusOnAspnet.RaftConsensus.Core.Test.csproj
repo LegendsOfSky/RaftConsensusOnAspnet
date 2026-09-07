@@ -15,6 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\RaftConsensusOnAspnet.RaftConsensus.Core\RaftConsensusOnAspnet.RaftConsensus.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
