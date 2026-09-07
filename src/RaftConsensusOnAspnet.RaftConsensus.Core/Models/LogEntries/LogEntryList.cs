@@ -146,48 +146,26 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
             using SqliteCommand deleteExistValues = new SqliteCommand($"DELETE FROM {StateMachineValuesTableName};" , connection , transaction);
             deleteExistValues.ExecuteNonQuery();
 
-            using SqliteCommand applyEntryToDb = new SqliteCommand(
+            using SqliteCommand applyEntries = new SqliteCommand(
                     $"""
                     INSERT INTO {StateMachineValuesTableName} (Key , Value , Type)
-                    VALUES ($key , $value , $type);
+                    SELECT Key , Value , LogType AS Type FROM (
+                        SELECT MAX(Id) AS Id , Term , Operation , LogType , Key , Value FROM LogEntries
+                        WHERE Key IS NOT NULL
+                        GROUP BY Key
+                        ORDER BY Id DESC
+                    )
+                    WHERE Operation != {(int)LogEntryOperation.Delete}
                     """ , connection , transaction
                 );
-            SqliteParameter varKey   = applyEntryToDb.Parameters.Add("$key"   , SqliteType.Text);
-            SqliteParameter varValue = applyEntryToDb.Parameters.Add("$value" , SqliteType.Text);
-            SqliteParameter varType  = applyEntryToDb.Parameters.Add("$type"  , SqliteType.Text);
-            HashSet<string> appliedKeys = [];
-            List<LogEntry> logEntries = ReadFromDatabaseUsingConnection(connection , transaction);
-            foreach (LogEntry entry in logEntries.Reverse<LogEntry>())
-            {
-                if (entry.Key is null || appliedKeys.Contains(entry.Key))
-                    continue;
+            applyEntries.ExecuteNonQuery();
 
-                if (entry.GetLogType() == LogEntry.LogType)
-                {
-                    if (entry.Operation == LogEntryOperation.Delete)
-                        appliedKeys.Add(entry.Key);
-                    continue;
-                }
-
-                switch (entry.Operation)
-                {
-                    case LogEntryOperation.Put:
-                        varKey.Value = entry.Key;
-                        varValue.Value = entry.SerializeValue();
-                        varType.Value = entry.GetLogType();
-                        applyEntryToDb.ExecuteNonQuery();
-                        break;
-
-                    case LogEntryOperation.Delete: break;
-
-                    default: continue;
-                }
-                appliedKeys.Add(entry.Key);
-            }
+            using SqliteCommand getMaxAppliedIndex = new SqliteCommand("SELECT MAX(Id) FROM LogEntries;" , connection , transaction);
+            int maxAppliedIndex = Convert.ToInt32(getMaxAppliedIndex.ExecuteScalar());
 
             transaction.Commit();
 
-            LastAppliedIndex = logEntries.Count - 1;
+            LastAppliedIndex = maxAppliedIndex;
         }
         catch (Exception e)
         {
