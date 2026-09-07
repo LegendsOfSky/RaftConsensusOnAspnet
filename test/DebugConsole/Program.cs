@@ -36,23 +36,23 @@ internal class Program
         Console.WriteLine(SpacingBetweenTests);
         testCaseStates.Add((4 , "TestSplitVote" , await RunTestCase4TestSplitVoteAsync()));
         Console.WriteLine(SpacingBetweenTests);
-        testCaseStates.Add((5 , "testAllForElection" , await RunTestCase5TestAllForElectionAsync()));
+        testCaseStates.Add((5 , "TestAllForElection" , await RunTestCase5TestAllForElectionAsync()));
         Console.WriteLine(SpacingBetweenTests);
-        testCaseStates.Add((6 , "testLeaderRevertToFollower" , await RunTestCase6TestLeaderRevertToFollowerAsync()));
+        testCaseStates.Add((6 , "TestLeaderRevertToFollower" , await RunTestCase6TestLeaderRevertToFollowerAsync()));
         Console.WriteLine(SpacingBetweenTests);
 
         /* Log replication tests. */
-        testCaseStates.Add((7 , "testOneSimplePut" , await RunTestCase7TestOneSimplePutAsync()));
+        testCaseStates.Add((7 , "TestOneSimplePut" , await RunTestCase7TestOneSimplePutAsync()));
         Console.WriteLine(SpacingBetweenTests);
-        testCaseStates.Add((8 , "testOneSimpleUpdate" , await RunTestCase8TestOneSimpleUpdateAsync()));
+        testCaseStates.Add((8 , "TestOneSimpleUpdate" , await RunTestCase8TestOneSimpleUpdateAsync()));
         Console.WriteLine(SpacingBetweenTests);
-        testCaseStates.Add((9 , "testOneSimpleDelete" , await RunTestCase9TestOneSimpleDeleteAsync()));
+        testCaseStates.Add((9 , "TestOneSimpleDelete" , await RunTestCase9TestOneSimpleDeleteAsync()));
         Console.WriteLine(SpacingBetweenTests);
-        testCaseStates.Add((10 , "testDeleteNonExistKey" , await RunTestCase10TestDeleteNonExistKeyAsync()));
+        testCaseStates.Add((10 , "TestDeleteNonExistKey" , await RunTestCase10TestDeleteNonExistKeyAsync()));
         Console.WriteLine(SpacingBetweenTests);
 
         /* State machine database sync test */
-        testCaseStates.Add((11 , "testCase11TestStateMachineValueSync" , await RunTestCase11TestStateMachineValueSyncAsync()));
+        testCaseStates.Add((11 , "TestCase11TestStateMachineValueSync" , await RunTestCase11TestStateMachineValueSyncAsync()));
         Console.WriteLine(SpacingBetweenTests);
 
 
