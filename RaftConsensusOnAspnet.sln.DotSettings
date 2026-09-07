@@ -498,4 +498,5 @@
 	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=DDE95C42052B4557924B6E68F16EC8F1/Field/=table/Order/@EntryValue">0</s:Int64>
 	<s:Double x:Key="/Default/TimelineLayout/EnumFilterHeights/=_007B_0022_0024type_0022_003A_00224_0022_007D/@EntryIndexedValue">631.65000000000009</s:Double>
 	<s:Double x:Key="/Default/TimelineLayout/EnumFilterHeights/=_007B_0022_0024type_0022_003A_00227_0022_007D/@EntryIndexedValue">234.64999999999998</s:Double>
+	<s:Boolean x:Key="/Default/UserDictionary/Words/=Recv/@EntryIndexedValue">True</s:Boolean>
 	<s:String x:Key="/Default/WpfWindowSize/PositionSettings/=JetBrains_002EProfiler_002EEditor_002EWindows_002EWPF_002EViewModels_002EDialogWindowExistingConfigurationViewModel/@EntryIndexedValue">957,401</s:String></wpf:ResourceDictionary>

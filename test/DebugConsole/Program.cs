@@ -1,7 +1,6 @@
 ﻿using RaftConsensusOnAspnet.RaftConsensus.Core;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Text;
 using System.Threading.Channels;
 using Microsoft.Data.Sqlite;
@@ -52,6 +51,7 @@ internal class Program
         testCaseStates.Add((10 , "testDeleteNonExistKey" , await RunTestCase10TestDeleteNonExistKeyAsync()));
         Console.WriteLine(SpacingBetweenTests);
 
+        /* State machine database sync test */
         testCaseStates.Add((11 , "testCase11TestStateMachineValueSync" , await RunTestCase11TestStateMachineValueSyncAsync()));
         Console.WriteLine(SpacingBetweenTests);
 
@@ -64,14 +64,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase1TestOneCandidateOneRoundElectionAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(1 , "testOneCandidateOneRoundElection" , nodes , ManipulateNodes , CreateConfig);
 
@@ -113,14 +113,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase2TestOneCandidateStartTwoElectionAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(2 , "testOneCandidateStartTwoElection" , nodes , ManipulateNodes , CreateConfig);
 
@@ -168,14 +168,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase3TestTwoCandidateForElectionAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(3 , "testTwoCandidateForElection" , nodes , ManipulateNodes , CreateConfig);
 
@@ -223,14 +223,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase4TestSplitVoteAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 1000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 1000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 1000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 1000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 1000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(4 , "testSplitVote" , nodes , ManipulateNodes , CreateConfig);
 
@@ -299,14 +299,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase5TestAllForElectionAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(5 , "testAllForElection" , nodes , ManipulateNodes , CreateConfig);
 
@@ -418,14 +418,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase6TestLeaderRevertToFollowerAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(6 , "testOneCandidateOneRoundElection" , nodes , ManipulateNodes , CreateConfig);
 
@@ -489,14 +489,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase7TestOneSimplePutAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(7 , "testOneSimplePut" , nodes , ManipulateNodes , CreateConfig);
 
@@ -531,8 +531,9 @@ internal class Program
             if (await proposeTasks[0] is not { Success: true , WrongNode: false , KeyFound: false })
             {
                 debugMsgBuilder.Append(
-                        string.Format(
-                                "Proposing new key-value pair to node 0 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                        "Proposing new key-value pair to node 0 failed. "
+                        + string.Format(
+                                "Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
                                 (await proposeTasks[0]).Success , (await proposeTasks[0]).WrongNode
                             )
                     );
@@ -542,9 +543,10 @@ internal class Program
                 if (await proposeTasks[i] is not { Success: false , WrongNode: true })
                 {
                     debugMsgBuilder.Append(
-                            string.Format(
-                                    "Proposing new key-value pair to node {0} failed. Expect: Success = false, WrongNode = true. but get: Success = {1}, WrongNode = {2}\n" ,
-                                    i , (await proposeTasks[i]).Success , (await proposeTasks[i]).WrongNode
+                            $"Proposing new key-value pair to node {i} failed. Expect: Success = false, WrongNode = true. "
+                            + string.Format(
+                                    "but get: Success = {0}, WrongNode = {1}\n" ,
+                                    (await proposeTasks[i]).Success , (await proposeTasks[i]).WrongNode
                                 )
                         );
                     manipulationPassed = false;
@@ -558,9 +560,10 @@ internal class Program
                 if (!success || !keyFound || !Equals(value , ExpectValue))
                 {
                     debugMsgBuilder.Append(
-                            string.Format(
-                                    "Get value from node {0} failed. Expect: Success = True, KeyFound = True, Value = 1. but get: Success = {1}, KeyFound = {2}, Value = {3}\n" ,
-                                    i , success , keyFound , Equals(value , ExpectValue) ? ExpectValue : "N/A"
+                            $"Get value from node {i} failed. Expect: Success = True, KeyFound = True, Value = 1. "
+                            + string.Format(
+                                    "but get: Success = {0}, KeyFound = {1}, Value = {2}\n" ,
+                                    success , keyFound , Equals(value , ExpectValue) ? ExpectValue : "N/A"
                                 )
                         );
                     manipulationPassed = false;
@@ -572,7 +575,7 @@ internal class Program
 
         async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
         {
-            connections = await ConfigurateNetworkForLeaderElectionAsync(connections , nodes[0]);
+            connections = await ConfigureNetworkForLeaderElectionAsync(connections , nodes[0]);
 
             LogEntry entry = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry] , LeaderId = nodes[0].NodeId });
@@ -599,14 +602,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase8TestOneSimpleUpdateAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(8 , "testOneSimpleUpdate" , nodes , ManipulateNodes , CreateConfig);
 
@@ -655,8 +658,9 @@ internal class Program
             if (await propose1Tasks[0] is not { Success: true , WrongNode: false , KeyFound: false })
             {
                 debugMsgBuilder.Append(
-                        string.Format(
-                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                        "Proposing new key-value pair (1) to node 0 failed. "
+                        + string.Format(
+                                "Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
                                 (await propose1Tasks[0]).Success , (await propose1Tasks[0]).WrongNode
                             )
                     );
@@ -666,9 +670,10 @@ internal class Program
                 if (await propose1Tasks[i] is not { Success: false , WrongNode: true })
                 {
                     debugMsgBuilder.Append(
-                            string.Format(
-                                    "Proposing new key-value pair to node {0} failed. Expect: Success = false, WrongNode = true. but get: Success = {1}, WrongNode = {2}\n" ,
-                                    i , (await propose1Tasks[i]).Success , (await propose1Tasks[i]).WrongNode
+                            $"Proposing new key-value pair to node {i} failed. "
+                            + string.Format(
+                                    "Expect: Success = false, WrongNode = true. but get: Success = {0}, WrongNode = {1}\n" ,
+                                    (await propose1Tasks[i]).Success , (await propose1Tasks[i]).WrongNode
                                 )
                         );
                     manipulationPassed = false;
@@ -678,8 +683,9 @@ internal class Program
             if (await propose2Tasks[0] is not { Success: true , WrongNode: false , KeyFound: true })
             {
                 debugMsgBuilder.Append(
-                        string.Format(
-                                "Proposing new key-value pair (1) to node 2 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                        "Proposing new key-value pair (1) to node 2 failed. "
+                        + string.Format(
+                                "Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
                                 (await propose2Tasks[0]).Success , (await propose2Tasks[0]).WrongNode
                             )
                     );
@@ -689,9 +695,10 @@ internal class Program
                 if (await propose2Tasks[i] is not { Success: false , WrongNode: true })
                 {
                     debugMsgBuilder.Append(
-                            string.Format(
-                                    "Proposing new key-value pair to node {0} failed. Expect: Success = false, WrongNode = true. but get: Success = {1}, WrongNode = {2}\n" ,
-                                    i , (await propose2Tasks[i]).Success , (await propose2Tasks[i]).WrongNode
+                            $"Proposing new key-value pair to node {i} failed. "
+                            + string.Format(
+                                    "Expect: Success = false, WrongNode = true. but get: Success = {0}, WrongNode = {1}\n" ,
+                                    (await propose2Tasks[i]).Success , (await propose2Tasks[i]).WrongNode
                                 )
                         );
                     manipulationPassed = false;
@@ -706,9 +713,10 @@ internal class Program
                 if (!success || !keyFound || !Equals(value , ExpectValue))
                 {
                     debugMsgBuilder.Append(
-                            string.Format(
-                                    "Get value from node {0} failed. Expect: Success = True, KeyFound = True, Value = 1. but get: Success = {1}, KeyFound = {2}, Value = {3}\n" ,
-                                    i , success , keyFound , Equals(value , ExpectValue) ? ExpectValue : "N/A"
+                            $"Get value from node {i} failed. "
+                            + string.Format(
+                                    "Expect: Success = True, KeyFound = True, Value = 1. but get: Success = {0}, KeyFound = {1}, Value = {2}\n" ,
+                                    success , keyFound , Equals(value , ExpectValue) ? ExpectValue : "N/A"
                                 )
                         );
                     manipulationPassed = false;
@@ -720,7 +728,7 @@ internal class Program
 
         async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
         {
-            connections = await ConfigurateNetworkForLeaderElectionAsync(connections , nodes[0]);
+            connections = await ConfigureNetworkForLeaderElectionAsync(connections , nodes[0]);
 
             LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
             await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
@@ -755,14 +763,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase9TestOneSimpleDeleteAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(9 , "testOneSimpleDelete" , nodes , ManipulateNodes , CreateConfig);
 
@@ -812,8 +820,9 @@ internal class Program
             if (await propose1Tasks[0] is not { Success: true , WrongNode: false , KeyFound: false })
             {
                 debugMsgBuilder.Append(
-                        string.Format(
-                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = True, WrongNode = False. but get: Success = {0}, WrongNode = {1}\n" ,
+                        "Proposing new key-value pair (1) to node 0 failed. "
+                        + string.Format(
+                                "Expect: Success = True, WrongNode = False. but get: Success = {0}, WrongNode = {1}\n" ,
                                 (await propose1Tasks[0]).Success , (await propose1Tasks[0]).WrongNode
                             )
                     );
@@ -823,9 +832,10 @@ internal class Program
                 if (await propose1Tasks[i] is not { Success: false , WrongNode: true })
                 {
                     debugMsgBuilder.Append(
-                            string.Format(
-                                    "Proposing new key-value (1) pair to node {0} failed. Expect: Success = False, WrongNode = True. but get: Success = {1}, WrongNode = {2}\n" ,
-                                    i , (await propose1Tasks[i]).Success , (await propose1Tasks[i]).WrongNode
+                            $"Proposing new key-value (1) pair to node {i} failed. "
+                            + string.Format(
+                                    "Expect: Success = False, WrongNode = True. but get: Success = {0}, WrongNode = {1}\n" ,
+                                    (await propose1Tasks[i]).Success , (await propose1Tasks[i]).WrongNode
                                 )
                         );
                     manipulationPassed = false;
@@ -835,8 +845,9 @@ internal class Program
             if (await propose2Tasks[0] is not { Success: true , WrongNode: false , KeyFound: true })
             {
                 debugMsgBuilder.Append(
-                        string.Format(
-                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = True, WrongNode = False. but get: Success = {0}, WrongNode = {1}\n" ,
+                        "Proposing new key-value pair (1) to node 0 failed. "
+                        + string.Format(
+                                "Expect: Success = True, WrongNode = False. but get: Success = {0}, WrongNode = {1}\n" ,
                                 (await propose2Tasks[0]).Success , (await propose2Tasks[0]).WrongNode
                             )
                     );
@@ -846,9 +857,10 @@ internal class Program
                 if (await propose2Tasks[i] is not { Success: false , WrongNode: true })
                 {
                     debugMsgBuilder.Append(
-                            string.Format(
-                                    "Proposing new key-value (1) pair to node {0} failed. Expect: Success = False, WrongNode = True. but get: Success = {1}, WrongNode = {2}\n" ,
-                                    i , (await propose2Tasks[i]).Success , (await propose2Tasks[i]).WrongNode
+                            $"Proposing new key-value (1) pair to node {i} failed. "
+                            + string.Format(
+                                    "Expect: Success = False, WrongNode = True. but get: Success = {0}, WrongNode = {1}\n" ,
+                                    (await propose2Tasks[i]).Success , (await propose2Tasks[i]).WrongNode
                                 )
                         );
                     manipulationPassed = false;
@@ -861,9 +873,10 @@ internal class Program
                 if (!success || keyFound || !Equals(value , null))
                 {
                     debugMsgBuilder.Append(
-                            string.Format(
-                                    "Get value from node {0} failed. Expect: Success = True, KeyFound = False, Value = null. but get: Success = {1}, KeyFound = {2}, Value = {3}\n" ,
-                                    i , success , keyFound , Equals(value , null) ? "null" : 1
+                            $"Get value from node {i} failed. "
+                            + string.Format(
+                                    "Expect: Success = True, KeyFound = False, Value = null. but get: Success = {0}, KeyFound = {1}, Value = {2}\n" ,
+                                    success , keyFound , Equals(value , null) ? "null" : 1
                                 )
                         );
                     manipulationPassed = false;
@@ -875,7 +888,7 @@ internal class Program
 
         async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
         {
-            connections = await ConfigurateNetworkForLeaderElectionAsync(connections , nodes[0]);
+            connections = await ConfigureNetworkForLeaderElectionAsync(connections , nodes[0]);
 
             // heart beat #1
             LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
@@ -919,14 +932,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase10TestDeleteNonExistKeyAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(10 , "testDeleteNonExistKey" , nodes , ManipulateNodes , CreateConfig);
 
@@ -977,8 +990,9 @@ internal class Program
             if (await propose1Tasks[0] is not { Success: true , WrongNode: false , KeyFound: false })
             {
                 debugMsgBuilder.Append(
-                        string.Format(
-                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                        "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. "
+                        + string.Format(
+                                "but get: Success = {0}, WrongNode = {1}\n" ,
                                 (await propose1Tasks[0]).Success , (await propose1Tasks[0]).WrongNode
                             )
                     );
@@ -989,8 +1003,9 @@ internal class Program
             if (await propose2Tasks[0] is not { Success: false , WrongNode: false , KeyFound: false })
             {
                 debugMsgBuilder.Append(
-                        string.Format(
-                                "Proposing new key-value pair (1) to node 2 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                        "Proposing new key-value pair (1) to node 2 failed. Expect: Success = true, WrongNode = false. "
+                        + string.Format(
+                                "but get: Success = {0}, WrongNode = {1}\n" ,
                                 (await propose2Tasks[0]).Success , (await propose2Tasks[0]).WrongNode
                             )
                     );
@@ -1005,9 +1020,10 @@ internal class Program
                 if (!success || !keyFound || !Equals(value , 1))
                 {
                     debugMsgBuilder.Append(
-                            string.Format(
-                                    "Get value from node {0} failed. Expect: Success = True, KeyFound = True , Value = null. but get: Success = {1}, KeyFound = {2}, Value = {3}\n" ,
-                                    i , success , keyFound , Equals(value , 1) ? 1 : "N/A"
+                            $"Get value from node {i} failed. Expect: Success = True, KeyFound = True , Value = null. "
+                            + string.Format(
+                                    "but get: Success = {0}, KeyFound = {1}, Value = {2}\n" ,
+                                    success , keyFound , Equals(value , 1) ? 1 : "N/A"
                                 )
                         );
                     manipulationPassed = false;
@@ -1019,7 +1035,7 @@ internal class Program
 
         async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
         {
-            connections = await ConfigurateNetworkForLeaderElectionAsync(connections , nodes[0]);
+            connections = await ConfigureNetworkForLeaderElectionAsync(connections , nodes[0]);
 
             // heart beat #1
             LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
@@ -1064,14 +1080,14 @@ internal class Program
 
     private static async Task<bool> RunTestCase11TestStateMachineValueSyncAsync()
     {
-        RaftNode.S_NodeIdToDebugPos = [];
+        Dictionary<Guid , int> nodeIdToDebugPos = [];
         RaftNode[] nodes =
         [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
+            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , true , nodeIdToDebugPos) ,
         ];
         return await CreateAndRunTestCaseAsync(11 , "testStateMachineValueSync" , nodes , ManipulateNodes , CreateConfig);
 
@@ -1101,7 +1117,8 @@ internal class Program
             {
                 debugMsgBuilder.Append(
                         string.Format(
-                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. " + 
+                                "but get: Success = {0}, WrongNode = {1}\n" ,
                                 (await propose1Tasks).Success , (await propose1Tasks).WrongNode
                             )
                     );
@@ -1111,7 +1128,10 @@ internal class Program
             foreach (RaftNode node in nodes.Where(node => node.LastAppliedLogEntryIndex != 1))
             {
                 debugMsgBuilder.Append(
-                        $"State machine values out of sync with log entries at node {RaftNode.S_NodeIdToDebugPos[node.NodeId]} propose 1 (lastApplyIndex: expect 1, get {node.LastAppliedLogEntryIndex}).\n"
+                        string.Format(
+                                "State machine values out of sync with log entries at node {0} propose 1 (lastApplyIndex: expect 1, get {1}).\n" ,
+                                node.NodeIdToDebugPos[node.NodeId] , node.LastAppliedLogEntryIndex
+                            )
                     );
                 manipulationPassed = false;
             }
@@ -1125,8 +1145,9 @@ internal class Program
             if (await propose2Tasks is not { Success: true, WrongNode: false, KeyFound: true })
             {
                 debugMsgBuilder.Append(
-                        string.Format(
-                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                        "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. "
+                        + string.Format(
+                                "but get: Success = {0}, WrongNode = {1}\n" ,
                                 (await propose2Tasks).Success , (await propose2Tasks).WrongNode
                             )
                     );
@@ -1136,7 +1157,10 @@ internal class Program
             foreach (RaftNode node in nodes.Where(node => node.LastAppliedLogEntryIndex != 2))
             {
                 debugMsgBuilder.Append(
-                        $"State machine values out of sync with log entries at node {RaftNode.S_NodeIdToDebugPos[node.NodeId]} propose 2 (lastApplyIndex: expect 2, get {node.LastAppliedLogEntryIndex}).\n"
+                        string.Format(
+                                "State machine values out of sync with log entries at node {0} propose 2 (lastApplyIndex: expect 2, get {1}).\n" ,
+                                node.NodeIdToDebugPos[node.NodeId] , node.LastAppliedLogEntryIndex
+                            )
                     );
                 manipulationPassed = false;
             }
@@ -1151,7 +1175,8 @@ internal class Program
             {
                 debugMsgBuilder.Append(
                         string.Format(
-                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
+                                "Proposing new key-value pair (1) to node 0 failed. "
+                                + "Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
                                 (await propose3Tasks).Success , (await propose3Tasks).WrongNode
                             )
                     );
@@ -1161,7 +1186,10 @@ internal class Program
             foreach (RaftNode node in nodes.Where(node => node.LastAppliedLogEntryIndex != 3))
             {
                 debugMsgBuilder.Append(
-                        $"State machine values out of sync with log entries at node {RaftNode.S_NodeIdToDebugPos[node.NodeId]} propose 2 (lastApplyIndex: expect 2, get {node.LastAppliedLogEntryIndex}).\n"
+                        string.Format(
+                                "State machine values out of sync with log entries at node {0} propose 2 (lastApplyIndex: expect 2, get {1}).\n" ,
+                                node.NodeIdToDebugPos[node.NodeId] , node.LastAppliedLogEntryIndex
+                            )
                     );
                 manipulationPassed = false;
             }
@@ -1181,14 +1209,20 @@ internal class Program
                     int expectRecordCount = expectResult is null ? 0 : 1;
                     if (recordCount != expectRecordCount)
                     {
-                        debugMsgBuilder.Append($"Unmatch record count in node {RaftNode.S_NodeIdToDebugPos[node.NodeId]}. Expect number of record in {LogEntryList.StateMachineValuesTableName} is {expectRecordCount}, but get {recordCount}\n");
+                        debugMsgBuilder.Append(
+                                string.Format(
+                                        "Unmatch record count in node {0}. Expect number of record in {1} is {2}, but get {3}\n" ,
+                                        node.NodeIdToDebugPos[node.NodeId] , LogEntryList.StateMachineValuesTableName , expectRecordCount , recordCount
+                                    )
+                            );
                         manipulationPassed = false;
                         continue;
                     }
 
                     if (expectResult is not null)
                     {
-                        using SqliteCommand getRecords = new SqliteCommand($"SELECT Key , Value , Type FROM {LogEntryList.StateMachineValuesTableName};" , connection);
+                        using SqliteCommand getRecords
+                            = new SqliteCommand($"SELECT Key , Value , Type FROM {LogEntryList.StateMachineValuesTableName};" , connection);
                         using SqliteDataReader recordsReader = getRecords.ExecuteReader();
                         recordsReader.Read();
                         string key   = recordsReader.GetString(0);
@@ -1196,7 +1230,12 @@ internal class Program
                         string type  = recordsReader.GetString(2);
                         if ((key , value , type) != ("test" , expectResult , Int32LogEntry.LogType))
                         {
-                            debugMsgBuilder.Append($"Unmatch record count in node {RaftNode.S_NodeIdToDebugPos[node.NodeId]}. Expect (\"test\", {expectResult}, {Int32LogEntry.LogType}), but get (\"{key}\", {value}, \"{type}\")\n");
+                            debugMsgBuilder.Append(
+                                    string.Format(
+                                            "Unmatch record count in node {0}. Expect (\"test\", {1}, {2}), but get (\"{3}\", {4}, \"{5}\")\n" ,
+                                            node.NodeIdToDebugPos[node.NodeId] , expectResult , Int32LogEntry.LogType , key , value , type
+                                        )
+                                );
                             manipulationPassed = false;
                         }
                     }
@@ -1206,7 +1245,7 @@ internal class Program
 
         async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
         {
-            connections = await ConfigurateNetworkForLeaderElectionAsync(connections , nodes[0]);
+            connections = await ConfigureNetworkForLeaderElectionAsync(connections , nodes[0]);
 
             // heart beat #1 and #2
             LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
@@ -1269,7 +1308,7 @@ internal class Program
         }
     }
 
-    private static async Task<NetworkConnection[,]> ConfigurateNetworkForLeaderElectionAsync(NetworkConnection[,] connections , RaftNode winningNode)
+    private static async Task<NetworkConnection[,]> ConfigureNetworkForLeaderElectionAsync(NetworkConnection[,] connections , RaftNode winningNode)
     {
         await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
         await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
@@ -1302,7 +1341,7 @@ internal class Program
         Debug.AutoFlush = true; 
         Console.WriteLine($"Begin test {testId} ({testName})");
 
-        /* Prepare test enviroment. */
+        /* Prepare test environment. */
         NetworkConnection[,] connections = new NetworkConnection[nodes.Length , nodes.Length];
         for (int i = 0; i < nodes.Length; i++)
         {
@@ -1387,80 +1426,86 @@ internal class Program
         }
         if (hasMismatchMessage || hasMissingMessage)
         {
-            (DateTime Time , int sourceIndex , int targetIndex , MessagePackageBase Expected , MessagePackageBase Actual)[] logs =
+            (DateTime Time , RaftNode sourceNode , RaftNode targetNode , MessagePackageBase Expected , MessagePackageBase Actual)[] logs =
             [
                 .. from connection in connections.Cast<NetworkConnection>()
-                   let sourceIndex = Array.IndexOf(nodes , connection.Source)
-                   let targetIndex = Array.IndexOf(nodes , connection.Target)
                    from log in connection.DebugLogs
                    orderby log.Time
-                   select (log.Time , sourceIndex , targetIndex , log.Expected , log.Actual) ,
+                   select (log.Time , connection.Source , connection.Target , log.Expected , log.Actual) ,
             ];
+            (StringBuilder expectOutputBuilder , StringBuilder actualOutputBuilder) = (new StringBuilder() , new StringBuilder());
+            foreach ((_ , RaftNode sourceNode , RaftNode targetNode , MessagePackageBase expect , MessagePackageBase actual) in logs)
+            {
+                expectOutputBuilder.Append($"\t{MessagePackageToString(sourceNode , targetNode , expect)}\n");
+                actualOutputBuilder.Append($"\t{MessagePackageToString(sourceNode , targetNode , actual)}\n");
+            }
             Console.WriteLine("Global expect logs:");
-            foreach ((_ , int sourceIndex , int targetIndex , MessagePackageBase expect , _) in logs)
-                Console.WriteLine($"\t{MessagePackageToString(sourceIndex , targetIndex , expect)}");
+            Console.WriteLine(expectOutputBuilder);
             Console.WriteLine("But get:");
-            foreach ((_ , int sourceIndex , int targetIndex , _ , MessagePackageBase actual) in logs)
-                Console.WriteLine($"\t{MessagePackageToString(sourceIndex , targetIndex , actual)}");
+            Console.WriteLine(actualOutputBuilder);
 
             if (firstErrorSource != -1)
                 Console.WriteLine("\n\n");
         }
         if (firstErrorSource != -1)
         {
-            (DateTime Time , int sourceIndex , int targetIndex , MessagePackageBase Expected , MessagePackageBase Actual)[] logDiffs =
+            (DateTime Time , RaftNode sourceNode , RaftNode targetNode , MessagePackageBase Expected , MessagePackageBase Actual)[] logDiffs =
             [
                 .. from connection in connections.Cast<NetworkConnection>()
                    where connection.Source == nodes[firstErrorSource]
-                   let sourceIndex = Array.IndexOf(nodes , connection.Source)
-                   let targetIndex = Array.IndexOf(nodes , connection.Target)
                    from log in connection.DebugLogs
                    orderby log.Time
-                   select (log.Time , sourceIndex , targetIndex , log.Expected , log.Actual) ,
+                   select (log.Time , connection.Source , connection.Target , log.Expected , log.Actual) ,
             ];
+            (StringBuilder expectOutputBuilder , StringBuilder actualOutputBuilder) = (new StringBuilder() , new StringBuilder());
+            foreach ((_ , RaftNode sourceNode , RaftNode targetNode , MessagePackageBase expect , MessagePackageBase actual) in logDiffs)
+            {
+                expectOutputBuilder.Append($"\t{MessagePackageToString(sourceNode , targetNode , expect)}\n");
+                actualOutputBuilder.Append($"\t{MessagePackageToString(sourceNode , targetNode , actual)}\n");
+            }
             Console.WriteLine($"Expected (for node {firstErrorSource}):");
-            foreach ((_ , int sourceIndex , int targetIndex , MessagePackageBase expect , _) in logDiffs)
-                Console.WriteLine($"\t{MessagePackageToString(sourceIndex , targetIndex , expect)}");
+            Console.WriteLine(expectOutputBuilder);
             Console.WriteLine("But get:");
-            foreach ((_ , int sourceIndex , int targetIndex , _ , MessagePackageBase actual) in logDiffs)
-                Console.WriteLine($"\t{MessagePackageToString(sourceIndex , targetIndex , actual)}");
+            Console.WriteLine(actualOutputBuilder);
         }
         return false;
     }
 
-    private static string MessagePackageToString(int source , int target , MessagePackageBase message)
+    private static string MessagePackageToString(RaftNode source , RaftNode target , MessagePackageBase message)
+        => MessagePackageToString(source.NodeIdToDebugPos , source.NodeIdToDebugPos[source.NodeId] , target.NodeIdToDebugPos[target.NodeId] , message);
+
+    private static string MessagePackageToString(Dictionary<Guid , int> nodeIdToDebugPos , int sourceId , int targetId , MessagePackageBase message)
     {
-        return message switch
-        {
+        return message switch {
             VoteRequestSendPackage voteSend
                 => voteSend.MessageDropped
-                    ? $"node {source}: dropped RequestVote to {target}"
+                    ? $"node {sourceId}: dropped RequestVote to {targetId}"
                     : string.Format(
                             "node {0} <- {1}: RequestVote -- term: {2}, candidateId: {3}, lastLogIdx: {4}, lastLogTerm: {5}" ,
-                            target , source , voteSend.Term , source , voteSend.LastLogIndex , voteSend.LastLogTerm
-                        ) ,
+                            targetId , sourceId , voteSend.Term , sourceId , voteSend.LastLogIndex , voteSend.LastLogTerm
+                        ),
 
             VoteRequestReceivePackage voteRecv
                 => voteRecv.MessageDropped
-                    ? $"node {target}: dropped RequestVoteResponse to {source}"
-                    : $"node {target} -> {source}: {(voteRecv.Granted ? "granted" : "reject")}, term: {voteRecv.Term}" ,
+                    ? $"node {targetId}: dropped RequestVoteResponse to {sourceId}"
+                    : $"node {targetId} -> {sourceId}: {(voteRecv.Granted ? "granted" : "reject")}, term: {voteRecv.Term}",
 
             AppendEntriesSendPackage appendSend
                 => appendSend.MessageDropped
-                    ? $"node {source}: dropped AppendEntries to {target}"
+                    ? $"node {sourceId}: dropped AppendEntries to {targetId}"
                     : string.Format(
                             "node {0} <- {1}: AppendEntries -- term: {2}, leaderId: {3}, prevLogIdx: {4}, prevLogTerm: {5}, entries: [{6}], leaderCommit: {7}" ,
-                            target , source , appendSend.Term ,
-                            RaftNode.S_NodeIdToDebugPos[appendSend.LeaderId] , appendSend.PreviousLogIndex , appendSend.PreviousLogTerm ,
+                            targetId , sourceId , appendSend.Term ,
+                            nodeIdToDebugPos[appendSend.LeaderId] , appendSend.PreviousLogIndex , appendSend.PreviousLogTerm ,
                             new StringBuilder().AppendJoin(' ' , appendSend.Entries.Select(entry => entry.ToString())) , appendSend.LeaderCommit
-                        ) ,
+                        ),
 
             AppendEntriesReceivePackage appendRecv
                 => appendRecv.MessageDropped
-                    ? $"node {target}: dropped AppendEntriesReponse to {source}"
-                    : $"node {target} -> {source}: {(appendRecv.Success ? "success" : "failed")}, term: {appendRecv.Term}, matchIdx: {appendRecv.MatchIndex}" ,
+                    ? $"node {targetId}: dropped AppendEntriesResponse to {sourceId}"
+                    : $"node {targetId} -> {sourceId}: {(appendRecv.Success ? "success" : "failed")}, term: {appendRecv.Term}, matchIdx: {appendRecv.MatchIndex}",
 
-            _ => "" ,
+            _ => "",
         };
     }
 
@@ -1474,10 +1519,7 @@ internal class Program
         public List<(MessagePackageBase Expected , MessagePackageBase Actual , DateTime Time)> DebugLogs = [];
 
 
-        public NetworkConnection(RaftNode source , RaftNode target)
-        {
-            (Source , Target) = (source , target);
-        }
+        public NetworkConnection(RaftNode source , RaftNode target) => (Source , Target) = (source , target);
 
 
         public async Task HandleVoteRequestAsync(Guid requesterId , int commitIndex , int previousLogTerm)
@@ -1506,7 +1548,11 @@ internal class Program
                 if (expectSendPackageBase is not VoteRequestSendPackage expectSendPackage)
                 {
                     DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
-                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} <- {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: VoteRequestSendPackage sent, but test case expect {expectSendPackageBase.GetType()} ({DateTime.Now.TimeOfDay})");
+                    Console.WriteLine(
+                            "Mismatch message on {0} <- {1}: VoteRequestSendPackage sent, but test case expect {2} ({3})" ,
+                            Target.NodeIdToDebugPos[Target.NodeId] , Source.NodeIdToDebugPos[Source.NodeId] ,
+                            expectSendPackageBase.GetType() , DateTime.Now.TimeOfDay
+                        );
                     HasMismatchMessage = true;
                 }
                 else
@@ -1515,11 +1561,23 @@ internal class Program
                     DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
                     if (expectSendPackage.Delay != 0)
                         Console.WriteLine(
-                                $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , actualSendPackage)} BEGIN (Delay = {expectSendPackage.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                                "{0} BEGIN (Delay = {1}, Time = {2})" ,
+                                MessagePackageToString(
+                                        Source.NodeIdToDebugPos , Source.NodeIdToDebugPos[args.RequesterId] , Source.NodeIdToDebugPos[args.ReceiverId] ,
+                                        actualSendPackage
+                                    ) ,
+                                expectSendPackage.Delay , DateTime.Now.TimeOfDay
                             );
                     await Task.Delay(expectSendPackage.Delay);
                     Console.WriteLine(
-                            $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , actualSendPackage)}{(expectSendPackage.Delay != 0 ? $" ARRIVE (Delay = {expectSendPackage.Delay}, Time = {DateTime.Now.TimeOfDay})" : "")}"
+                            "{0}{1}" ,
+                            MessagePackageToString(
+                                    Source.NodeIdToDebugPos , Source.NodeIdToDebugPos[args.RequesterId] , Source.NodeIdToDebugPos[args.ReceiverId] ,
+                                    actualSendPackage
+                                ) ,
+                            expectSendPackage.Delay != 0
+                                ? $" ARRIVE (Delay = {expectSendPackage.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                                : ""
                         );
                     if (expectSendPackage.MessageDropped)
                         return;
@@ -1533,14 +1591,17 @@ internal class Program
                 VoteRequestReceivePackage actualRecvPackage = new VoteRequestReceivePackage
                 {
                     Term = reply.ReplierTerm ,
-
                     Granted = reply.VoteGranted ,
                 };
                 MessagePackageBase expectRecvPackageBase = await ExpectedMessagesChannel.Reader.ReadAsync();
                 if (expectRecvPackageBase is not VoteRequestReceivePackage expectRecvPackage)
                 {
                     DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: VoteRequestReceivePackage sent, but test case expect {expectRecvPackageBase.GetType()} ({DateTime.Now.TimeOfDay})");
+                    Console.WriteLine(
+                            "Mismatch message on {0} -> {1}: VoteRequestReceivePackage sent, but test case expect {2} ({3})" ,
+                            Target.NodeIdToDebugPos[Target.NodeId] , Source.NodeIdToDebugPos[Source.NodeId] ,
+                            expectRecvPackageBase.GetType() , DateTime.Now.TimeOfDay
+                        );
                     HasMismatchMessage = true;
                     await Source.VoteRequestReplyChannel.Writer.WriteAsync(reply);
                 }
@@ -1548,13 +1609,25 @@ internal class Program
                 {
                     if (expectRecvPackage.Delay != 0)
                         Console.WriteLine(
-                                $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , actualRecvPackage)} BEGIN (Delay = {expectRecvPackage.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                                "{0} BEGIN (Delay = {1}, Time = {2})" ,
+                                MessagePackageToString(
+                                        Source.NodeIdToDebugPos , Source.NodeIdToDebugPos[reply.ReceiverId] , Source.NodeIdToDebugPos[reply.ReplierId] ,
+                                        actualRecvPackage
+                                    ) ,
+                                expectRecvPackage.Delay , DateTime.Now.TimeOfDay
                             );
                     await Task.Delay(expectRecvPackage.Delay);
                     (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
                     DebugLogs.Add((expectRecvPackage , actualRecvPackage , DateTime.Now));
                     Console.WriteLine(
-                            $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , actualRecvPackage)}{(expectRecvPackage.Delay != 0 ? $" ARRIVE (Delay = {expectRecvPackage.Delay}, Time = {DateTime.Now.TimeOfDay})" : "")}"
+                            "{0}{1}" , 
+                            MessagePackageToString(
+                                    Target.NodeIdToDebugPos , Target.NodeIdToDebugPos[reply.ReceiverId] , Target.NodeIdToDebugPos[reply.ReplierId] ,
+                                    actualRecvPackage
+                                ) ,
+                            expectRecvPackage.Delay != 0
+                                ? $" ARRIVE (Delay = {expectRecvPackage.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                                : ""
                         );
                     if (!expectRecvPackage.MessageDropped)
                         await Source.VoteRequestReplyChannel.Writer.WriteAsync(reply);
@@ -1595,7 +1668,11 @@ internal class Program
                 if (expectSendPackageBase is not AppendEntriesSendPackage expectSendPackage)
                 {
                     DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
-                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} <- {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: AppendEntriesSendPackage sent, but test case expect {expectSendPackageBase.GetType()} ({DateTime.Now.TimeOfDay})");
+                    Console.WriteLine(
+                            "Mismatch message on {0} <- {1}: AppendEntriesSendPackage sent, but test case expect {2} ({3})" ,
+                            Target.NodeIdToDebugPos[Target.NodeId] , Source.NodeIdToDebugPos[Source.NodeId] ,
+                            expectSendPackageBase.GetType() , DateTime.Now.TimeOfDay
+                        );
                     HasMismatchMessage = true;
                 }
                 else
@@ -1604,11 +1681,23 @@ internal class Program
                     DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
                     if (expectSendPackage.Delay != 0)
                         Console.WriteLine(
-                                $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , actualSendPackage)} BEGIN (Delay = {expectSendPackage.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                                "{0} BEGIN (Delay = {1}, Time = {2})" ,
+                                MessagePackageToString(
+                                        Source.NodeIdToDebugPos , Source.NodeIdToDebugPos[args.RequesterId] , Source.NodeIdToDebugPos[args.ReceiverId] ,
+                                        actualSendPackage
+                                    ) ,
+                                expectSendPackage.Delay , DateTime.Now.TimeOfDay
                             );
                     await Task.Delay(expectSendPackage.Delay);
                     Console.WriteLine(
-                            $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[args.RequesterId] , RaftNode.S_NodeIdToDebugPos[args.ReceiverId] , actualSendPackage)}{(expectSendPackage.Delay != 0 ? $" ARRIVE (Delay = {expectSendPackage.Delay}, Time = {DateTime.Now.TimeOfDay})" : "")}"
+                            "{0}{1}" ,
+                            MessagePackageToString(
+                                    Source.NodeIdToDebugPos , Source.NodeIdToDebugPos[args.RequesterId] , Source.NodeIdToDebugPos[args.ReceiverId] ,
+                                    actualSendPackage
+                                ) ,
+                            expectSendPackage.Delay != 0
+                                ? $" ARRIVE (Delay = {expectSendPackage.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                                : ""
                         );
                     if (expectSendPackage.MessageDropped)
                         return;
@@ -1631,20 +1720,36 @@ internal class Program
                 if (expectRecvPackageBase is not AppendEntriesReceivePackage expectRecvPackage)
                 {
                     DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-                    Console.WriteLine($"Mismatch message on {RaftNode.S_NodeIdToDebugPos[Target.NodeId]} -> {RaftNode.S_NodeIdToDebugPos[Source.NodeId]}: AppendEntriesReceivePackage sent, but test case expect {expectRecvPackageBase.GetType()} ({DateTime.Now.TimeOfDay})");
+                    Console.WriteLine(
+                            "Mismatch message on {0} -> {1}: AppendEntriesReceivePackage sent, but test case expect {2} ({3})" ,
+                            Target.NodeIdToDebugPos[Target.NodeId] , Source.NodeIdToDebugPos[Source.NodeId] ,
+                            expectRecvPackageBase.GetType() , DateTime.Now.TimeOfDay
+                        );
                     HasMismatchMessage = true;
                 }
                 else
                 {
                     if (expectRecvPackageBase.Delay != 0)
                         Console.WriteLine(
-                                $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , actualRecvPackage)} BEGIN (Delay = {expectRecvPackageBase.Delay}, Time = {DateTime.Now.TimeOfDay})"
+                                "{0} BEGIN (Delay = {1}, Time = {2})" ,
+                                MessagePackageToString(
+                                        Target.NodeIdToDebugPos , Target.NodeIdToDebugPos[reply.ReceiverId] , Target.NodeIdToDebugPos[reply.ReplierId] ,
+                                        actualRecvPackage
+                                    ) ,
+                                expectRecvPackageBase.Delay , DateTime.Now.TimeOfDay
                             );
                     await Task.Delay(expectRecvPackageBase.Delay);
                     (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
                     DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
                     Console.WriteLine(
-                            $"{MessagePackageToString(RaftNode.S_NodeIdToDebugPos[reply.ReceiverId] , RaftNode.S_NodeIdToDebugPos[reply.ReplierId] , actualRecvPackage)}{(expectRecvPackageBase.Delay != 0 ? $" ARRIVE (Delay = {expectRecvPackageBase.Delay}, Time = {DateTime.Now.TimeOfDay}) " : "")}"
+                            "{0}{1}" ,
+                            MessagePackageToString(
+                                    Target.NodeIdToDebugPos , Target.NodeIdToDebugPos[reply.ReceiverId] , Target.NodeIdToDebugPos[reply.ReplierId] ,
+                                    actualRecvPackage
+                                ) ,
+                            expectRecvPackageBase.Delay != 0
+                                ? $" ARRIVE (Delay = {expectRecvPackageBase.Delay}, Time = {DateTime.Now.TimeOfDay}) "
+                                : ""
                         );
                     if (!expectRecvPackageBase.MessageDropped)
                         await Source.AppendEntriesReplyChannel.Writer.WriteAsync(reply);

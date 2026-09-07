@@ -4,7 +4,7 @@ public class Int32LogEntry : LogEntry
 {
     public int? Value { get; init; }
 
-    public const string LogType = "Int32";
+    public new const string LogType = "Int32";
 
 
     static Int32LogEntry()
@@ -53,10 +53,8 @@ public class Int32LogEntry : LogEntry
     /// <inheritdoc />
     public override bool Equals(object? obj)
     {
-        if (obj is not Int32LogEntry comparingEntry)
-            return false;
-
-        return Guid      == comparingEntry.Guid
+        return obj is Int32LogEntry comparingEntry
+            && Guid      == comparingEntry.Guid
             && Term      == comparingEntry.Term
             && Key       == comparingEntry.Key
             && Operation == comparingEntry.Operation

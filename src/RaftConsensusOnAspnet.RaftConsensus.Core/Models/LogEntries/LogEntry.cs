@@ -75,10 +75,8 @@ public class LogEntry
     /// <inheritdoc />
     public override bool Equals(object? obj)
     {
-        if (obj is not LogEntry comparingEntry)
-            return false;
-
-        return Guid      == comparingEntry.Guid
+        return obj is LogEntry comparingEntry
+            && Guid      == comparingEntry.Guid
             && Term      == comparingEntry.Term
             && Key       == comparingEntry.Key
             && Operation == comparingEntry.Operation;

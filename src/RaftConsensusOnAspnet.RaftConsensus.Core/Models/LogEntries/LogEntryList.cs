@@ -130,7 +130,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.WriteLine($"Cannot add new log entry to database. Error: \n{e}");
+            Trace.TraceError($"Cannot add new log entry to database. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -191,7 +191,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.WriteLine($"Cannot apply log entries to state machine database. Error: \n{e}");
+            Trace.TraceError($"Cannot apply log entries to state machine database. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -202,7 +202,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
     {
         if (Count < startIndex)
         {
-            Trace.WriteLine("Append entries failed because of missing logs");
+            Trace.TraceWarning("Append entries failed because of missing logs");
             return false;
         }
 
@@ -210,6 +210,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         using SqliteTransaction transaction = connection.BeginTransaction();
         try
         {
+#pragma warning disable S2077
             using SqliteCommand removeEntriesAfterStartIndex = new SqliteCommand(
                     $"""
                     DELETE FROM LogEntries
@@ -217,6 +218,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
                     """ , connection , transaction
                 );
             removeEntriesAfterStartIndex.ExecuteNonQuery();
+#pragma warning restore S2077
 
             using SqliteCommand addEntry = new SqliteCommand(
                     """
@@ -250,7 +252,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.WriteLine($"Cannot insert new log entry (start at {startIndex}) to database. Error: \n{e}");
+            Trace.TraceError($"Cannot insert new log entry (start at {startIndex}) to database. Error: \n{e}");
             transaction.Rollback();
             return false;
         }
@@ -267,6 +269,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         using SqliteTransaction transaction = connection.BeginTransaction();
         try
         {
+#pragma warning disable S2077
             using SqliteCommand removeEntries = new SqliteCommand(
                     $"""
                     DELETE FROM LogEntries
@@ -283,12 +286,13 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
                     """ , connection , transaction
                 );
             removeGap.ExecuteNonQuery();
+#pragma warning restore S2077
 
             transaction.Commit();
         }
         catch (Exception e)
         {
-            Trace.WriteLine($"Cannot remove log entries from {start} to {start + count}(Exclusive). Error: \n{e}");
+            Trace.TraceError($"Cannot remove log entries from {start} to {start + count}(Exclusive). Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -366,7 +370,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.WriteLine($"Cannot write new entries to database. Error: \n{e}");
+            Trace.TraceError($"Cannot write new entries to database. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -402,7 +406,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         catch (Exception e)
         {
-            Trace.WriteLine($"Cannot add new log entry to database. Error: \n{e}");
+            Trace.TraceError($"Cannot add new log entry to database. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -423,6 +427,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         using SqliteTransaction transaction = connection.BeginTransaction();
         try
         {
+#pragma warning disable S2077
             using SqliteCommand createSpace = new SqliteCommand(
                     $"""
                     UPDATE LogEntries
@@ -447,12 +452,13 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
             addEntry.Parameters.AddWithValue("$key"       , entry.Key              ?? (object)DBNull.Value);
             addEntry.Parameters.AddWithValue("$value"     , entry.SerializeValue() ?? (object)DBNull.Value);
             addEntry.ExecuteNonQuery();
+#pragma warning restore S2077
 
             transaction.Commit();
         }
         catch (Exception e)
         {
-            Trace.WriteLine($"Cannot insert new log entry to database. Error: \n{e}");
+            Trace.TraceError($"Cannot insert new log entry to database. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
@@ -474,6 +480,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         using SqliteTransaction transaction = connection.BeginTransaction();
         try
         {
+#pragma warning disable S2077
             using SqliteCommand removeEntry = new SqliteCommand(
                     $"""
                     DELETE FROM LogEntries
@@ -490,12 +497,13 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
                     """ , connection , transaction
                 );
             removeGap.ExecuteNonQuery();
+#pragma warning restore S2077
 
             transaction.Commit();
         }
         catch (Exception e)
         {
-            Trace.WriteLine($"Cannot remove log entries at {index}. Error: \n{e}");
+            Trace.TraceError($"Cannot remove log entries at {index}. Error: \n{e}");
             transaction.Rollback();
             throw;
         }
