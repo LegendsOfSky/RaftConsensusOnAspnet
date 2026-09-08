@@ -2,6 +2,7 @@
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 using System.Text;
 using System.Threading.Channels;
+using Xunit.Abstractions;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers.Messages;
@@ -13,9 +14,11 @@ internal class NetworkConnection
     public bool HasMismatchMessage;
     public Channel<MessagePackageBase> ExpectedMessagesChannel = Channel.CreateUnbounded<MessagePackageBase>();
     public List<(MessagePackageBase Expected , MessagePackageBase Actual , DateTime Time)> DebugLogs = [];
+    private readonly ITestOutputHelper testOutput;
 
 
-    public NetworkConnection(RaftNode source , RaftNode target) => (Source , Target) = (source , target);
+    public NetworkConnection(RaftNode source , RaftNode target , ITestOutputHelper testOutputIn)
+        => (Source , Target , testOutput) = (source , target , testOutputIn);
 
 
     public async Task HandleAppendEntriesAsync(
@@ -51,7 +54,7 @@ internal class NetworkConnection
             if (expectSendPackageBase is not AppendEntriesSendPackage expectSendPackage)
             {
                 DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
-                Console.WriteLine(
+                testOutput.WriteLine(
                         "Mismatch message on {0} <- {1}: AppendEntriesSendPackage sent, but test case expect {2} ({3})" ,
                         Target.NodeIdToDebugPos[Target.NodeId] , Source.NodeIdToDebugPos[Source.NodeId] ,
                         expectSendPackageBase.GetType() , DateTime.Now.TimeOfDay
@@ -63,7 +66,7 @@ internal class NetworkConnection
                 (actualSendPackage.Delay , actualSendPackage.MessageDropped) = (expectSendPackage.Delay , expectSendPackage.MessageDropped);
                 DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
                 if (expectSendPackage.Delay != 0)
-                    Console.WriteLine(
+                    testOutput.WriteLine(
                             "{0} BEGIN (Delay = {1}, Time = {2})" ,
                             MessagePackageToString(
                                     Source.NodeIdToDebugPos , Source.NodeIdToDebugPos[args.RequesterId] , Source.NodeIdToDebugPos[args.ReceiverId] ,
@@ -72,7 +75,7 @@ internal class NetworkConnection
                             expectSendPackage.Delay , DateTime.Now.TimeOfDay
                         );
                 await Task.Delay(expectSendPackage.Delay);
-                Console.WriteLine(
+                testOutput.WriteLine(
                         "{0}{1}" ,
                         MessagePackageToString(
                                 Source.NodeIdToDebugPos , Source.NodeIdToDebugPos[args.RequesterId] , Source.NodeIdToDebugPos[args.ReceiverId] ,
@@ -103,7 +106,7 @@ internal class NetworkConnection
             if (expectRecvPackageBase is not AppendEntriesReceivePackage expectRecvPackage)
             {
                 DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-                Console.WriteLine(
+                testOutput.WriteLine(
                         "Mismatch message on {0} -> {1}: AppendEntriesReceivePackage sent, but test case expect {2} ({3})" ,
                         Target.NodeIdToDebugPos[Target.NodeId] , Source.NodeIdToDebugPos[Source.NodeId] ,
                         expectRecvPackageBase.GetType() , DateTime.Now.TimeOfDay
@@ -113,7 +116,7 @@ internal class NetworkConnection
             else
             {
                 if (expectRecvPackageBase.Delay != 0)
-                    Console.WriteLine(
+                    testOutput.WriteLine(
                             "{0} BEGIN (Delay = {1}, Time = {2})" ,
                             MessagePackageToString(
                                     Target.NodeIdToDebugPos , Target.NodeIdToDebugPos[reply.ReceiverId] , Target.NodeIdToDebugPos[reply.ReplierId] ,
@@ -124,7 +127,7 @@ internal class NetworkConnection
                 await Task.Delay(expectRecvPackageBase.Delay);
                 (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
                 DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-                Console.WriteLine(
+                testOutput.WriteLine(
                         "{0}{1}" ,
                         MessagePackageToString(
                                 Target.NodeIdToDebugPos , Target.NodeIdToDebugPos[reply.ReceiverId] , Target.NodeIdToDebugPos[reply.ReplierId] ,
@@ -166,7 +169,7 @@ internal class NetworkConnection
             if (expectSendPackageBase is not VoteRequestSendPackage expectSendPackage)
             {
                 DebugLogs.Add((expectSendPackageBase , actualSendPackage , DateTime.Now));
-                Console.WriteLine(
+                testOutput.WriteLine(
                         "Mismatch message on {0} <- {1}: VoteRequestSendPackage sent, but test case expect {2} ({3})" ,
                         Target.NodeIdToDebugPos[Target.NodeId] , Source.NodeIdToDebugPos[Source.NodeId] ,
                         expectSendPackageBase.GetType() , DateTime.Now.TimeOfDay
@@ -178,7 +181,7 @@ internal class NetworkConnection
                 (actualSendPackage.Delay , actualSendPackage.MessageDropped) = (expectSendPackage.Delay , expectSendPackage.MessageDropped);
                 DebugLogs.Add((expectSendPackage , actualSendPackage , DateTime.Now));
                 if (expectSendPackage.Delay != 0)
-                    Console.WriteLine(
+                    testOutput.WriteLine(
                             "{0} BEGIN (Delay = {1}, Time = {2})" ,
                             MessagePackageToString(
                                     Source.NodeIdToDebugPos , Source.NodeIdToDebugPos[args.RequesterId] , Source.NodeIdToDebugPos[args.ReceiverId] ,
@@ -187,7 +190,7 @@ internal class NetworkConnection
                             expectSendPackage.Delay , DateTime.Now.TimeOfDay
                         );
                 await Task.Delay(expectSendPackage.Delay);
-                Console.WriteLine(
+                testOutput.WriteLine(
                         "{0}{1}" ,
                         MessagePackageToString(
                                 Source.NodeIdToDebugPos , Source.NodeIdToDebugPos[args.RequesterId] , Source.NodeIdToDebugPos[args.ReceiverId] ,
@@ -215,7 +218,7 @@ internal class NetworkConnection
             if (expectRecvPackageBase is not VoteRequestReceivePackage expectRecvPackage)
             {
                 DebugLogs.Add((expectRecvPackageBase , actualRecvPackage , DateTime.Now));
-                Console.WriteLine(
+                testOutput.WriteLine(
                         "Mismatch message on {0} -> {1}: VoteRequestReceivePackage sent, but test case expect {2} ({3})" ,
                         Target.NodeIdToDebugPos[Target.NodeId] , Source.NodeIdToDebugPos[Source.NodeId] ,
                         expectRecvPackageBase.GetType() , DateTime.Now.TimeOfDay
@@ -226,7 +229,7 @@ internal class NetworkConnection
             else
             {
                 if (expectRecvPackage.Delay != 0)
-                    Console.WriteLine(
+                    testOutput.WriteLine(
                             "{0} BEGIN (Delay = {1}, Time = {2})" ,
                             MessagePackageToString(
                                     Source.NodeIdToDebugPos , Source.NodeIdToDebugPos[reply.ReceiverId] , Source.NodeIdToDebugPos[reply.ReplierId] ,
@@ -237,7 +240,7 @@ internal class NetworkConnection
                 await Task.Delay(expectRecvPackage.Delay);
                 (actualRecvPackage.Delay , actualRecvPackage.MessageDropped) = (expectRecvPackage.Delay , expectRecvPackage.MessageDropped);
                 DebugLogs.Add((expectRecvPackage , actualRecvPackage , DateTime.Now));
-                Console.WriteLine(
+                testOutput.WriteLine(
                         "{0}{1}" ,
                         MessagePackageToString(
                                 Target.NodeIdToDebugPos , Target.NodeIdToDebugPos[reply.ReceiverId] , Target.NodeIdToDebugPos[reply.ReplierId] ,

@@ -1422,7 +1422,7 @@ public class RaftNodeTests
         {
             for (int j = 0; j < nodes.Length; j++)
             {
-                connections[i , j] = new NetworkConnection(nodes[i] , nodes[j]);
+                connections[i , j] = new NetworkConnection(nodes[i] , nodes[j] , testOutput);
 
                 if (i == j)
                     continue;
