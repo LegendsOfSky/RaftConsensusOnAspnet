@@ -22,11 +22,12 @@ internal class NetworkConnection
 
 
     public async Task HandleAppendEntriesAsync(
-        Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+        Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
     {
         int nextIndex = nextIndexes.TryGetValue(Target.NodeId , out int i) ? i : nextIndexes[Guid.Empty];
         AppendEntriesArgs args = new AppendEntriesArgs
-            {
+        {
+            RequestId = requestId ,
             RequesterId = Source.NodeId ,
             ReceiverId = Target.NodeId ,
             RequesterTerm = Source.CurrentTerm ,
@@ -37,7 +38,7 @@ internal class NetworkConnection
             Entries = [.. logEntries.Skip(nextIndex)] ,
         };
         AppendEntriesSendPackage actualSendPackage = new AppendEntriesSendPackage()
-            {
+        {
             MessageDropped = true ,
             Term = args.RequesterTerm ,
 
@@ -95,7 +96,7 @@ internal class NetworkConnection
         if (ExpectedMessagesChannel.Reader.Count > 0)
         {
             AppendEntriesReceivePackage actualRecvPackage = new AppendEntriesReceivePackage
-                {
+            {
                 Term = reply.ReplierTerm ,
 
                 Success = reply.AppendSuccess ,
@@ -143,10 +144,11 @@ internal class NetworkConnection
         }
     }
 
-    public async Task HandleVoteRequestAsync(Guid requesterId , int commitIndex , int previousLogTerm)
+    public async Task HandleVoteRequestAsync(Guid requestId , Guid requesterId , int commitIndex , int previousLogTerm)
     {
         VoteRequestArgs args = new VoteRequestArgs
-            {
+        {
+            RequestId = requestId ,
             RequesterId = Source.NodeId ,
             ReceiverId = Target.NodeId ,
             RequesterTerm =  Source.CurrentTerm ,
@@ -155,7 +157,7 @@ internal class NetworkConnection
             RequesterLastLogTerm = previousLogTerm ,
         };
         VoteRequestSendPackage actualSendPackage = new VoteRequestSendPackage
-            {
+        {
             MessageDropped = true ,
             Term = args.RequesterTerm ,
 
@@ -210,7 +212,7 @@ internal class NetworkConnection
         if (ExpectedMessagesChannel.Reader.Count > 0)
         {
             VoteRequestReceivePackage actualRecvPackage = new VoteRequestReceivePackage
-                {
+            {
                 Term = reply.ReplierTerm ,
                 Granted = reply.VoteGranted ,
             };

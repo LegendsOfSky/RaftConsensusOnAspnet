@@ -1,6 +1,6 @@
 ﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
 
-public record RequestMessageBase
+public record RequestMessageBase : MessageBase
 {
     public Guid RequesterId;
     public Guid ReceiverId;

@@ -43,8 +43,16 @@ public class RaftNode
     public readonly Guid NodeId;
     public readonly Channel<AppendEntriesReply> AppendEntriesReplyChannel;
     public readonly Channel<VoteRequestReply> VoteRequestReplyChannel;
-    public Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task>? AppendEntriesToOtherNodes;
-    public Func<Guid , int , int , Task>? SendVoteRequestToOtherNodes;
+    /// <remarks>
+    ///     Signature of the function:
+    ///     <code> async Task AppendEntriesToOtherNodes(Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList&lt;LogEntry&gt; logEntries , IReadOnlyDictionary&lt;Guid , int&gt; nextIndexes); </code>
+    /// </remarks>
+    public Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task>? AppendEntriesToOtherNodes;
+    /// <remarks>
+    ///     Signature of the function:
+    ///     <code> async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm); </code>
+    /// </remarks>
+    public Func<Guid , Guid , int , int , Task>? SendVoteRequestToOtherNodes;
     private readonly string dbFilePath;
     private readonly LogEntryList logEntries;
     private readonly TraceSource debugTrace;
@@ -297,6 +305,7 @@ public class RaftNode
 
         VoteRequestReply reply = new VoteRequestReply
         {
+            RequestId = args.RequestId ,
             ReceiverId = args.RequesterId ,
             ReplierId = NodeId ,
             ReplierTerm = CurrentTerm ,
@@ -382,6 +391,7 @@ public class RaftNode
 
         AppendEntriesReply reply = new AppendEntriesReply
         {
+            RequestId = args.RequestId ,
             ReceiverId = args.RequesterId ,
             ReplierId = NodeId ,
             ReplierTerm = CurrentTerm ,
@@ -546,9 +556,10 @@ public class RaftNode
         VoteInfo = (NodeId , CurrentTerm);
         if (SendVoteRequestToOtherNodes is null)
             throw new ArgumentNullException(nameof(SendVoteRequestToOtherNodes));
+        Guid requestId = Guid.NewGuid();
         Array.ForEach(
                 SendVoteRequestToOtherNodes.GetInvocationList() ,
-                requestFunction => ((Func<Guid , int , int , Task>)requestFunction).Invoke(NodeId , commitIndex , logEntries[commitIndex].Term)
+                requestFunction => ((Func<Guid , Guid , int , int , Task>)requestFunction).Invoke(requestId , NodeId , commitIndex , logEntries[commitIndex].Term)
             );
 
         int voteGranted = 1 , voteReceived = 1;
@@ -599,6 +610,12 @@ public class RaftNode
                 if (completedTask == waitForNewVoteRequestReply)
                 {
                     VoteRequestReply reply = await VoteRequestReplyChannel.Reader.ReadAsync();
+                    if (reply.RequestId != requestId)
+                    {
+                        debugTrace.TraceInformation($"{loggingPrefix}: Old reply received from node {NodeIdToDebugPos[reply.ReplierId]}.");
+                        continue;
+                    }
+
                     string replyRoutePrefix = ComputeRoutePrefix(NodeId , reply.ReplierId , reply.ReceiverId);
                     string replyLoggingPrefix = $"<{replyRoutePrefix} Term {CurrentTerm} {"runAsCandidate",-20}>";
 
@@ -693,13 +710,14 @@ public class RaftNode
         debugTrace.TraceInformation($"{loggingPrefix}: Sending append entries request to other nodes.");
         if (AppendEntriesToOtherNodes is null)
             throw new ArgumentNullException(nameof(AppendEntriesToOtherNodes));
+        Guid requestId = Guid.NewGuid();
         Array.ForEach(
                 AppendEntriesToOtherNodes.GetInvocationList() ,
                 appendFunctionDelegate =>
                 {
-                    Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task> appendFunction
-                        = (Func<Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task>)appendFunctionDelegate;
-                    appendFunction.Invoke(NodeId , commitIndex , logEntries , nextIndexes);
+                    Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task> appendFunction
+                        = (Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task>)appendFunctionDelegate;
+                    appendFunction.Invoke(requestId , NodeId , commitIndex , logEntries , nextIndexes);
                 }
             );
 
@@ -729,6 +747,11 @@ public class RaftNode
             if (completedTask == waitForNewAppendEntriesRequestReply)
             {
                 AppendEntriesReply reply = await AppendEntriesReplyChannel.Reader.ReadAsync();
+                if (reply.RequestId != requestId)
+                {
+                    debugTrace.TraceInformation($"{loggingPrefix}: Old reply received from node {NodeIdToDebugPos[reply.ReplierId]}.");
+                    continue;
+                }
                 debugTrace.TraceInformation($"{loggingPrefix}: New reply received from node {NodeIdToDebugPos[reply.ReplierId]}.");
 
                 Guid replyNodeId = reply.ReplierId;
