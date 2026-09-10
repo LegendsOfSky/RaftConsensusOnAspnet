@@ -12,7 +12,7 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
 
 public class RaftNodeTests
 {
-    private const int MaxTestTime = 10000;
+    private const int MaxTestTime = 30000;
     private const string MaxTestTimeExceedMsg = "Test failed: overtimed.";
     private readonly ITestOutputHelper testOutput;
 

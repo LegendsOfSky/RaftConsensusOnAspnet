@@ -144,19 +144,14 @@ public class RaftNode
         stopRaftTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         logEntries.Add(new LogEntry { Term = 0 });
         Task logEntriesSync = logEntries.StartSynchronizingStateMachineValueAsync();
-        while (true)
-        {
-            if (stopRaftTcs.Task.IsCompleted)
-                break;
-
+        while (!stopRaftTcs.Task.IsCompleted)
             switch (Role)
             {
                 case NodeRole.Follower:  await RunAsFollowerAsync();  break;
                 case NodeRole.Candidate: await RunAsCandidateAsync(); break;
                 case NodeRole.Leader:    await RunAsLeaderAsync();    break;
-                default: throw new UnreachableException();
+                default:                 throw new UnreachableException();
             }
-        }
 
         logEntries.StopSynchronizingStateMachineValue();
         await logEntriesSync;
@@ -542,6 +537,8 @@ public class RaftNode
 
     private async Task RunAsCandidateAsync()
     {
+        Task raftStopSignal = (stopRaftTcs ?? throw new InvalidOperationException()).Task;
+
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingPrefix = $"<{routePrefix} Term {CurrentTerm} {"runAsCandidate",-20}>";
         debugTrace.TraceEvent(TraceEventType.Verbose , 0 , $"{loggingPrefix}: BEGIN");
@@ -576,12 +573,15 @@ public class RaftNode
                 Task waitForNodeCountChange = changeNodeCountTcs.Task;
                 Task waitForNewVoteRequestReply = VoteRequestReplyChannel.Reader.WaitToReadAsync().AsTask();
                 Task completedTask = await Task.WhenAny(
+                        raftStopSignal ,
                         waitForElectionTimerEnd ,
                         waitForRevertToFollowerSignal ,
                         waitForElectionIntervalChange ,
                         waitForNodeCountChange ,
                         waitForNewVoteRequestReply
                     );
+                if (completedTask == raftStopSignal)
+                    return;
                 if (completedTask == waitForElectionTimerEnd)
                 {
                     standardTrace.TraceInformation("Election timeout, restart election.");
@@ -667,6 +667,8 @@ public class RaftNode
 
     private async Task RunAsFollowerAsync()
     {
+        Task raftStopSignal = (stopRaftTcs ?? throw new InvalidOperationException()).Task;
+
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingPrefix = $"<{routePrefix} Term {CurrentTerm} {"runAsFollower",-20}>";
         debugTrace.TraceEvent(TraceEventType.Verbose , 0 , $"{loggingPrefix}: BEGIN");
@@ -675,10 +677,13 @@ public class RaftNode
         Task waitForHeartBeatReceived = receiveHeartBeatTcs.Task;
         Task waitForElectionIntervalChange = changeElectionIntervalTcs.Task;
         Task completedTask = await Task.WhenAny(
+                raftStopSignal ,
                 waitForElectionTimerEnd ,
                 waitForHeartBeatReceived ,
                 waitForElectionIntervalChange
             );
+        if (completedTask == raftStopSignal)
+            return;
         if (completedTask == waitForElectionTimerEnd)
         {
             standardTrace.TraceInformation("Election timeout -> becoming candidate.");
@@ -702,6 +707,8 @@ public class RaftNode
 
     private async Task RunAsLeaderAsync()
     {
+        Task raftStopSignal = (stopRaftTcs ?? throw new InvalidOperationException()).Task;
+
         standardTrace.TraceEvent(TraceEventType.Verbose , 0 , "Begin as raft leader.");
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingPrefix = $"<{routePrefix} Term {CurrentTerm} {"runAsLeader",-20}>";
@@ -732,6 +739,8 @@ public class RaftNode
                     waitForRevertToFollowerSignal ,
                     waitForNewAppendEntriesRequestReply
                 );
+            if (completedTask == raftStopSignal)
+                return;
             if (completedTask == waitForRevertToFollowerSignal)
             {
                 standardTrace.TraceInformation("Revert to follower.");
