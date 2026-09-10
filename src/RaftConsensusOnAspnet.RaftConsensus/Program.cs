@@ -8,8 +8,8 @@ public class Program
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
         builder.Services.AddAuthorization();        // Add services to the container.
         builder.Services.AddOpenApi();              // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-        builder.Services.AddEndpointsApiExplorer(); // Add Swagger services
-        builder.Services.AddSwaggerGen();           // ^
+        builder.Services.AddEndpointsApiExplorer(); // <--+-< Add Swagger services
+        builder.Services.AddSwaggerGen();           // <--+
         WebApplication app = builder.Build();
 
         // Configure the HTTP request pipeline.
