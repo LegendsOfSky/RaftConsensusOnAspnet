@@ -635,7 +635,7 @@ public class RaftNode
                             if (voteGranted >= (nodeCount / 2 + 1))
                             {
                                 standardTrace.TraceInformation("Becoming leader with enough votes received.");
-                                debugTrace.TraceInformation($"{replyLoggingPrefix}: Becoming leader with enough votes received.");
+                                debugTrace.TraceInformation($"{loggingPrefix}: Becoming leader with enough votes received.");
                                 Role = NodeRole.Leader;
                                 LeaderId = NodeId;
                                 InitializeLeaderRequiredField();
