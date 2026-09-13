@@ -2,5 +2,5 @@
 
 public record MessageBase
 {
-    public Guid RequestId;
+    public Guid RequestId { get; set; }
 }

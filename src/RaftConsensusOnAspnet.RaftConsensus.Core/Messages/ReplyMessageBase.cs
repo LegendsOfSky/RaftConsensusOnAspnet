@@ -2,7 +2,7 @@
 
 public record ReplyMessageBase : MessageBase
 {
-    public Guid ReplierId;
-    public Guid ReceiverId;
-    public int ReplierTerm;
+    public Guid ReplierId { get; set; }
+    public Guid ReceiverId { get; set; }
+    public int ReplierTerm { get; set; }
 }

@@ -132,7 +132,8 @@ public class RaftNode
         foreach (TraceListener listener in debugTraceListenersIn ?? [])             //    |
             debugTrace.Listeners.Add(listener);  // <-------------------------------------+
         NodeIdToDebugPos = nodeIdToDebugPos ?? [];
-        NodeIdToDebugPos.Add(NodeId , NodeIdToDebugPos.Count);
+        if (!NodeIdToDebugPos.ContainsKey(NodeId))
+            NodeIdToDebugPos.Add(NodeId , NodeIdToDebugPos.Count);
     }
 
 

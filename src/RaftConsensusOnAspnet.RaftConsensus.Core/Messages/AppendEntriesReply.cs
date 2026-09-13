@@ -2,6 +2,6 @@
 
 public record AppendEntriesReply : ReplyMessageBase
 {
-    public bool AppendSuccess;
-    public int MatchIndex;
+    public bool AppendSuccess { get; set; }
+    public int MatchIndex { get; set; }
 }

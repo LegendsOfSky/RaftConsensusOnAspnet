@@ -2,6 +2,6 @@
 
 public record VoteRequestReply : ReplyMessageBase
 {
-    public int TermOfRequest;
-    public bool VoteGranted;
+    public int TermOfRequest { get; set; }
+    public bool VoteGranted { get; set; }
 }

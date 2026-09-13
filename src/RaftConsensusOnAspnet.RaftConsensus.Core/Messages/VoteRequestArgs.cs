@@ -2,6 +2,6 @@
 
 public record VoteRequestArgs : RequestMessageBase
 {
-    public int RequesterLastLogTerm;
-    public int RequesterLastLogIndex;
+    public int RequesterLastLogTerm { get; set; }
+    public int RequesterLastLogIndex { get; set; }
 }

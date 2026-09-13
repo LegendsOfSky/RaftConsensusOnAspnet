@@ -2,7 +2,7 @@
 
 public record RequestMessageBase : MessageBase
 {
-    public Guid RequesterId;
-    public Guid ReceiverId;
-    public int RequesterTerm;
+    public Guid RequesterId { get; set; }
+    public Guid ReceiverId { get; set; }
+    public int RequesterTerm { get; set; }
 }
