@@ -311,7 +311,7 @@ public class RaftNode
 
         if (args.ReceiverId != NodeId)
         {
-            debugTrace.TraceInformation($"{loggingPrefix}: Incorrect receiver. Request will be ignored.");
+            debugTrace.TraceInformation($"{loggingPrefix}: Incorrect receiver (actual: {args.ReceiverId}). Request will be ignored.");
             return reply;
         }
 
@@ -398,7 +398,7 @@ public class RaftNode
 
         if (args.ReceiverId != NodeId)
         {
-            debugTrace.TraceInformation($"{loggingPrefix}: Incorrect receiver. Request will be ignored.");
+            debugTrace.TraceInformation($"{loggingPrefix}: Incorrect receiver (actual: {args.ReceiverId}). Request will be ignored.");
             return reply;
         }
 
@@ -908,7 +908,7 @@ public class RaftNode
         resultBuilder[loggingPos * 2] = 'X';
 
         /* Drawing arrow */
-        if (sourceNodeId is not null && targetNodeId is not null)
+        if (sourceNodeId is not null && targetNodeId is not null && sourceNodeId != targetNodeId)
         {
             int min = Math.Min(sourcePos * 2 , targetPos * 2) , max = Math.Max(sourcePos * 2 , targetPos * 2);
             for (int i = min + 1; i < max; i++)

@@ -1,6 +1,8 @@
 services:
   node0:
     image: raft-node:latest
+    container_name: node0
+    hostname: node0
     command:
       - --debug
       - --timeout-interval
@@ -10,27 +12,20 @@ services:
       - --id
       - "00000000-0000-0000-0000-000000000001"
     build:
-      context: .
+      context: ../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
-    container_name: node0
-    hostname: node0
-    ports:
-      - "8080:7195"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:7195
-      INSTANCE_NAME: node0
-      INSTANCE_ID: "0"
-      Peer__node0: http://node0:7195
-      Peer__node1: http://node1:7195
-      Peer__node2: http://node2:7195
-      Peer__node3: http://node3:7195
-      Peer__node4: http://node4:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
     networks:
       - raft-net
 
   node1:
     image: raft-node:latest
+    container_name: node1
+    hostname: node1
     command:
       - --debug
       - --timeout-interval
@@ -40,27 +35,20 @@ services:
       - --id
       - "00000000-0000-0000-0000-000000000002"
     build:
-      context: .
+      context: ../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
-    container_name: node1
-    hostname: node1
-    ports:
-      - "8081:7195"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:7195
-      INSTANCE_NAME: node1
-      INSTANCE_ID: "1"
-      Peer__node0: http://node0:7195
-      Peer__node1: http://node1:7195
-      Peer__node2: http://node2:7195
-      Peer__node3: http://node3:7195
-      Peer__node4: http://node4:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
     networks:
       - raft-net
 
   node2:
     image: raft-node:latest
+    container_name: node2
+    hostname: node2
     command:
       - --debug
       - --timeout-interval
@@ -70,27 +58,20 @@ services:
       - --id
       - "00000000-0000-0000-0000-000000000003"
     build:
-      context: .
+      context: ../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
-    container_name: node2
-    hostname: node2
-    ports:
-      - "8082:7195"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:7195
-      INSTANCE_NAME: node2
-      INSTANCE_ID: "2"
-      Peer__node0: http://node0:7195
-      Peer__node1: http://node1:7195
-      Peer__node2: http://node2:7195
-      Peer__node3: http://node3:7195
-      Peer__node4: http://node4:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
     networks:
       - raft-net
 
   node3:
     image: raft-node:latest
+    container_name: node3
+    hostname: node3
     command:
       - --debug
       - --timeout-interval
@@ -100,27 +81,20 @@ services:
       - --id
       - "00000000-0000-0000-0000-000000000004"
     build:
-      context: .
+      context: ../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
-    container_name: node3
-    hostname: node3
-    ports:
-      - "8083:7195"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:7195
-      INSTANCE_NAME: node3
-      INSTANCE_ID: "3"
-      Peer__node0: http://node0:7195
-      Peer__node1: http://node1:7195
-      Peer__node2: http://node2:7195
-      Peer__node3: http://node3:7195
-      Peer__node4: http://node4:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
     networks:
       - raft-net
 
   node4:
     image: raft-node:latest
+    container_name: node4
+    hostname: node4
     command:
       - --debug
       - --timeout-interval
@@ -130,22 +104,13 @@ services:
       - --id
       - "00000000-0000-0000-0000-000000000005"
     build:
-      context: .
+      context: ../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
-    container_name: node4
-    hostname: node4
-    ports:
-      - "8084:7195"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:7195
-      INSTANCE_NAME: node4
-      INSTANCE_ID: "4"
-      Peer__node0: http://node0:7195
-      Peer__node1: http://node1:7195
-      Peer__node2: http://node2:7195
-      Peer__node3: http://node3:7195
-      Peer__node4: http://node4:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
     networks:
       - raft-net
 

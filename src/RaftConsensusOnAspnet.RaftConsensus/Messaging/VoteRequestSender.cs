@@ -26,6 +26,7 @@ internal class VoteRequestSender
     public async Task SendVoteRequestAsync(Guid requestId , Guid requesterId , int commitIndex , int previousLogTerm)
     {
         HttpClient client = httpClientFactory.CreateClient(ClientName);
+        Console.WriteLine($"sending to {ReceiverId}");
         using HttpResponseMessage response = await client.PatchAsync(
                     $"{Destination.TrimEnd('/')}/request-vote" +
                     $"?requestId={requestId}" +

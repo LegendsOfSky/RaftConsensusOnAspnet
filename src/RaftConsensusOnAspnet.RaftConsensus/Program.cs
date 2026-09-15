@@ -23,6 +23,7 @@ public class Program
         #region Configurate ASP.NET
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         builder.Configuration.AddJsonFile("configs/cluster.settings.json" , optional: false , reloadOnChange: true);
+        builder.Services.AddHealthChecks();
         builder.Services.AddAuthorization();        // Add services to the container.
         builder.Services.AddOpenApi();              // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddEndpointsApiExplorer(); // <--+-< Add Swagger services
