@@ -28,10 +28,9 @@ internal class VoteRequestSender
         HttpClient client = httpClientFactory.CreateClient(ClientName);
         Console.WriteLine($"sending to {ReceiverId}");
         using HttpResponseMessage response = await client.PatchAsync(
-                    $"{Destination.TrimEnd('/')}/request-vote" +
+                    $"{Destination.TrimEnd('/')}/api/node/vote" +
                     $"?requestId={requestId}" +
                     $"&requesterId={requesterId}" +
-                    $"&receiverId={ReceiverId}" +
                     $"&requesterTerm={HostNode.CurrentTerm}" +
                     $"&requesterLastLogTerm={commitIndex}" +
                     $"&requesterLastLogIndex={previousLogTerm}" ,

@@ -30,10 +30,9 @@ public class AppendEntriesRequestSender
         HttpClient client = httpClientFactory.CreateClient(ClientName);
         int nextIndex = nextIndexes.TryGetValue(HostNode.NodeId , out int i) ? i : nextIndexes[Guid.Empty];
         using HttpResponseMessage response = await client.PutAsJsonAsync(
-                $"{Destination.TrimEnd('/')}/append-entries" +
+                $"{Destination.TrimEnd('/')}/api/node/entries" +
                 $"?requestId={requestId}" +
                 $"&requesterId={requesterId}" +
-                $"&receiverId={ReceiverId}" +
                 $"&requesterTerm={HostNode.CurrentTerm}" +
                 $"&previousLogIndex={nextIndex - 1}" +
                 $"&previousLogTerm={logEntries[nextIndex - 1].Term}" +

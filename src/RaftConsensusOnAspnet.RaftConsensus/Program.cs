@@ -148,15 +148,15 @@ public class Program
 
                     #region Bind endpoint to bussiness logic
                     app.MapPut(
-                            "/append-entries" ,
-                            (Guid requestId , Guid requesterId , Guid receiverId , int requesterTerm ,
+                            "/api/node/entries" ,
+                            (Guid requestId , Guid requesterId , int requesterTerm ,
                              int previousLogIndex , int previousLogTerm , int leaderCommit , IReadOnlyList<LogEntry> entries)
                                 => s_RaftNode.HandleAppendEntries(
                                         new AppendEntriesArgs
                                         {
                                             RequestId = requestId ,
                                             RequesterId = requesterId ,
-                                            ReceiverId = receiverId ,
+                                            ReceiverId = nodeId ,
                                             RequesterTerm = requesterTerm ,
                                             PreviousLogIndex = previousLogIndex ,
                                             PreviousLogTerm = previousLogTerm ,
@@ -166,22 +166,27 @@ public class Program
                                     )
                         ).WithName("AppendEntries");
                     app.MapPatch(
-                            "/request-vote" ,
-                            (Guid requestId , Guid requesterId , Guid receiverId , int requesterTerm , int requesterLastLogTerm , int requesterLastLogIndex)
+                            "/api/node/vote" ,
+                            (Guid requestId , Guid requesterId , int requesterTerm , int requesterLastLogTerm , int requesterLastLogIndex)
                                 => s_RaftNode.HandleVoteRequest(
                                         new VoteRequestArgs
                                         {
                                             RequestId = requestId ,
                                             RequesterId = requesterId ,
-                                            ReceiverId = receiverId ,
+                                            ReceiverId = nodeId ,
                                             RequesterTerm = requesterTerm ,
                                             RequesterLastLogTerm = requesterLastLogTerm ,
                                             RequesterLastLogIndex = requesterLastLogIndex ,
                                         }
                                     )
                         ).WithName("RequestVote");
-                    app.MapPost("/stop" , StopRaftNode)
-                        .WithName("Stop");
+                    app.MapDelete("/api/node" , (IHostApplicationLifetime lifetime) =>  // WARNING: keep this API hide behind proxy
+                        {
+                            s_RaftNode?.Stop();
+                            lifetime.StopApplication();
+                            return Results.Ok("Shutting down");
+                        })
+                        .WithName("StopRaftNode");
                     #endregion
 
                     Task raftWorking = s_RaftNode.StartAsync();
@@ -193,6 +198,4 @@ public class Program
 
         return rootCommand.Parse(args).Invoke();
     }
-
-    private static void StopRaftNode() => s_RaftNode?.Stop();
 }
