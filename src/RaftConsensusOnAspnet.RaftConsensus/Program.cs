@@ -147,8 +147,15 @@ public class Program
                     #endregion
 
                     #region Bind endpoint to bussiness logic
+                    app.MapDelete("/api/node" , (IHostApplicationLifetime lifetime) =>  // WARNING: keep this API hide behind proxy
+                        {
+                            s_RaftNode?.Stop();
+                            lifetime.StopApplication();
+                            return Results.Ok("Shutting down");
+                        })
+                        .WithName("StopRaftNode");
                     app.MapPut(
-                            "/api/node/entries" ,
+                            "/api/node/entries/" ,
                             (Guid requestId , Guid requesterId , int requesterTerm ,
                              int previousLogIndex , int previousLogTerm , int leaderCommit , IReadOnlyList<LogEntry> entries)
                                 => s_RaftNode.HandleAppendEntries(
@@ -180,13 +187,6 @@ public class Program
                                         }
                                     )
                         ).WithName("RequestVote");
-                    app.MapDelete("/api/node" , (IHostApplicationLifetime lifetime) =>  // WARNING: keep this API hide behind proxy
-                        {
-                            s_RaftNode?.Stop();
-                            lifetime.StopApplication();
-                            return Results.Ok("Shutting down");
-                        })
-                        .WithName("StopRaftNode");
                     #endregion
 
                     Task raftWorking = s_RaftNode.StartAsync();
