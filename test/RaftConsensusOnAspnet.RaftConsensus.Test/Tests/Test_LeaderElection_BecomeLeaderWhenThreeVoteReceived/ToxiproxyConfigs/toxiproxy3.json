@@ -1,0 +1,8 @@
+[
+  {
+    "name": "toNode3",
+    "listen": "0.0.0.0:7195",
+    "upstream": "node3:7195",
+    "enabled": true
+  }
+]
