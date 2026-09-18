@@ -22,7 +22,7 @@ public class Program
     {
         #region Configurate ASP.NET
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        builder.Configuration.AddJsonFile("configs/cluster.settings.json" , optional: false , reloadOnChange: true);
+        AddClusterConfigToBuilderConfiguration(builder);
         builder.Services.AddHealthChecks();
         builder.Services.AddAuthorization();        // Add services to the container.
         builder.Services.AddOpenApi();              // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -172,6 +172,12 @@ public class Program
                                         }
                                     )
                         ).WithName("AppendEntries");
+                    app.MapPost(
+                            "/api/node/heart-beat-interval" , (int newValue) => s_RaftNode.SetHeartBeatInterval(newValue)
+                        ).WithName("ModifyHeartBeatInterval");
+                    app.MapPost(
+                            "/api/node/election-timeout-interval" , (int newValue) => s_RaftNode.SetElectionTimeoutInterval(newValue)
+                        ).WithName("ModifyElectionTimeoutInterval");
                     app.MapPatch(
                             "/api/node/vote" ,
                             (Guid requestId , Guid requesterId , int requesterTerm , int requesterLastLogTerm , int requesterLastLogIndex)
@@ -197,5 +203,18 @@ public class Program
             );
 
         return rootCommand.Parse(args).Invoke();
+    }
+
+    private static void AddClusterConfigToBuilderConfiguration(WebApplicationBuilder builder)
+    {
+        string contentRoot = builder.Environment.ContentRootPath;
+        string clusterFile = Path.Combine(contentRoot , "configs" , "cluster.settings.json");
+        string sampleFile  = Path.Combine(contentRoot ,  "configs" , "sample.cluster.settings.json");
+        if (File.Exists(clusterFile))
+            builder.Configuration.AddJsonFile("configs/cluster.settings.json" , optional: false , reloadOnChange: true);
+        else if (File.Exists(sampleFile))
+            builder.Configuration.AddJsonFile("configs/sample.cluster.settings.json" , optional: false , reloadOnChange: true);
+        else
+            Trace.TraceError("Missing cluster settings.");
     }
 }
