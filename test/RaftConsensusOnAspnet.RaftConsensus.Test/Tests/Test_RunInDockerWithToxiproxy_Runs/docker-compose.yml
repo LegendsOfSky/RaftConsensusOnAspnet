@@ -1,0 +1,220 @@
+services:
+  node0:
+    image: raft-node:latest
+    container_name: node0
+    hostname: node0
+    command:
+      - --debug
+      - --timeout-interval
+      - "1500"
+      - --heart-beat-interval
+      - "1000"
+      - --id
+      - "00000000-0000-0000-0000-000000000001"
+    ports:
+      - "7195:7195"
+    build:
+      context: ../../../..
+      dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
+    depends_on:
+      - toxiproxy0
+      - toxiproxy1
+      - toxiproxy2
+      - toxiproxy3
+      - toxiproxy4
+    networks:
+      - raft-net
+
+  node1:
+    image: raft-node:latest
+    container_name: node1
+    hostname: node1
+    command:
+      - --debug
+      - --timeout-interval
+      - "2000"
+      - --heart-beat-interval
+      - "1000"
+      - --id
+      - "00000000-0000-0000-0000-000000000002"
+    ports:
+      - "7196:7195"
+    build:
+      context: ../../../..
+      dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
+    depends_on:
+      - toxiproxy0
+      - toxiproxy1
+      - toxiproxy2
+      - toxiproxy3
+      - toxiproxy4
+    networks:
+      - raft-net
+
+  node2:
+    image: raft-node:latest
+    container_name: node2
+    hostname: node2
+    command:
+      - --debug
+      - --timeout-interval
+      - "2000"
+      - --heart-beat-interval
+      - "1000"
+      - --id
+      - "00000000-0000-0000-0000-000000000003"
+    ports:
+      - "7197:7195"
+    build:
+      context: ../../../..
+      dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
+    depends_on:
+      - toxiproxy0
+      - toxiproxy1
+      - toxiproxy2
+      - toxiproxy3
+      - toxiproxy4
+    networks:
+      - raft-net
+
+  node3:
+    image: raft-node:latest
+    container_name: node3
+    hostname: node3
+    command:
+      - --debug
+      - --timeout-interval
+      - "2000"
+      - --heart-beat-interval
+      - "1000"
+      - --id
+      - "00000000-0000-0000-0000-000000000004"
+    ports:
+      - "7198:7195"
+    build:
+      context: ../../../..
+      dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
+    depends_on:
+      - toxiproxy0
+      - toxiproxy1
+      - toxiproxy2
+      - toxiproxy3
+      - toxiproxy4
+    networks:
+      - raft-net
+
+  node4:
+    image: raft-node:latest
+    container_name: node4
+    hostname: node4
+    command:
+      - --debug
+      - --timeout-interval
+      - "2000"
+      - --heart-beat-interval
+      - "1000"
+      - --id
+      - "00000000-0000-0000-0000-000000000005"
+    ports:
+      - "7199:7195"
+    build:
+      context: ../../../..
+      dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
+    depends_on:
+      - toxiproxy0
+      - toxiproxy1
+      - toxiproxy2
+      - toxiproxy3
+      - toxiproxy4
+    networks:
+      - raft-net
+
+  toxiproxy0:
+    image: ghcr.io/shopify/toxiproxy
+    container_name: toxiproxy0
+    hostname: toxiproxy0
+    command: ["-host", "0.0.0.0", "-config", "/configs/toxiproxy.json"]
+    ports:
+      - "8474:8474"
+    volumes:
+      - ./ToxiproxyConfigs/toxiproxy0.json:/configs/toxiproxy.json:ro
+    networks:
+      - raft-net
+
+  toxiproxy1:
+    image: ghcr.io/shopify/toxiproxy
+    container_name: toxiproxy1
+    hostname: toxiproxy1
+    command: ["-host", "0.0.0.0", "-config", "/configs/toxiproxy.json"]
+    ports:
+      - "8475:8474"
+    volumes:
+      - ./ToxiproxyConfigs/toxiproxy1.json:/configs/toxiproxy.json:ro
+    networks:
+      - raft-net
+
+  toxiproxy2:
+    image: ghcr.io/shopify/toxiproxy
+    container_name: toxiproxy2
+    hostname: toxiproxy2
+    command: ["-host", "0.0.0.0", "-config", "/configs/toxiproxy.json"]
+    ports:
+      - "8476:8474"
+    volumes:
+      - ./ToxiproxyConfigs/toxiproxy2.json:/configs/toxiproxy.json:ro
+    networks:
+      - raft-net
+
+  toxiproxy3:
+    image: ghcr.io/shopify/toxiproxy
+    container_name: toxiproxy3
+    hostname: toxiproxy3
+    command: ["-host", "0.0.0.0", "-config", "/configs/toxiproxy.json"]
+    ports:
+      - "8477:8474"
+    volumes:
+      - ./ToxiproxyConfigs/toxiproxy3.json:/configs/toxiproxy.json:ro
+    networks:
+      - raft-net
+
+  toxiproxy4:
+    image: ghcr.io/shopify/toxiproxy
+    container_name: toxiproxy4
+    hostname: toxiproxy4
+    command: ["-host", "0.0.0.0", "-config", "/configs/toxiproxy.json"]
+    ports:
+      - "8478:8474"
+    volumes:
+      - ./ToxiproxyConfigs/toxiproxy4.json:/configs/toxiproxy.json:ro
+    networks:
+      - raft-net
+
+networks:
+  raft-net:
+    name: raft-net
+    driver: bridge

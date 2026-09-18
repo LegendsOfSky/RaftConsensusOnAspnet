@@ -1,0 +1,8 @@
+[
+  {
+    "name": "toNode4",
+    "listen": "0.0.0.0:7195",
+    "upstream": "node4:7195",
+    "enabled": true
+  }
+]
