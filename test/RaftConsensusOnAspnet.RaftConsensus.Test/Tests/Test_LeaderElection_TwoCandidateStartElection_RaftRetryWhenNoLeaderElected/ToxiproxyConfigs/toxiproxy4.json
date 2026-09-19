@@ -1,0 +1,38 @@
+[
+  {
+    "name": "toNode4",
+    "listen": "0.0.0.0:7195",
+    "upstream": "node4:7195",
+    "enabled": true
+  },
+  {
+    "name": "fromNode0",
+    "listen": "0.0.0.0:7190",
+    "upstream": "127.0.0.1:7195",
+    "enabled": true
+  },
+  {
+    "name": "fromNode1",
+    "listen": "0.0.0.0:7191",
+    "upstream": "127.0.0.1:7195",
+    "enabled": true
+  },
+  {
+    "name": "fromNode2",
+    "listen": "0.0.0.0:7192",
+    "upstream": "127.0.0.1:7195",
+    "enabled": true
+  },
+  {
+    "name": "fromNode3",
+    "listen": "0.0.0.0:7193",
+    "upstream": "127.0.0.1:7195",
+    "enabled": true
+  },
+  {
+    "name": "fromNode4",
+    "listen": "0.0.0.0:7194",
+    "upstream": "127.0.0.1:7195",
+    "enabled": true
+  }
+]
