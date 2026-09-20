@@ -155,7 +155,7 @@ public class Program
                         })
                         .WithName("StopRaftNode");
                     app.MapPut(
-                            "/api/node/entries/" ,
+                            "/api/node/entries" ,
                             (Guid requestId , Guid requesterId , int requesterTerm ,
                              int previousLogIndex , int previousLogTerm , int leaderCommit , IReadOnlyList<LogEntry> entries)
                                 => s_RaftNode.HandleAppendEntries(
