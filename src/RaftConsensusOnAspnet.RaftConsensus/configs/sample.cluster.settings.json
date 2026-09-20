@@ -8,7 +8,7 @@
     {
       "Name": "Node B",
       "NodeId": "00000000-0000-0000-0000-000000000002",
-      "ip": "http://node1:7195"
+      "Ip": "http://node1:7195"
     },
     {
       "Name": "Node C",
