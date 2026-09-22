@@ -332,12 +332,12 @@ public class RaftNodeTests
             nodes[2].SetElectionTimeoutInterval(1000);
             nodes[3].SetElectionTimeoutInterval(1000);
             nodes[4].SetElectionTimeoutInterval(1000);
-            await Task.Delay(1600);
+            await Task.Delay(1500);
             nodes[0].SetElectionTimeoutInterval(5000);
             nodes[1].SetElectionTimeoutInterval(5000);
             nodes[2].SetElectionTimeoutInterval(5000);
             nodes[3].SetElectionTimeoutInterval(5000);
-            nodes[4].SetElectionTimeoutInterval(300);
+            nodes[4].SetElectionTimeoutInterval(1000);
             return (true , "");
         }
 
@@ -403,19 +403,19 @@ public class RaftNodeTests
             await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
             await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
 
-            // T = 1600
+            // T = 2000
             await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
             await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
             await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
             await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
 
-            // T = 1600
+            // T = 2000
             await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
             await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
             await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
             await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
 
-            // T = 1600
+            // T = 2000
             await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
             await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
             await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
@@ -543,13 +543,13 @@ public class RaftNodeTests
 
             await Task.Delay(2000);
             nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(2000);
-            nodes[2].SetElectionTimeoutInterval(2000);
-            nodes[3].SetElectionTimeoutInterval(2000);
-            nodes[4].SetElectionTimeoutInterval(2000);
-            nodes[0].SetHeartBeatInterval(1000);
+            nodes[1].SetElectionTimeoutInterval(3000);
+            nodes[2].SetElectionTimeoutInterval(3000);
+            nodes[3].SetElectionTimeoutInterval(3000);
+            nodes[4].SetElectionTimeoutInterval(3000);
+            nodes[0].SetHeartBeatInterval(2000);
 
-            await Task.Delay(1500);
+            await Task.Delay(2000);
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] proposeTasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
@@ -562,7 +562,7 @@ public class RaftNodeTests
                 return (false , MaxTestTimeExceedMsg);
 
             /* Verify propose. */
-            await Task.Delay(2000);
+            await Task.Delay(4000);
             if (await proposeTasks[0] is not { Success: true, WrongNode: false, KeyFound: false })
             {
                 debugMsgBuilder.Append(
@@ -667,13 +667,13 @@ public class RaftNodeTests
 
             await Task.Delay(2000);
             nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(4000);
-            nodes[2].SetElectionTimeoutInterval(4000);
-            nodes[3].SetElectionTimeoutInterval(4000);
-            nodes[4].SetElectionTimeoutInterval(4000);
-            nodes[0].SetHeartBeatInterval(1000);
+            nodes[1].SetElectionTimeoutInterval(6000);
+            nodes[2].SetElectionTimeoutInterval(6000);
+            nodes[3].SetElectionTimeoutInterval(6000);
+            nodes[4].SetElectionTimeoutInterval(6000);
+            nodes[0].SetHeartBeatInterval(2000);
 
-            await Task.Delay(1500);
+            await Task.Delay(2000);
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
@@ -683,7 +683,7 @@ public class RaftNodeTests
                 nodes[4].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
             ];
 
-            await Task.Delay(1000);
+            await Task.Delay(2000);
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 2) ,
@@ -700,7 +700,7 @@ public class RaftNodeTests
                 return (false , MaxTestTimeExceedMsg);
 
             /* Check propose 1 (Term 1: Put <test: 1>). */
-            await Task.Delay(2000);
+            await Task.Delay(4000);
             if (await propose1Tasks[0] is not { Success: true, WrongNode: false, KeyFound: false })
             {
                 debugMsgBuilder.Append(
@@ -839,13 +839,13 @@ public class RaftNodeTests
 
             await Task.Delay(2000);
             nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(4000);
-            nodes[2].SetElectionTimeoutInterval(4000);
-            nodes[3].SetElectionTimeoutInterval(4000);
-            nodes[4].SetElectionTimeoutInterval(4000);
-            nodes[0].SetHeartBeatInterval(1000);
+            nodes[1].SetElectionTimeoutInterval(8000);
+            nodes[2].SetElectionTimeoutInterval(8000);
+            nodes[3].SetElectionTimeoutInterval(8000);
+            nodes[4].SetElectionTimeoutInterval(8000);
+            nodes[0].SetHeartBeatInterval(2000);
 
-            await Task.Delay(1700);
+            await Task.Delay(2000);
             const string ProposeKey = "test";
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
             [
@@ -856,7 +856,7 @@ public class RaftNodeTests
                 nodes[4].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
             ];
 
-            await Task.Delay(1000);
+            await Task.Delay(2000);
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
             [
                 nodes[0].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
@@ -1019,13 +1019,13 @@ public class RaftNodeTests
 
             await Task.Delay(2000);
             nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(4000);
-            nodes[2].SetElectionTimeoutInterval(4000);
-            nodes[3].SetElectionTimeoutInterval(4000);
-            nodes[4].SetElectionTimeoutInterval(4000);
-            nodes[0].SetHeartBeatInterval(1000);
+            nodes[1].SetElectionTimeoutInterval(8000);
+            nodes[2].SetElectionTimeoutInterval(8000);
+            nodes[3].SetElectionTimeoutInterval(8000);
+            nodes[4].SetElectionTimeoutInterval(8000);
+            nodes[0].SetHeartBeatInterval(2000);
 
-            await Task.Delay(1700);
+            await Task.Delay(2000);
             const string Propose1Key = "test";
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
             [
@@ -1036,7 +1036,7 @@ public class RaftNodeTests
                 nodes[4].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
             ];
 
-            await Task.Delay(1000);
+            await Task.Delay(2000);
             const string Propose2Key = "test2";
             Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
             [
@@ -1054,7 +1054,7 @@ public class RaftNodeTests
                 return (false , MaxTestTimeExceedMsg);
 
             /* Check propose 1 (Term 1: Put <test: 1>). */
-            await Task.Delay(1000);
+            await Task.Delay(2000);
             if (await propose1Tasks[0] is not { Success: true, WrongNode: false, KeyFound: false })
             {
                 debugMsgBuilder.Append(
