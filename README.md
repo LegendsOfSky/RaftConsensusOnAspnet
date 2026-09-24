@@ -220,3 +220,4 @@ The current test is ported from CUHK's poorly designed unit test, therefore it w
 ## Credits
 - [CUHK Raft consensus assignment (Fall 2025-2026 Term 2)](https://github.com/LegendsOfSky/cuhk-raft-LegendsOfSky)
 - Paper `In Search of an Understandable Consensus Algorithm (Extended Version)` by Diego Ongaro and John Ousterhout
+- [RichardLitt/standard-readme](https://github.com/RichardLitt/standard-readme)
