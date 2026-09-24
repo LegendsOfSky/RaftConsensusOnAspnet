@@ -202,6 +202,8 @@ public class RaftNode
     /// </returns>>
     public async Task<(bool Success , bool WrongNode , bool? KeyFound)> ProposeAsync(LogEntryOperation operation , string? key , object? value)
     {
+        Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
+
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingPrefix = $"<{routePrefix} Term {CurrentTerm} {"Propose",-20}>";
         debugTrace.TraceEvent(TraceEventType.Verbose , 0 , $"{loggingPrefix}: BEGIN");
@@ -225,13 +227,12 @@ public class RaftNode
             return (false , false , false);
         }
 
+        Task waitForNewEntriesCommitedSignal = commitNewEntryTcs.Task;
         LogEntry entry = new Int32LogEntry(CurrentTerm , operation , key , (int?)value);
         logEntries.Add(entry);
         int thisLogIndex = logEntries.Index().First(kvp => kvp.Item.Equals(entry)).Index;
         while (true)
         {
-            Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
-            Task waitForNewEntriesCommitedSignal = commitNewEntryTcs.Task;
             Task finishedTask = await Task.WhenAny(
                     waitForRevertToFollowerSignal ,
                     waitForNewEntriesCommitedSignal
@@ -538,7 +539,9 @@ public class RaftNode
 
     private async Task RunAsCandidateAsync()
     {
-        Task raftStopSignal = (stopRaftTcs ?? throw new InvalidOperationException()).Task;
+        Task raftStopSignal = stopRaftTcs?.Task ?? throw new InvalidOperationException(); 
+        Task waitForNodeCountChange = changeNodeCountTcs.Task;
+        Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
 
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingPrefix = $"<{routePrefix} Term {CurrentTerm} {"runAsCandidate",-20}>";
@@ -563,15 +566,13 @@ public class RaftNode
         int voteGranted = 1 , voteReceived = 1;
         while (true)
         {
+            Task waitForElectionIntervalChange = changeElectionIntervalTcs.Task;
             Task waitForElectionTimerEnd = Task.Delay(electionTimeoutInterval);
             standardTrace.TraceInformation($"Start waiting for vote replies until {electionTimeoutInterval} of election timer runs out.");
             debugTrace.TraceInformation($"{loggingPrefix}: Start waiting for vote replies until {electionTimeoutInterval} of election timer runs out.");
 
             while (true)
             {
-                Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
-                Task waitForElectionIntervalChange = changeElectionIntervalTcs.Task;
-                Task waitForNodeCountChange = changeNodeCountTcs.Task;
                 Task waitForNewVoteRequestReply = VoteRequestReplyChannel.Reader.WaitToReadAsync().AsTask();
                 Task completedTask = await Task.WhenAny(
                         raftStopSignal ,
@@ -668,7 +669,7 @@ public class RaftNode
 
     private async Task RunAsFollowerAsync()
     {
-        Task raftStopSignal = (stopRaftTcs ?? throw new InvalidOperationException()).Task;
+        Task raftStopSignal = stopRaftTcs?.Task ?? throw new InvalidOperationException();
 
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
         string loggingPrefix = $"<{routePrefix} Term {CurrentTerm} {"runAsFollower",-20}>";
@@ -708,7 +709,8 @@ public class RaftNode
 
     private async Task RunAsLeaderAsync()
     {
-        Task raftStopSignal = (stopRaftTcs ?? throw new InvalidOperationException()).Task;
+        Task raftStopSignal = stopRaftTcs?.Task ?? throw new InvalidOperationException();
+        Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
 
         standardTrace.TraceEvent(TraceEventType.Verbose , 0 , "Begin as raft leader.");
         string routePrefix = ComputeRoutePrefix(NodeId , null , null);
@@ -729,14 +731,16 @@ public class RaftNode
                 }
             );
 
+        Task waitForHeartBeatIntervalChanged = changeHeartBeatIntervalTcs.Task;
         Task waitForHeartBeatTimerEnd = Task.Delay(heartBeatInterval);
         while (true)
         {
             debugTrace.TraceInformation($"{loggingPrefix}: Wait for replies of append entries requests.");
-            Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
             Task waitForNewAppendEntriesRequestReply = AppendEntriesReplyChannel.Reader.WaitToReadAsync().AsTask();
             Task completedTask = await Task.WhenAny(
+                    raftStopSignal ,
                     waitForHeartBeatTimerEnd ,
+                    waitForHeartBeatIntervalChanged ,
                     waitForRevertToFollowerSignal ,
                     waitForNewAppendEntriesRequestReply
                 );
