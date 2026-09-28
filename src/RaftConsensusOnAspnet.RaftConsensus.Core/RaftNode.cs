@@ -156,14 +156,12 @@ public class RaftNode
 
         logEntries.StopSynchronizingStateMachineValue();
         await logEntriesSync;
+
+        standardTrace.TraceEvent(TraceEventType.Stop , 0 , "Raft node stop.");
+        debugTrace.TraceEvent(TraceEventType.Stop , 0 , "Raft node stop.");
     }
 
-    public void Stop()
-    {
-        standardTrace.TraceEvent(TraceEventType.Start , 0 , "Raft node stop.");
-        debugTrace.TraceEvent(TraceEventType.Start , 0 , "Raft node stop.");
-        stopRaftTcs?.TrySetResult();
-    }
+    public void Stop() => stopRaftTcs?.TrySetResult();
 
     public (bool Success , bool KeyFound , object? Value) GetValue(string key)
     {
@@ -297,7 +295,7 @@ public class RaftNode
         string routePrefix = ComputeRoutePrefix(NodeId , args.ReceiverId , args.RequesterId);
         string loggingPrefix = $"<{routePrefix} Term {CurrentTerm} {"HandleVoteRequest",-20}>";
         debugTrace.TraceEvent(TraceEventType.Verbose , 0 , $"{loggingPrefix}: BEGIN");
-        debugTrace.TraceInformation($"{loggingPrefix}: Handle vote request from node {NodeIdToDebugPos[args.RequesterId]}");
+        debugTrace.TraceInformation($"{loggingPrefix}: Handle vote request from node {GetDebugNodeIntId(args.RequesterId)}");
         standardTrace.TraceInformation($"Handle vote request from node {args.RequesterId}");
 
         VoteRequestReply reply = new VoteRequestReply
@@ -360,7 +358,7 @@ public class RaftNode
         /* reject when this node has vote for others */
         if (VoteInfo.TermOfVote == CurrentTerm && VoteInfo.VoteFor != Guid.Empty && VoteInfo.VoteFor != args.RequesterId)
         {
-            debugTrace.TraceInformation($"{loggingPrefix}: This node has voted for other node ({NodeIdToDebugPos[VoteInfo.VoteFor]}), vote request rejected.");
+            debugTrace.TraceInformation($"{loggingPrefix}: This node has voted for other node ({GetDebugNodeIntId(VoteInfo.VoteFor)}), vote request rejected.");
             return reply;
         }
 
@@ -383,7 +381,7 @@ public class RaftNode
         string routePrefix = ComputeRoutePrefix(NodeId , args.ReceiverId , args.RequesterId);
         string loggingPrefix = $"<{routePrefix} Term {CurrentTerm} {"HandleAppendEntries",-20}>";
         debugTrace.TraceEvent(TraceEventType.Verbose , 0 , $"{loggingPrefix}: BEGIN");
-        debugTrace.TraceInformation($"{loggingPrefix}: Handle append entries request from node {NodeIdToDebugPos[args.RequesterId]}");
+        debugTrace.TraceInformation($"{loggingPrefix}: Handle append entries request from node {GetDebugNodeIntId(args.RequesterId)}");
         standardTrace.TraceInformation($"Handle append entries request from node {args.RequesterId}");
 
         AppendEntriesReply reply = new AppendEntriesReply
@@ -412,7 +410,7 @@ public class RaftNode
         }
 
         standardTrace.TraceInformation($"Update leader to node {args.RequesterId}");
-        debugTrace.TraceInformation($"{loggingPrefix}: Update leader to node {NodeIdToDebugPos[args.RequesterId]}");
+        debugTrace.TraceInformation($"{loggingPrefix}: Update leader to node {GetDebugNodeIntId(args.RequesterId)}");
         LeaderId = args.RequesterId;
 
         switch (Role)
@@ -614,7 +612,7 @@ public class RaftNode
                     VoteRequestReply reply = await VoteRequestReplyChannel.Reader.ReadAsync();
                     if (reply.RequestId != requestId)
                     {
-                        debugTrace.TraceInformation($"{loggingPrefix}: Old reply received from node {NodeIdToDebugPos[reply.ReplierId]}.");
+                        debugTrace.TraceInformation($"{loggingPrefix}: Old reply received from node {GetDebugNodeIntId(reply.ReplierId)}.");
                         continue;
                     }
 
@@ -641,14 +639,14 @@ public class RaftNode
                         if (!reply.VoteGranted)
                         {
                             standardTrace.TraceInformation($"Being rejected from node {reply.ReplierId}.");
-                            debugTrace.TraceInformation($"{replyLoggingPrefix}: Being rejected from node {NodeIdToDebugPos[reply.ReplierId]}.");
+                            debugTrace.TraceInformation($"{replyLoggingPrefix}: Being rejected from node {GetDebugNodeIntId(reply.ReplierId)}.");
                         }
                         else
                         {
                             voteGranted++;
                             debugTrace.TraceInformation(
                                     "{0}: Vote granted from node {1} ({2}/{3}/{4})." ,
-                                    replyLoggingPrefix , NodeIdToDebugPos[reply.ReplierId] , voteGranted , voteReceived , nodeCount
+                                    replyLoggingPrefix , GetDebugNodeIntId(reply.ReplierId) , voteGranted , voteReceived , nodeCount
                                 );
 
                             if (voteGranted >= (nodeCount / 2 + 1))
@@ -763,10 +761,10 @@ public class RaftNode
                 AppendEntriesReply reply = await AppendEntriesReplyChannel.Reader.ReadAsync();
                 if (reply.RequestId != requestId)
                 {
-                    debugTrace.TraceInformation($"{loggingPrefix}: Old reply received from node {NodeIdToDebugPos[reply.ReplierId]}.");
+                    debugTrace.TraceInformation($"{loggingPrefix}: Old reply received from node {GetDebugNodeIntId(reply.ReplierId)}.");
                     continue;
                 }
-                debugTrace.TraceInformation($"{loggingPrefix}: New reply received from node {NodeIdToDebugPos[reply.ReplierId]}.");
+                debugTrace.TraceInformation($"{loggingPrefix}: New reply received from node {GetDebugNodeIntId(reply.ReplierId)}.");
 
                 Guid replyNodeId = reply.ReplierId;
                 int replyMatchIndex = reply.MatchIndex;
@@ -899,6 +897,12 @@ public class RaftNode
     #region Debug Helper
     private string ComputeRoutePrefix(Guid loggingNodeId , Guid? sourceNodeId , Guid? targetNodeId)
     {
+        bool parameterExists = NodeIdToDebugPos.ContainsKey(loggingNodeId)
+            && (sourceNodeId is null || NodeIdToDebugPos.ContainsKey(sourceNodeId.Value))
+            && (targetNodeId is null || NodeIdToDebugPos.ContainsKey(targetNodeId.Value));
+        if (!parameterExists)
+            return "X";
+
         int resultLength = NodeIdToDebugPos.Count * 2 - 1;
         StringBuilder resultBuilder = new StringBuilder(resultLength).Append(' ' , resultLength);
 
@@ -925,5 +929,10 @@ public class RaftNode
 
         return resultBuilder.ToString();
     }
+
+    private string GetDebugNodeIntId(Guid nodeId)
+        => NodeIdToDebugPos.TryGetValue(nodeId , out int nodeIntId)
+            ? nodeIntId.ToString()
+            : "unknow";
     #endregion
 }
