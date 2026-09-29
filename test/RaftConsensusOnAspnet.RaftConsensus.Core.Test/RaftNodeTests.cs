@@ -474,4 +474,125 @@ public class RaftNodeTests
         }
     }
     #endregion
+
+    #region HandleVoteRequest() Test
+    #region Test over `RequestVote RPC Receiver Implementation 1`, as written in Raft specification
+    private async Task HandleVoteRequest_RequesterTermEqualRequesteeTerm_VoteGranted()
+        => throw new NotImplementedException();
+
+    private async Task HandleVoteRequest_RequesterTermHigherThanRequesteeTerm_VoteGranted()
+        => throw new NotImplementedException();
+
+    private async Task HandleVoteRequest_RequesterTermLowerThanRequesteeTerm_VoteRejected()
+        => throw new NotImplementedException();
+    #endregion
+
+    #region Test over `RequestVote RPC Receiver Implementation 2`, as written in Raft specification
+    private async Task HandleVoteRequest_RequesterHasLessLogsCompareToRequestee_VoteRejected()
+        => throw new NotImplementedException();
+
+    private async Task HandleVoteRequest_RequesterHasMoreLogsCompareToRequestee_VoteGranted()
+        => throw new NotImplementedException();
+
+    private async Task HandleVoteRequest_RequesterHasSameLogAsRequestee_VoteGranted()
+        => throw new NotImplementedException();
+
+    private async Task HandleVoteRequest_RequesteeHasVoteForAnotherNode_VoteRejected()
+        => throw new NotImplementedException();
+
+    private async Task HandleVoteRequest_RequesteeHasVoteForCandidate_VoteGrantedAgain()
+        => throw new NotImplementedException();
+
+    private async Task HandleVoteRequest_RequesteeHasVoteForAnotherNodeAtLowerTerm_VoteGranted()
+        => throw new NotImplementedException();
+    #endregion
+    #endregion
+
+    #region HandleAppendEntries() Test
+    #region Test over `AppendEntries RPC Receiver Implementation 1`, as written in Raft specification
+    private async Task HandleAppendEntries_RequesterTermEqualToRequestee_ReplyAppendSuccess()
+        => throw new NotImplementedException();
+
+    private async Task HandleAppendEntries_RequesterTermHigherThanRequestee_ReplyAppendSuccess()
+        => throw new NotImplementedException();
+
+    private async Task HandleAppendEntries_RequesterTermLowerThanRequestee_ReplyAppendFail()
+        => throw new NotImplementedException();
+    #endregion
+
+    #region Test over `AppendEntries RPC Receiver Implementation 2`, as written in Raft specification
+    private async Task HandleAppendEntries_TermOfPreviousLogDoesNotMatchBetweenRequesterAndRequestee_ReplyAppendFail()
+        => throw new NotImplementedException();
+
+    private async Task HandleAppendEntries_RequesteeDoesNotHavePreviousLogAssumedByNewLeader_ReplyAppendFail()
+        => throw new NotImplementedException();
+    #endregion
+
+    #region Test over `AppendEntries RPC Receiver Implementation 3`, as written in Raft specification
+    private async Task HandleAppendEntries_ExistingTermConflicts_DeleteAllFutureEntriesStartAndIncludingTheConflictingLog()
+        => throw new NotImplementedException();
+    #endregion
+
+    #region Test over `AppendEntries RPC Receiver Implementation 4`, as written in Raft specification
+    private async Task HandleAppendEntries_AppendEntriesWithCorrectArgs_AppendSuccess()
+        => throw new NotImplementedException();
+    #endregion
+
+    #region Test over `AppendEntries RPC Receiver Implementation 5`, as written in Raft specification
+    private async Task HandleAppendEntries_LeaderCommitLargerThanCommitIndexWithLowLastLogIndex_UpdateCommitIndexToLastLogIndex()
+        => throw new NotImplementedException();
+    
+    private async Task HandleAppendEntries_LeaderCommitLargerThanCommitIndexWithLowLeaderCommit_UpdateCommitIndexToLeaderCommit()
+        => throw new NotImplementedException();
+    #endregion
+    #endregion
+
+    #region Test on raft rules for each Raft role
+    #region All Raft Roles
+    private async Task HandleAppendEntries_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower()
+        => throw new NotImplementedException();
+    
+    private async Task HandleVoteRequest_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower()
+        => throw new NotImplementedException();
+    #endregion
+
+    #region Follower Node
+    private async Task StartAsync_FollowerNoHeartBeatOrVoteRequestBeforeElectionTimeout_BecomeCandidate()
+        => throw new NotImplementedException();
+    #endregion
+
+    #region Candidate Node
+    private async Task StartAsync_CandidateWhenAllVoteGranted_BecomeLeader()
+        => throw new NotImplementedException();
+    
+    private async Task StartAsync_CandidateWhenMajorVoteGranted_BecomeLeader()
+        => throw new NotImplementedException();
+    
+    private async Task StartAsync_CandidateWhenMinorVoteGranted_StartNewElection()
+        => throw new NotImplementedException();
+    
+    private async Task StartAsync_CandidateWhenNoVoteResponse_StartNewElection()
+        => throw new NotImplementedException();
+    
+    private async Task StartAsync_CandidateAppendEntriesReceivedFromLeaderWithSameTerm_BecomeFollower()
+        => throw new NotImplementedException();
+    
+    private async Task StartAsync_CandidateAppendEntriesReceivedFromLeaderWithHigherTerm_BecomeFollower()
+        => throw new NotImplementedException();
+    #endregion
+
+    #region Leader Node
+    private async Task StartAsync_LeaderAfterInit_SendAppendEntriesToOtherNodes()
+        => throw new NotImplementedException();
+    
+    private async Task StartAsync_LeaderReceivedAppendEntriesFailed_DecrementNextIndex()
+        => throw new NotImplementedException();
+    
+    private async Task StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueInCurrentTerm_SetCommitIndexToThatValue()
+        => throw new NotImplementedException();
+    
+    private async Task StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueButNotInCurrentTerm_DoNothing()
+        => throw new NotImplementedException();
+    #endregion
+    #endregion
 }
