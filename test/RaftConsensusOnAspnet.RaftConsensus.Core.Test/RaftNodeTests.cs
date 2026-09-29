@@ -265,6 +265,7 @@ public class RaftNodeTests
                 Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
             {
                 await timestamp.Writer.WriteAsync(DateTime.Now);
+                node.SetElectionTimeoutInterval(electionInterval);
             }
 
             async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
