@@ -31,7 +31,7 @@ public class RaftNodeTests
     [InlineData(1500)]
     [InlineData(2000)]
     [InlineData(2500)]
-    private async Task RaftUnitTest_ElectionTimeoutInit_StartElectionAfterNodeStartAtSpecificInterval(int electionInterval)
+    private async Task ConstructorInit_ElectionTimeoutInit_StartElectionAfterNodeStartAtSpecificInterval(int electionInterval)
     {
         Task waitUnitTestTimeout = Task.Delay(electionInterval * 2);
         Task test = PerformTest();
@@ -93,7 +93,7 @@ public class RaftNodeTests
     [InlineData(1500)]
     [InlineData(2000)]
     [InlineData(2500)]
-    private async Task RaftUnitTest_ElectionTimeoutChangedAtFollowerPhase_UseNewTimerToWaitForHeartBeatSignal(int electionInterval)
+    private async Task SetElectionTimeoutInterval_ElectionTimeoutChangedAtFollowerPhase_UseNewTimerToWaitForHeartBeatSignal(int electionInterval)
     {
         const int DelayBeforeElectionTimeoutChanged = 200;
 
@@ -159,7 +159,7 @@ public class RaftNodeTests
     [InlineData(1500)]
     [InlineData(2000)]
     [InlineData(2500)]
-    private async Task RaftUnitTest_ElectionTimeoutChangedAtCandidatePhase_UseNewTimerToWaitForResponseBeforeTimeout(int electionInterval)
+    private async Task SetElectionTimeoutInterval_ElectionTimeoutChangedAtCandidatePhase_UseNewTimerToWaitForResponseBeforeTimeout(int electionInterval)
     {
         const int InitialElectionInterval = 500;
 
@@ -216,7 +216,7 @@ public class RaftNodeTests
     [InlineData(1500)]
     [InlineData(2000)]
     [InlineData(2500)]
-    private async Task RaftUnitTest_ElectionTimeoutChangedAtLeaderPhase_DoNothing(int electionInterval)
+    private async Task SetElectionTimeoutInterval_ElectionTimeoutChangedAtLeaderPhase_DoNothing(int electionInterval)
     {
         const int InitialElectionInterval = 500;
         const int HeartBeatInterval = 1000;
@@ -291,7 +291,7 @@ public class RaftNodeTests
     [InlineData(1500)]
     [InlineData(2000)]
     [InlineData(2500)]
-    private async Task RaftUnitTest_HeartBeatIntervalChangedAtFollowerPhase_DoNothing(int heartBeatInterval)
+    private async Task SetHeartBeatInterval_HeartBeatIntervalChangedAtFollowerPhase_DoNothing(int heartBeatInterval)
     {
         const int ElectionInterval = 500;
         const int InitialHeartBeatInterval = 500;
@@ -349,7 +349,7 @@ public class RaftNodeTests
     [InlineData(1500)]
     [InlineData(2000)]
     [InlineData(2500)]
-    private async Task RaftUnitTest_HeartBeatIntervalChangedAtCandidatePhase_DoNothing(int heartBeatInterval)
+    private async Task SetHeartBeatInterval_HeartBeatIntervalChangedAtCandidatePhase_DoNothing(int heartBeatInterval)
     {
         const int ElectionInterval = 500;
         const int InitialHeartBeatInterval = 500;
@@ -406,7 +406,7 @@ public class RaftNodeTests
     [InlineData(1500)]
     [InlineData(2000)]
     [InlineData(2500)]
-    private async Task RaftUnitTest_HeartBeatIntervalChangedAtLeaderPhase_RestartHeartBeatTimerAndSendHeartBeatAfterNewTimerEnd(int heartBeatInterval)
+    private async Task SetHeartBeatInterval_HeartBeatIntervalChangedAtLeaderPhase_RestartHeartBeatTimerAndSendHeartBeatAfterNewTimerEnd(int heartBeatInterval)
     {
         const int InitialElectionInterval = 500;
         const int InitialHeartBeatInterval = 500;
