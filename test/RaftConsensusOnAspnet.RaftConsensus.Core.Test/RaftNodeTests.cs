@@ -12,6 +12,7 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
 public class RaftNodeTests
 {
     private const int MaxTimeDeviation = 500;
+    private const string OverTimeMessage = "Test overtime";
 
     private static readonly Guid s_node1Guid = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private static readonly Guid s_node2Guid = Guid.Parse("00000000-0000-0000-0000-000000000002");
@@ -36,7 +37,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay(electionInterval * 2);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -95,7 +96,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay((DelayBeforeElectionTimeoutChanged + electionInterval) * 2);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -156,7 +157,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + electionInterval) * 2);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -209,7 +210,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + electionInterval + HeartBeatInterval) * 2);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -279,7 +280,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay((ElectionInterval + ElectionInterval) * 2);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -332,7 +333,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay((ElectionInterval + ElectionInterval) * 2);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -384,7 +385,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + InitialElectionInterval + heartBeatInterval) * 2);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -568,7 +569,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay(2000);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -577,7 +578,7 @@ public class RaftNodeTests
             VoteRequestReply voteReply;
 
             InitTraces(
-                    "ConstructorInit_RestartWithKeepExistData" , null ,
+                    "ConstructorInit_RestartWithKeepExistData_RaftRestartAsFollowerNodeWithExistData" , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -625,7 +626,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay(2000);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -634,7 +635,7 @@ public class RaftNodeTests
             VoteRequestReply reply;
 
             InitTraces(
-                    "ConstructorInit_RestartWithKeepExistData" , null ,
+                    "ConstructorInit_RestartWithKeepExistData_RaftRestartWithVoteInfoRestored" , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -697,7 +698,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval + HeartBeatInterval * 2) * 3 * 2);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -705,7 +706,7 @@ public class RaftNodeTests
         {
             Channel<bool> entriesAppended = Channel.CreateUnbounded<bool>();
             InitTraces(
-                    "ConstructorInit_RestartWithRemoveExistData" , null ,
+                    "ConstructorInit_RestartWithRemoveExistData_RaftRestartAsNewNode" , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -799,7 +800,7 @@ public class RaftNodeTests
         Task waitUnitTestTimeout = Task.Delay(2000);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
-        Assert.Equal(test , completeTask);
+        Assert.True(test == completeTask , OverTimeMessage);
         return;
 
 
@@ -808,7 +809,7 @@ public class RaftNodeTests
             VoteRequestReply reply;
             
             InitTraces(
-                    "ConstructorInit_RestartWithKeepExistData" , null ,
+                    "ConstructorInit_RestartWithKeepExistData_RaftRestartWithoutVoteInfoRestored" , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
