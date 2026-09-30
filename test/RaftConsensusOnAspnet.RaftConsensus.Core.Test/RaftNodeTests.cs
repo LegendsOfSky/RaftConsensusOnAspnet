@@ -38,6 +38,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
@@ -97,6 +98,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
@@ -158,6 +160,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
@@ -211,6 +214,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
@@ -281,6 +285,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
@@ -334,6 +339,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
@@ -386,6 +392,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
@@ -570,6 +577,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
@@ -627,6 +635,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
@@ -699,6 +708,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
@@ -801,6 +811,7 @@ public class RaftNodeTests
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
