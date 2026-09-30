@@ -561,6 +561,298 @@ public class RaftNodeTests
     #endregion
     #endregion
 
+    #region Restart With/Without Existing Data
+    [Fact]
+    private async Task ConstructorInit_RestartWithKeepExistData_RaftRestartAsFollowerNodeWithExistData()
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.Equal(test , completeTask);
+        return;
+
+
+        async Task PerformTest()
+        {
+            VoteRequestReply voteReply;
+
+            InitTraces(
+                    "ConstructorInit_RestartWithKeepExistData" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // run node for initial data generation
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round1 = node.StartAsync();
+            AppendEntriesReply reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 2 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry()] ,
+            });
+            Assert.True(reply.AppendSuccess);
+            await Task.Delay(200);
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(2 , node.LogEntries.Count);
+            node.Stop();
+            await round1;
+
+            // round two for actual test
+            node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round2 = node.StartAsync();
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(2 , node.LogEntries.Count);
+            node.Stop();
+            await round2;
+        }
+    }
+
+    [Fact]
+    private async Task ConstructorInit_RestartWithKeepExistData_RaftRestartWithVoteInfoRestored()
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.Equal(test , completeTask);
+        return;
+
+
+        async Task PerformTest()
+        {
+            VoteRequestReply reply;
+
+            InitTraces(
+                    "ConstructorInit_RestartWithKeepExistData" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // run node for initial data generation
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round1 = node.StartAsync();
+            reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+                ReceiverId = node.NodeId ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+            });
+            Assert.True(reply.VoteGranted);
+            node.Stop();
+            await round1;
+
+            // round two for actual test
+            node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round2 = node.StartAsync();
+            reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                ReceiverId = node.NodeId ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+            });
+            Assert.True(reply.VoteGranted);
+            reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node3Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                ReceiverId = node.NodeId ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+            });
+            Assert.False(reply.VoteGranted);
+            node.Stop();
+            await round2;
+        }
+    }
+
+    [Fact]
+    private async Task ConstructorInit_RestartWithRemoveExistData_RaftRestartAsNewNode()
+    {
+        const int ElectionTimeoutInterval = 500;
+        const int HeartBeatInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval + HeartBeatInterval * 2) * 3 * 2);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.Equal(test , completeTask);
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<bool> entriesAppended = Channel.CreateUnbounded<bool>();
+            InitTraces(
+                    "ConstructorInit_RestartWithRemoveExistData" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // run node for initial data generation
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
+            node.AppendEntriesToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task round1 = node.StartAsync();
+            await entriesAppended.Reader.ReadAsync();
+            await entriesAppended.Reader.ReadAsync();
+            node.Stop();
+            await round1;
+
+            // round two for actual test
+            node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
+            node.AppendEntriesToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task round2 = node.StartAsync();
+            await entriesAppended.Reader.ReadAsync();
+            await entriesAppended.Reader.ReadAsync();
+            node.Stop();
+            await round2;
+
+            // round three to double-check if it works
+            node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
+            node.AppendEntriesToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task round3 = node.StartAsync();
+            await entriesAppended.Reader.ReadAsync();
+            await entriesAppended.Reader.ReadAsync();
+            node.Stop();
+            await round3;
+
+            return;
+
+
+            Func<Guid , Guid , int , int , Task> CreateSendVoteRequestToOtherNodesFunc(RaftNode nodeIn)
+                => async (Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm) =>
+                {
+                    VoteRequestReply replyTemplate = new VoteRequestReply
+                    {
+                        RequestId = requestId ,
+                        ReceiverId = requesterId ,
+                        ReplierTerm = node.CurrentTerm ,
+
+                        TermOfRequest = node.CurrentTerm ,
+                        VoteGranted = true ,
+                    };
+                    await nodeIn.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                    await nodeIn.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                };
+
+            Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task> CreateAppendEntriesToOtherNodesFunc(RaftNode nodeIn)
+                => async (Guid requestId , Guid requesterId , int commitIndex ,
+                          IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes) =>
+                {
+                    AppendEntriesReply replyTemplate = new AppendEntriesReply
+                    {
+                        RequestId = requestId ,
+                        ReceiverId = requesterId ,
+                        ReplierTerm = node.CurrentTerm ,
+
+                        AppendSuccess = true ,
+                        MatchIndex = logEntries.Count - 1 ,
+                    };
+                    await nodeIn.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                    await nodeIn.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                    await entriesAppended.Writer.WriteAsync(true);
+                };
+        }
+    }
+    
+    [Fact]
+    private async Task ConstructorInit_RestartWithRemoveExistData_RaftRestartWithoutVoteInfoRestored()
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.Equal(test , completeTask);
+        return;
+
+
+        async Task PerformTest()
+        {
+            VoteRequestReply reply;
+            
+            InitTraces(
+                    "ConstructorInit_RestartWithKeepExistData" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // run node for initial data generation
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round1 = node.StartAsync();
+            reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+                ReceiverId = node.NodeId ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+            });
+            Assert.True(reply.VoteGranted);
+            node.Stop();
+            await round1;
+
+            // round two for actual test
+            node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round2 = node.StartAsync();
+            reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node3Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+                ReceiverId = node.NodeId ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+            });
+            Assert.True(reply.VoteGranted);
+            node.Stop();
+            await round2;
+        }
+    }
+    #endregion
+
     #region Helper Function
     private void InitTraces(string testName , string? parameter , out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners)
     {
