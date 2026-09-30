@@ -43,19 +43,14 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             TaskCompletionSource nodeBecomeElectionTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            TraceListener[] standardTraceListeners =
-            [
-                new AlignedTraceListener($"logs/ElectionTimeoutInit_{electionInterval}.log") ,
-            ];
-            TraceListener[] debugTraceListeners =
-            [
-                new XUnitTraceListener(testOutput) ,
-                new AlignedTraceListener($"debug/ElectionTimeoutInit_{electionInterval}.log") ,
-            ];
+            InitTraces(
+                    "ConstructorInit_ElectionTimeoutInit" , electionInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
             RaftNode node = new RaftNode(
                     s_node1Guid , electionInterval , int.MaxValue , 1 ,
-                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -107,19 +102,14 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             TaskCompletionSource nodeBecomeElectionTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            TraceListener[] standardTraceListeners =
-            [
-                new AlignedTraceListener($"logs/ElectionTimeoutChangedAtFollowerPhase_{electionInterval}.log") ,
-            ];
-            TraceListener[] debugTraceListeners =
-            [
-                new XUnitTraceListener(testOutput) ,
-                new AlignedTraceListener($"debug/ElectionTimeoutChangedAtFollowerPhase_{electionInterval}.log") ,
-            ];
+            InitTraces(
+                    "SetElectionTimeoutInterval_ElectionTimeoutChangedAtFollowerPhase" , electionInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
             RaftNode node = new RaftNode(
                     s_node1Guid , int.MaxValue  , int.MaxValue , 1 ,
-                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -173,19 +163,14 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             Channel<DateTime> voteRequestTimeStamp = Channel.CreateUnbounded<DateTime>();
-            TraceListener[] standardTraceListeners =
-            [
-                new AlignedTraceListener($"logs/ElectionTimeoutChangedAtCandidatePhase_{electionInterval}.log") ,
-            ];
-            TraceListener[] debugTraceListeners =
-            [
-                new XUnitTraceListener(testOutput) ,
-                new AlignedTraceListener($"debug/ElectionTimeoutChangedAtCandidatePhase_{electionInterval}.log") ,
-            ];
+            InitTraces(
+                    "SetElectionTimeoutInterval_ElectionTimeoutChangedAtCandidatePhase" , electionInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
             RaftNode node = new RaftNode(
                     s_node1Guid , InitialElectionInterval  , int.MaxValue , 1 ,
-                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -231,19 +216,14 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
-            TraceListener[] standardTraceListeners =
-            [
-                new AlignedTraceListener($"logs/ElectionTimeoutChangedAtLeaderPhase_{electionInterval}.log") ,
-            ];
-            TraceListener[] debugTraceListeners =
-            [
-                new XUnitTraceListener(testOutput) ,
-                new AlignedTraceListener($"debug/ElectionTimeoutChangedAtLeaderPhase_{electionInterval}.log") ,
-            ];
+            InitTraces(
+                    "SetElectionTimeoutInterval_ElectionTimeoutChangedAtLeaderPhase" , electionInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
             RaftNode node = new RaftNode(
                     s_node1Guid , InitialElectionInterval , HeartBeatInterval , 3 ,
-                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
             node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -306,19 +286,14 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
-            TraceListener[] standardTraceListeners =
-            [
-                new AlignedTraceListener($"logs/HeartBeatIntervalChangedAtFollowerPhase_{heartBeatInterval}.log") ,
-            ];
-            TraceListener[] debugTraceListeners =
-            [
-                new XUnitTraceListener(testOutput) ,
-                new AlignedTraceListener($"debug/HeartBeatIntervalChangedAtFollowerPhase_{heartBeatInterval}.log") ,
-            ];
+            InitTraces(
+                    "SetHeartBeatInterval_HeartBeatIntervalChangedAtFollowerPhase" , heartBeatInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
             RaftNode node = new RaftNode(
                     s_node1Guid , ElectionInterval , InitialHeartBeatInterval , 3 ,
-                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -364,19 +339,14 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
-            TraceListener[] standardTraceListeners =
-            [
-                new AlignedTraceListener($"logs/HeartBeatIntervalChangedAtCandidatePhase_{heartBeatInterval}.log") ,
-            ];
-            TraceListener[] debugTraceListeners =
-            [
-                new XUnitTraceListener(testOutput) ,
-                new AlignedTraceListener($"debug/HeartBeatIntervalChangedAtCandidatePhase_{heartBeatInterval}.log") ,
-            ];
+            InitTraces(
+                    "SetHeartBeatInterval_HeartBeatIntervalChangedAtCandidatePhase" , heartBeatInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
             RaftNode node = new RaftNode(
                     s_node1Guid , ElectionInterval , InitialHeartBeatInterval , 3 ,
-                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -421,19 +391,14 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
-            TraceListener[] standardTraceListeners =
-            [
-                new AlignedTraceListener($"logs/HeartBeatIntervalChangedAtLeaderPhase_{heartBeatInterval}.log") ,
-            ];
-            TraceListener[] debugTraceListeners =
-            [
-                new XUnitTraceListener(testOutput) ,
-                new AlignedTraceListener($"debug/HeartBeatIntervalChangedAtLeaderPhase_{heartBeatInterval}.log") ,
-            ];
+            InitTraces(
+                    "SetHeartBeatInterval_HeartBeatIntervalChangedAtLeaderPhase" , heartBeatInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
             RaftNode node = new RaftNode(
                     s_node1Guid , InitialElectionInterval , InitialHeartBeatInterval , 3 ,
-                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
             node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -594,5 +559,21 @@ public class RaftNodeTests
     private async Task StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueButNotInCurrentTerm_DoNothing()
         => throw new NotImplementedException();
     #endregion
+    #endregion
+
+    #region Helper Function
+    private void InitTraces(string testName , string? parameter , out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners)
+    {
+        string fileName = $"{testName}{(parameter is null ? "" : $"_{parameter}")}.log";
+        standardTraceListeners =
+        [
+            new AlignedTraceListener($"logs/{fileName}") ,
+        ];
+        debugTraceListeners =
+        [
+            new XUnitTraceListener(testOutput) ,
+            new AlignedTraceListener($"debug/{fileName}") ,
+        ];
+    }
     #endregion
 }
