@@ -105,12 +105,17 @@ public class RaftNode
         /* Basic raft fields */
         Role = NodeRole.Follower;
         nodeCount = nodeCountIn;
-        CurrentTerm = 0;
         commitIndex = 0;
         (nextIndexes , matchIndexes) = ([] , []);
-        VoteInfo = (Guid.Empty , 0);
         (electionTimeoutInterval , heartBeatInterval) = (electionTimeOutIntervalIn , heartBeatIntervalIn);
         logEntries = new LogEntryList(dbFilePath , NodeId , removeExistData , standardTraceListenersIn , debugTraceListenersIn);
+        if (!removeExistData)
+            CurrentTerm = ReadCurrentTermFromDb();
+        else
+        {
+            CurrentTerm = 0;
+            VoteInfo = (Guid.Empty , 0);
+        }
 
         /* For notifications and messaging */
         changeElectionIntervalTcs  = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -143,7 +148,8 @@ public class RaftNode
         standardTrace.TraceEvent(TraceEventType.Start , 0 , "Raft node start.");
         debugTrace.TraceEvent(TraceEventType.Start , 0 , "Raft node start.");
         stopRaftTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        logEntries.Add(new LogEntry { Term = 0 });
+        if (logEntries.Count == 0)
+            logEntries.Add(new LogEntry { Term = 0 });
         Task logEntriesSync = logEntries.StartSynchronizingStateMachineValueAsync();
         while (!stopRaftTcs.Task.IsCompleted)
             switch (Role)
@@ -537,7 +543,7 @@ public class RaftNode
 
     private async Task RunAsCandidateAsync()
     {
-        Task raftStopSignal = stopRaftTcs?.Task ?? throw new InvalidOperationException(); 
+        Task raftStopSignal = stopRaftTcs?.Task ?? throw new InvalidOperationException();
         Task waitForNodeCountChange = changeNodeCountTcs.Task;
         Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
 
@@ -649,7 +655,7 @@ public class RaftNode
                                     replyLoggingPrefix , GetDebugNodeIntId(reply.ReplierId) , voteGranted , voteReceived , nodeCount
                                 );
 
-                            if (voteGranted >= (nodeCount / 2 + 1))
+                            if (voteGranted >= nodeCount / 2 + 1)
                             {
                                 standardTrace.TraceInformation("Becoming leader with enough votes received.");
                                 debugTrace.TraceInformation($"{loggingPrefix}: Becoming leader with enough votes received.");
@@ -774,12 +780,12 @@ public class RaftNode
                     nextIndexes[replyNodeId] = Math.Max(nextIndexes.GetValueOrDefault(replyNodeId , logEntries.Count) - 1 , 1);
 
                 int newCommitIndex = matchIndexes
-                   .Where(
+                    .Where(
                             (_ , candidateCommitIndex) => matchIndexes.Count(kvp => kvp.Value >= candidateCommitIndex) >= nodeCount / 2
                         )
-                   .Where((_ , candidateNextIndex) => logEntries[candidateNextIndex].Term == CurrentTerm)
-                   .DefaultIfEmpty(new KeyValuePair<Guid , int>(Guid.Empty , 0))
-                   .Max(kvp => kvp.Value);
+                    .Where((_ , candidateNextIndex) => logEntries[candidateNextIndex].Term == CurrentTerm)
+                    .DefaultIfEmpty(new KeyValuePair<Guid , int>(Guid.Empty , 0))
+                    .Max(kvp => kvp.Value);
                 if (newCommitIndex != commitIndex)
                 {
                     commitIndex = newCommitIndex;
