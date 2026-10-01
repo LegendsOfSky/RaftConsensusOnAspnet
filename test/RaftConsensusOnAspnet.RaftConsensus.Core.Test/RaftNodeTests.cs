@@ -1020,40 +1020,455 @@ public class RaftNodeTests
 
     #region HandleAppendEntries() Test
     #region Test over `AppendEntries RPC Receiver Implementation 1`, as written in Raft specification
+    [Fact]
     private async Task HandleAppendEntries_RequesterTermEqualToRequestee_ReplyAppendSuccess()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply reply;
+
+            InitTraces(
+                    nameof(HandleAppendEntries_RequesterTermEqualToRequestee_ReplyAppendSuccess) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but rejected.");
+            Assert.Equal(0 , node.CurrentTerm);
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+
+    [Fact]
     private async Task HandleAppendEntries_RequesterTermHigherThanRequestee_ReplyAppendSuccess()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply reply;
+
+            InitTraces(
+                    nameof(HandleAppendEntries_RequesterTermHigherThanRequestee_ReplyAppendSuccess) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(1 , node.CurrentTerm);
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+
+    [Fact]
     private async Task HandleAppendEntries_RequesterTermLowerThanRequestee_ReplyAppendFail()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply reply;
+
+            InitTraces(
+                    nameof(HandleAppendEntries_RequesterTermHigherThanRequestee_ReplyAppendSuccess) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(1 , node.CurrentTerm);
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm - 1 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
     #endregion
 
     #region Test over `AppendEntries RPC Receiver Implementation 2`, as written in Raft specification
+    [Fact]
     private async Task HandleAppendEntries_TermOfPreviousLogDoesNotMatchBetweenRequesterAndRequestee_ReplyAppendFail()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply reply;
+
+            InitTraces(
+                    nameof(HandleAppendEntries_TermOfPreviousLogDoesNotMatchBetweenRequesterAndRequestee_ReplyAppendFail) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry(Guid.NewGuid() , node.CurrentTerm + 1 , LogEntryOperation.None , null)] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(1 , node.CurrentTerm);
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 1 ,
+                PreviousLogTerm = node.LogEntries[^1].Term - 1 ,
+                Entries = [] ,
+            });
+            Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 1 ,
+                PreviousLogTerm = node.LogEntries[^1].Term + 1 ,
+                Entries = [] ,
+            });
+            Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+
+    [Fact]
     private async Task HandleAppendEntries_RequesteeDoesNotHavePreviousLogAssumedByNewLeader_ReplyAppendFail()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply reply;
+
+            InitTraces(
+                    nameof(HandleAppendEntries_RequesteeDoesNotHavePreviousLogAssumedByNewLeader_ReplyAppendFail) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(1 , node.CurrentTerm);
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 1 ,
+                PreviousLogTerm = 1 ,
+                Entries = [] ,
+            });
+            Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
     #endregion
 
     #region Test over `AppendEntries RPC Receiver Implementation 3`, as written in Raft specification
+    [Fact]
     private async Task HandleAppendEntries_ExistingTermConflicts_DeleteAllFutureEntriesStartAndIncludingTheConflictingLog()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply reply;
+
+            InitTraces(
+                    nameof(HandleAppendEntries_ExistingTermConflicts_DeleteAllFutureEntriesStartAndIncludingTheConflictingLog) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 1 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries =
+                [
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                ] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(4 , node.LogEntries.Count);
+            Assert.Equal(1 , node.CurrentTerm);
+            foreach (LogEntry entry in node.LogEntries.Skip(1))
+                Assert.Equal(1 , entry.Term);
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries =
+                [
+                    new LogEntry(Guid.NewGuid() , 2 , LogEntryOperation.None , null) ,
+                    new LogEntry(Guid.NewGuid() , 2 , LogEntryOperation.None , null) ,
+                ] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(3 , node.LogEntries.Count);
+            foreach (LogEntry entry in node.LogEntries.Skip(1))
+                Assert.Equal(2 , entry.Term);
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 3 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Single(node.LogEntries);
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
     #endregion
 
     #region Test over `AppendEntries RPC Receiver Implementation 4`, as written in Raft specification
+    [Fact]
     private async Task HandleAppendEntries_AppendEntriesWithCorrectArgs_AppendSuccess()
-        => throw new NotImplementedException();
-    #endregion
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
-    #region Test over `AppendEntries RPC Receiver Implementation 5`, as written in Raft specification
-    private async Task HandleAppendEntries_LeaderCommitLargerThanCommitIndexWithLowLastLogIndex_UpdateCommitIndexToLastLogIndex()
-        => throw new NotImplementedException();
 
-    private async Task HandleAppendEntries_LeaderCommitLargerThanCommitIndexWithLowLeaderCommit_UpdateCommitIndexToLeaderCommit()
-        => throw new NotImplementedException();
+        async Task PerformTest()
+        {
+            AppendEntriesReply reply;
+
+            InitTraces(
+                    nameof(HandleAppendEntries_AppendEntriesWithCorrectArgs_AppendSuccess) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 1 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries =
+                [
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                ] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(4 , node.LogEntries.Count);
+            Assert.Equal(1 , node.CurrentTerm);
+            foreach (LogEntry entry in node.LogEntries.Skip(1))
+                Assert.Equal(1 , entry.Term);
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
     #endregion
     #endregion
 
