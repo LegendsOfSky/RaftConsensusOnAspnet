@@ -1051,7 +1051,7 @@ public class RaftNodeTests
     #region Test over `AppendEntries RPC Receiver Implementation 5`, as written in Raft specification
     private async Task HandleAppendEntries_LeaderCommitLargerThanCommitIndexWithLowLastLogIndex_UpdateCommitIndexToLastLogIndex()
         => throw new NotImplementedException();
-    
+
     private async Task HandleAppendEntries_LeaderCommitLargerThanCommitIndexWithLowLeaderCommit_UpdateCommitIndexToLeaderCommit()
         => throw new NotImplementedException();
     #endregion
@@ -1061,7 +1061,7 @@ public class RaftNodeTests
     #region All Raft Roles
     private async Task HandleAppendEntries_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower()
         => throw new NotImplementedException();
-    
+
     private async Task HandleVoteRequest_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower()
         => throw new NotImplementedException();
     #endregion
@@ -1074,19 +1074,19 @@ public class RaftNodeTests
     #region Candidate Node
     private async Task StartAsync_CandidateWhenAllVoteGranted_BecomeLeader()
         => throw new NotImplementedException();
-    
+
     private async Task StartAsync_CandidateWhenMajorVoteGranted_BecomeLeader()
         => throw new NotImplementedException();
-    
+
     private async Task StartAsync_CandidateWhenMinorVoteGranted_StartNewElection()
         => throw new NotImplementedException();
-    
+
     private async Task StartAsync_CandidateWhenNoVoteResponse_StartNewElection()
         => throw new NotImplementedException();
-    
+
     private async Task StartAsync_CandidateAppendEntriesReceivedFromLeaderWithSameTerm_BecomeFollower()
         => throw new NotImplementedException();
-    
+
     private async Task StartAsync_CandidateAppendEntriesReceivedFromLeaderWithHigherTerm_BecomeFollower()
         => throw new NotImplementedException();
     #endregion
@@ -1094,13 +1094,13 @@ public class RaftNodeTests
     #region Leader Node
     private async Task StartAsync_LeaderAfterInit_SendAppendEntriesToOtherNodes()
         => throw new NotImplementedException();
-    
+
     private async Task StartAsync_LeaderReceivedAppendEntriesFailed_DecrementNextIndex()
         => throw new NotImplementedException();
-    
+
     private async Task StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueInCurrentTerm_SetCommitIndexToThatValue()
         => throw new NotImplementedException();
-    
+
     private async Task StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueButNotInCurrentTerm_DoNothing()
         => throw new NotImplementedException();
     #endregion
@@ -1340,7 +1340,7 @@ public class RaftNodeTests
                 };
         }
     }
-    
+
     [Fact]
     private async Task ConstructorInit_RestartWithRemoveExistData_RaftRestartWithoutVoteInfoRestored()
     {
@@ -1355,7 +1355,7 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             VoteRequestReply reply;
-            
+
             InitTraces(
                     "ConstructorInit_RestartWithKeepExistData_RaftRestartWithoutVoteInfoRestored" , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
