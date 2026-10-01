@@ -46,7 +46,7 @@ public class RaftNodeTests
         {
             TaskCompletionSource nodeBecomeElectionTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             InitTraces(
-                    "ConstructorInit_ElectionTimeoutInit" , electionInterval.ToString() ,
+                    nameof(ConstructorInit_ElectionTimeoutInit_StartElectionAfterNodeStartAtSpecificInterval) , electionInterval.ToString() ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -106,7 +106,7 @@ public class RaftNodeTests
         {
             TaskCompletionSource nodeBecomeElectionTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             InitTraces(
-                    "SetElectionTimeoutInterval_ElectionTimeoutChangedAtFollowerPhase" , electionInterval.ToString() ,
+                    nameof(SetElectionTimeoutInterval_ElectionTimeoutChangedAtFollowerPhase_UseNewTimerToWaitForHeartBeatSignal) , electionInterval.ToString() ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -168,8 +168,8 @@ public class RaftNodeTests
         {
             Channel<DateTime> voteRequestTimeStamp = Channel.CreateUnbounded<DateTime>();
             InitTraces(
-                    "SetElectionTimeoutInterval_ElectionTimeoutChangedAtCandidatePhase" , electionInterval.ToString() ,
-                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                    nameof(SetElectionTimeoutInterval_ElectionTimeoutChangedAtCandidatePhase_UseNewTimerToWaitForResponseBeforeTimeout) ,
+                    electionInterval.ToString() , out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
             RaftNode node = new RaftNode(
@@ -222,7 +222,7 @@ public class RaftNodeTests
         {
             Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
             InitTraces(
-                    "SetElectionTimeoutInterval_ElectionTimeoutChangedAtLeaderPhase" , electionInterval.ToString() ,
+                    nameof(SetElectionTimeoutInterval_ElectionTimeoutChangedAtLeaderPhase_DoNothing) , electionInterval.ToString() ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -293,7 +293,7 @@ public class RaftNodeTests
         {
             Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
             InitTraces(
-                    "SetHeartBeatInterval_HeartBeatIntervalChangedAtFollowerPhase" , heartBeatInterval.ToString() ,
+                    nameof(SetHeartBeatInterval_HeartBeatIntervalChangedAtFollowerPhase_DoNothing) , heartBeatInterval.ToString() ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -347,7 +347,7 @@ public class RaftNodeTests
         {
             Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
             InitTraces(
-                    "SetHeartBeatInterval_HeartBeatIntervalChangedAtCandidatePhase" , heartBeatInterval.ToString() ,
+                    nameof(SetHeartBeatInterval_HeartBeatIntervalChangedAtCandidatePhase_DoNothing) , heartBeatInterval.ToString() ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -400,8 +400,8 @@ public class RaftNodeTests
         {
             Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
             InitTraces(
-                    "SetHeartBeatInterval_HeartBeatIntervalChangedAtLeaderPhase" , heartBeatInterval.ToString() ,
-                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                    nameof(SetHeartBeatInterval_HeartBeatIntervalChangedAtLeaderPhase_RestartHeartBeatTimerAndSendHeartBeatAfterNewTimerEnd) ,
+                    heartBeatInterval.ToString() , out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
             RaftNode node = new RaftNode(
@@ -464,7 +464,7 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             InitTraces(
-                    "HandleVoteRequest_RequesterTermEqualRequesteeTerm" , null ,
+                    nameof(HandleVoteRequest_RequesterTermEqualRequesteeTerm_VoteGranted) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -521,7 +521,7 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             InitTraces(
-                    "HandleVoteRequest_RequesterTermHigherThanRequesteeTerm" , null ,
+                    nameof(HandleVoteRequest_RequesterTermHigherThanRequesteeTerm_VoteGranted) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -578,7 +578,7 @@ public class RaftNodeTests
         async Task PerformTest()
         {
             InitTraces(
-                    "HandleVoteRequest_RequesterTermLowerThanRequesteeTerm" , null ,
+                    nameof(HandleVoteRequest_RequesterTermLowerThanRequesteeTerm_VoteRejected) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -639,7 +639,7 @@ public class RaftNodeTests
             AppendEntriesReply appendEntriesReply;
 
             InitTraces(
-                    "HandleVoteRequest_RequesterHasLessLogsCompareToRequestee" , null ,
+                    nameof(HandleVoteRequest_RequesterHasLessLogsCompareToRequestee_VoteRejected) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -715,7 +715,7 @@ public class RaftNodeTests
             AppendEntriesReply appendEntriesReply;
 
             InitTraces(
-                    "HandleVoteRequest_RequesterHasMoreLogsCompareToRequestee" , null ,
+                    nameof(HandleVoteRequest_RequesterHasMoreLogsCompareToRequestee_VoteGranted) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -791,7 +791,7 @@ public class RaftNodeTests
             AppendEntriesReply appendEntriesReply;
 
             InitTraces(
-                    "HandleVoteRequest_RequesterHasSameLogAsRequestee" , null ,
+                    nameof(HandleVoteRequest_RequesterHasSameLogAsRequestee_VoteGranted) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -867,7 +867,7 @@ public class RaftNodeTests
             VoteRequestReply voteResponse;
 
             InitTraces(
-                    "HandleVoteRequest_RequesteeHasVoteForAnotherNode" , null ,
+                    nameof(HandleVoteRequest_RequesteeHasVoteForAnotherNode_VoteRejected) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -922,7 +922,7 @@ public class RaftNodeTests
             VoteRequestReply voteResponse;
 
             InitTraces(
-                    "HandleVoteRequest_RequesteeHasVoteForCandidate" , null ,
+                    nameof(HandleVoteRequest_RequesteeHasVoteForCandidate_VoteGrantedAgain) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -977,7 +977,7 @@ public class RaftNodeTests
             VoteRequestReply voteResponse;
 
             InitTraces(
-                    "HandleVoteRequest_RequesteeHasVoteForAnotherNode" , null ,
+                    nameof(HandleVoteRequest_RequesteeHasVoteForAnotherNodeAtLowerTerm_VoteGranted) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -1123,7 +1123,7 @@ public class RaftNodeTests
             VoteRequestReply voteReply;
 
             InitTraces(
-                    "ConstructorInit_RestartWithKeepExistData_RaftRestartAsFollowerNodeWithExistData" , null ,
+                    nameof(ConstructorInit_RestartWithKeepExistData_RaftRestartAsFollowerNodeWithExistData) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -1181,7 +1181,7 @@ public class RaftNodeTests
             VoteRequestReply reply;
 
             InitTraces(
-                    "ConstructorInit_RestartWithKeepExistData_RaftRestartWithVoteInfoRestored" , null ,
+                    nameof(ConstructorInit_RestartWithKeepExistData_RaftRestartWithVoteInfoRestored) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -1253,7 +1253,7 @@ public class RaftNodeTests
         {
             Channel<bool> entriesAppended = Channel.CreateUnbounded<bool>();
             InitTraces(
-                    "ConstructorInit_RestartWithRemoveExistData_RaftRestartAsNewNode" , null ,
+                    nameof(ConstructorInit_RestartWithRemoveExistData_RaftRestartAsNewNode) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -1357,7 +1357,7 @@ public class RaftNodeTests
             VoteRequestReply reply;
 
             InitTraces(
-                    "ConstructorInit_RestartWithKeepExistData_RaftRestartWithoutVoteInfoRestored" , null ,
+                    nameof(ConstructorInit_RestartWithRemoveExistData_RaftRestartWithoutVoteInfoRestored) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
