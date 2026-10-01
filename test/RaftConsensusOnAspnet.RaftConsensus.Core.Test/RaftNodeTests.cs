@@ -450,34 +450,571 @@ public class RaftNodeTests
 
     #region HandleVoteRequest() Test
     #region Test over `RequestVote RPC Receiver Implementation 1`, as written in Raft specification
+    [Fact]
     private async Task HandleVoteRequest_RequesterTermEqualRequesteeTerm_VoteGranted()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
+
+        async Task PerformTest()
+        {
+            InitTraces(
+                    "HandleVoteRequest_RequesterTermEqualRequesteeTerm" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Advance node into term 2
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry()] ,
+            });
+            Assert.Equal(2 , node.CurrentTerm);
+
+            // Core test logic
+            VoteRequestReply reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(reply.VoteGranted , "Expect vote granted, but rejected");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+
+    [Fact]
     private async Task HandleVoteRequest_RequesterTermHigherThanRequesteeTerm_VoteGranted()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
+
+        async Task PerformTest()
+        {
+            InitTraces(
+                    "HandleVoteRequest_RequesterTermHigherThanRequesteeTerm" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Advance node into term 2
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry()] ,
+            });
+            Assert.Equal(2 , node.CurrentTerm);
+
+            // Core test logic
+            VoteRequestReply reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(reply.VoteGranted , "Expect vote granted, but rejected");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+
+    [Fact]
     private async Task HandleVoteRequest_RequesterTermLowerThanRequesteeTerm_VoteRejected()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            InitTraces(
+                    "HandleVoteRequest_RequesterTermLowerThanRequesteeTerm" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Advance node into term 2
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry()] ,
+            });
+            Assert.Equal(2 , node.CurrentTerm);
+
+            // Core test logic
+            VoteRequestReply reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.False(reply.VoteGranted , "Expect vote rejected, but granted");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
     #endregion
 
     #region Test over `RequestVote RPC Receiver Implementation 2`, as written in Raft specification
+    [Fact]
     private async Task HandleVoteRequest_RequesterHasLessLogsCompareToRequestee_VoteRejected()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply appendEntriesReply;
+
+            InitTraces(
+                    "HandleVoteRequest_RequesterHasLessLogsCompareToRequestee" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = node.LogEntries.Count     - 1 ,
+                PreviousLogIndex = node.LogEntries.Count - 1 ,
+                PreviousLogTerm = node.LogEntries[^1].Term ,
+                Entries = [] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
+
+            // Core test logic
+            VoteRequestReply voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 2 ,  // requester last log index < requestee last log index
+            });
+            Assert.False(voteResponse.VoteGranted , "Expect vote rejected, but granted.");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+
+    [Fact]
     private async Task HandleVoteRequest_RequesterHasMoreLogsCompareToRequestee_VoteGranted()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply appendEntriesReply;
+
+            InitTraces(
+                    "HandleVoteRequest_RequesterHasMoreLogsCompareToRequestee" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = node.LogEntries.Count     - 1 ,
+                PreviousLogIndex = node.LogEntries.Count - 1 ,
+                PreviousLogTerm = node.LogEntries[^1].Term ,
+                Entries = [] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
+
+            // Core test logic
+            VoteRequestReply voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count ,  // requester last log index > requestee last log index
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+
+    [Fact]
     private async Task HandleVoteRequest_RequesterHasSameLogAsRequestee_VoteGranted()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply appendEntriesReply;
+
+            InitTraces(
+                    "HandleVoteRequest_RequesterHasSameLogAsRequestee" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = node.LogEntries.Count     - 1 ,
+                PreviousLogIndex = node.LogEntries.Count - 1 ,
+                PreviousLogTerm = node.LogEntries[^1].Term ,
+                Entries = [] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
+
+            // Core test logic
+            VoteRequestReply voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,  // requester last log index == requestee last log index
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+
+    [Fact]
     private async Task HandleVoteRequest_RequesteeHasVoteForAnotherNode_VoteRejected()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
+
+        async Task PerformTest()
+        {
+            VoteRequestReply voteResponse;
+
+            InitTraces(
+                    "HandleVoteRequest_RequesteeHasVoteForAnotherNode" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task nodeStart = node.StartAsync();
+
+            // Core test logic
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
+
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node3Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.False(voteResponse.VoteGranted , "Expect vote reject (because requestee has voted for another node), but granted.");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+
+    [Fact]
     private async Task HandleVoteRequest_RequesteeHasVoteForCandidate_VoteGrantedAgain()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
+
+        async Task PerformTest()
+        {
+            VoteRequestReply voteResponse;
+
+            InitTraces(
+                    "HandleVoteRequest_RequesteeHasVoteForCandidate" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task nodeStart = node.StartAsync();
+
+            // Core test logic
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
+
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted (because requestee has previously voted for requester), but rejected.");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+
+    [Fact]
     private async Task HandleVoteRequest_RequesteeHasVoteForAnotherNodeAtLowerTerm_VoteGranted()
-        => throw new NotImplementedException();
+    {
+        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            VoteRequestReply voteResponse;
+
+            InitTraces(
+                    "HandleVoteRequest_RequesteeHasVoteForAnotherNode" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task nodeStart = node.StartAsync();
+
+            // Core test logic
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
+
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node3Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
     #endregion
     #endregion
 
