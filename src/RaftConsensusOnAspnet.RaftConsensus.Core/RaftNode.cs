@@ -773,6 +773,14 @@ public class RaftNode
             if (completedTask == waitForNewAppendEntriesRequestReply)
             {
                 AppendEntriesReply reply = await AppendEntriesReplyChannel.Reader.ReadAsync();
+
+                if (reply.MatchIndex >= logEntries.Count || reply.MatchIndex < 0)
+                {
+                    debugTrace.TraceInformation($"{loggingPrefix}: Received reply with match index outside of possible values. This reply will be ignored.");
+                    standardTrace.TraceInformation("Received reply with match index outside of possible values. This reply will be ignored.");
+                    continue;
+                }
+
                 if (reply.RequestId != requestId)
                 {
                     debugTrace.TraceInformation($"{loggingPrefix}: Old reply received from node {GetDebugNodeIntId(reply.ReplierId)}.");
@@ -789,9 +797,9 @@ public class RaftNode
 
                 int newCommitIndex = matchIndexes
                     .Where(
-                            (_ , candidateCommitIndex) => matchIndexes.Count(kvp => kvp.Value >= candidateCommitIndex) >= nodeCount / 2
+                        candidateMatchIndex => matchIndexes.Count(kvp => kvp.Value >= candidateMatchIndex.Value) >= nodeCount / 2
                         )
-                    .Where((_ , candidateNextIndex) => logEntries[candidateNextIndex].Term == CurrentTerm)
+                    .Where(candidateNextIndex => logEntries[candidateNextIndex.Value].Term == CurrentTerm)
                     .DefaultIfEmpty(new KeyValuePair<Guid , int>(Guid.Empty , 0))
                     .Max(kvp => kvp.Value);
                 if (newCommitIndex != commitIndex)
