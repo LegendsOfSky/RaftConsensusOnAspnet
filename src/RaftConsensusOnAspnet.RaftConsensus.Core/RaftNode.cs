@@ -435,7 +435,15 @@ public class RaftNode
                 break;
 
             case NodeRole.Leader:
-                debugTrace.TraceInformation($"{loggingPrefix}: TODO (Split leader) finish this state (Code navigation key: lm2leockDs3uGiHJ).");
+                if (args.RequesterTerm == CurrentTerm)
+                    debugTrace.TraceInformation($"{loggingPrefix}: TODO (Split leader) finish this state (Code navigation key: lm2leockDs3uGiHJ).");
+                else  // args.RequesterTerm > CurrentTerm
+                {
+                    standardTrace.TraceInformation("Revert to follower (Leader -> Follower).");
+                    debugTrace.TraceInformation($"{loggingPrefix}: Revert to follower (Leader -> Follower).");
+                    revertToFollowerTcs.TrySetResult();
+                    revertToFollowerTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                }
                 break;
 
             default:
