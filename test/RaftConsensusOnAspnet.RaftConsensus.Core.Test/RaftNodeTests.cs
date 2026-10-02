@@ -1133,7 +1133,7 @@ public class RaftNodeTests
             AppendEntriesReply reply;
 
             InitTraces(
-                    nameof(HandleAppendEntries_RequesterTermHigherThanRequestee_ReplyAppendSuccess) , null ,
+                    nameof(HandleAppendEntries_RequesterTermLowerThanRequestee_ReplyAppendFail) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -2159,7 +2159,7 @@ public class RaftNodeTests
             Channel<bool> appendRequestSuccessOrNot = Channel.CreateUnbounded<bool>();
 
             InitTraces(
-                    nameof(StartAsync_LeaderAfterInit_SendAppendEntriesToOtherNodes) , null ,
+                    nameof(StartAsync_LeaderReceivedAppendEntriesFailed_DecrementNextIndex) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
@@ -2348,7 +2348,7 @@ public class RaftNodeTests
         {
             Channel<int> commitIndexChannel = Channel.CreateUnbounded<int>();
             InitTraces(
-                    nameof(StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueInCurrentTerm_SetCommitIndexToThatValue) , null ,
+                    nameof(StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueButNotInCurrentTerm_DoNothing) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
 
