@@ -1794,23 +1794,284 @@ public class RaftNodeTests
     #endregion
 
     #region Candidate Node
+    [Fact]
     private async Task StartAsync_CandidateWhenAllVoteGranted_BecomeLeader()
-        => throw new NotImplementedException();
+    {
+        const int ElectionTimeoutInterval = 500;
 
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2) * 2);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<bool> eventNotifyChannel = Channel.CreateUnbounded<bool>();
+            InitTraces(
+                    nameof(StartAsync_CandidateWhenAllVoteGranted_BecomeLeader) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Leader , node.Role);
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            async Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+                => await eventNotifyChannel.Writer.WriteAsync(true);
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+
+                await eventNotifyChannel.Writer.WriteAsync(true);
+            }
+        }
+    }
+
+    [Fact]
     private async Task StartAsync_CandidateWhenMajorVoteGranted_BecomeLeader()
-        => throw new NotImplementedException();
+    {
+        const int ElectionTimeoutInterval = 500;
 
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2) * 2);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<bool> eventNotifyChannel = Channel.CreateUnbounded<bool>();
+            InitTraces(
+                    nameof(StartAsync_CandidateWhenMajorVoteGranted_BecomeLeader) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 5 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Leader , node.Role);
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            async Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+                => await eventNotifyChannel.Writer.WriteAsync(true);
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+
+                await eventNotifyChannel.Writer.WriteAsync(true);
+            }
+        }
+    }
+
+    [Fact]
     private async Task StartAsync_CandidateWhenMinorVoteGranted_StartNewElection()
-        => throw new NotImplementedException();
+    {
+        const int ElectionTimeoutInterval = 500;
 
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 4) * 2);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<bool> eventNotifyChannel = Channel.CreateUnbounded<bool>();
+            InitTraces(
+                    nameof(StartAsync_CandidateWhenMinorVoteGranted_StartNewElection) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 5 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            node.Stop();
+            await nodeStart;
+            return;
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                    ReplierId = s_node2Guid ,
+                });
+
+                await eventNotifyChannel.Writer.WriteAsync(true);
+            }
+        }
+    }
+
+    [Fact]
     private async Task StartAsync_CandidateWhenNoVoteResponse_StartNewElection()
-        => throw new NotImplementedException();
+    {
+        const int ElectionTimeoutInterval = 500;
 
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 4) * 2);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<bool> eventNotifyChannel = Channel.CreateUnbounded<bool>();
+            InitTraces(
+                    nameof(StartAsync_CandidateWhenNoVoteResponse_StartNewElection) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 5 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            node.Stop();
+            await nodeStart;
+            return;
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+                => await eventNotifyChannel.Writer.WriteAsync(true);
+        }
+    }
+
+    [Fact]
     private async Task StartAsync_CandidateAppendEntriesReceivedFromLeaderWithSameTerm_BecomeFollower()
-        => throw new NotImplementedException();
+    {
+        const int ElectionTimeoutInterval = 500;
 
-    private async Task StartAsync_CandidateAppendEntriesReceivedFromLeaderWithHigherTerm_BecomeFollower()
-        => throw new NotImplementedException();
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2) * 2);
+
+        testOutput.WriteLine("Test over candidate node:");
+        Task test = PerformTest();
+        Task completedTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completedTask , OverTimeMessage);
+        await test;
+
+        return;
+
+
+        async Task PerformTest()
+        {
+            InitTraces(
+                    $"{nameof(StartAsync_CandidateAppendEntriesReceivedFromLeaderWithSameTerm_BecomeFollower)}_OnCandidateNode" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            TaskCompletionSource nodeBecomeCandidateTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await nodeBecomeCandidateTcs.Task;
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                LeaderCommit = 0 ,
+                Entries = [] ,
+            });
+            await Task.Delay(100);  // Important tolerant windows. Because the append entries request has a higher term and the term update to be commited to
+            //     the database. Therefore, it may possess a delay for the role update depending on implementation. This delay is to
+            //     allow database to commit all necessary values before perform test check.
+            Assert.Equal(NodeRole.Follower , node.Role);
+
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                nodeBecomeCandidateTcs.SetResult();
+                node.SetElectionTimeoutInterval(int.MaxValue);
+                return Task.CompletedTask;
+            }
+        }
+    }
     #endregion
 
     #region Leader Node
