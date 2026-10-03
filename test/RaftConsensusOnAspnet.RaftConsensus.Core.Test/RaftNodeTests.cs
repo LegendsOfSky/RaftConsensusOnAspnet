@@ -12,7 +12,12 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
 
 public class RaftNodeTests
 {
+    private const int DatabaseCommitBufferPeriod = 100;
+    private const int ExtendedPeriod = 500;
     private const int MaxTimeDeviation = 500;
+    private const int OvertimeFactor = 2;
+    private const int RegularTestTimeout = 1000;
+    private const int TestEvaluateWindow = 100;
     private const string OverTimeMessage = "Test overtime";
 
     private static readonly Guid s_node1Guid = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -35,7 +40,7 @@ public class RaftNodeTests
     [InlineData(2500)]
     private async Task ConstructorInit_ElectionTimeoutInit_StartElectionAfterNodeStartAtSpecificInterval(int electionInterval)
     {
-        Task waitUnitTestTimeout = Task.Delay(electionInterval * 2);
+        Task waitUnitTestTimeout = Task.Delay((electionInterval + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -95,7 +100,7 @@ public class RaftNodeTests
     {
         const int DelayBeforeElectionTimeoutChanged = 200;
 
-        Task waitUnitTestTimeout = Task.Delay((DelayBeforeElectionTimeoutChanged + electionInterval) * 2);
+        Task waitUnitTestTimeout = Task.Delay((DelayBeforeElectionTimeoutChanged + electionInterval + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -157,7 +162,7 @@ public class RaftNodeTests
     {
         const int InitialElectionInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + electionInterval) * 2);
+        Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + electionInterval + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -211,7 +216,7 @@ public class RaftNodeTests
         const int InitialElectionInterval = 500;
         const int HeartBeatInterval = 1000;
 
-        Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + electionInterval + HeartBeatInterval) * 2);
+        Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + electionInterval + HeartBeatInterval * 2 + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -282,7 +287,7 @@ public class RaftNodeTests
         const int ElectionInterval = 500;
         const int InitialHeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionInterval + ElectionInterval) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionInterval + ElectionInterval + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -336,7 +341,7 @@ public class RaftNodeTests
         const int ElectionInterval = 500;
         const int InitialHeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionInterval + ElectionInterval) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionInterval * 2 + InitialHeartBeatInterval + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -389,7 +394,7 @@ public class RaftNodeTests
         const int InitialElectionInterval = 500;
         const int InitialHeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + InitialElectionInterval + heartBeatInterval) * 2);
+        Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + InitialElectionInterval + heartBeatInterval + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -454,7 +459,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleVoteRequest_RequesterTermEqualRequesteeTerm_VoteGranted()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -511,7 +516,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleVoteRequest_RequesterTermHigherThanRequesteeTerm_VoteGranted()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -568,7 +573,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleVoteRequest_RequesterTermLowerThanRequesteeTerm_VoteRejected()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -627,7 +632,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleVoteRequest_RequesterHasLessLogsCompareToRequestee_VoteRejected()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -703,7 +708,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleVoteRequest_RequesterHasMoreLogsCompareToRequestee_VoteGranted()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -779,7 +784,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleVoteRequest_RequesterHasSameLogAsRequestee_VoteGranted()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -855,7 +860,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleVoteRequest_RequesteeHasVoteForAnotherNode_VoteRejected()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -910,7 +915,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleVoteRequest_RequesteeHasVoteForCandidate_VoteGrantedAgain()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -965,7 +970,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleVoteRequest_RequesteeHasVoteForAnotherNodeAtLowerTerm_VoteGranted()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1024,7 +1029,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleAppendEntries_RequesterTermEqualToRequestee_ReplyAppendSuccess()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1072,7 +1077,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleAppendEntries_RequesterTermHigherThanRequestee_ReplyAppendSuccess()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1120,7 +1125,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleAppendEntries_RequesterTermLowerThanRequestee_ReplyAppendFail()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1184,7 +1189,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleAppendEntries_TermOfPreviousLogDoesNotMatchBetweenRequesterAndRequestee_ReplyAppendFail()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1260,7 +1265,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleAppendEntries_RequesteeDoesNotHavePreviousLogAssumedByNewLeader_ReplyAppendFail()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1324,7 +1329,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleAppendEntries_ExistingTermConflicts_DeleteAllFutureEntriesStartAndIncludingTheConflictingLog()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1418,7 +1423,7 @@ public class RaftNodeTests
     [Fact]
     private async Task HandleAppendEntries_AppendEntriesWithCorrectArgs_AppendSuccess()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1479,8 +1484,8 @@ public class RaftNodeTests
     private async Task HandleAppendEntries_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower()
     {
         const int ElectionTimeoutInterval = 500;
-        const int MaxTestTimeForCandidateNodeTest = (ElectionTimeoutInterval * 2) * 2;
-        const int MaxTestTimeForLeaderNodeTest = (ElectionTimeoutInterval * 3) * 2;
+        const int MaxTestTimeForCandidateNodeTest = (ElectionTimeoutInterval + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
+        const int MaxTestTimeForLeaderNodeTest = (ElectionTimeoutInterval * 2 + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
 
         Task test , completedTask;
 
@@ -1531,9 +1536,7 @@ public class RaftNodeTests
                 LeaderCommit = 0 ,
                 Entries = [] ,
             });
-            await Task.Delay(100);  // Important tolerant windows. Because the append entries request has a higher term and the term update to be commited to
-            //     the database. Therefore, it may possess a delay for the role update depending on implementation. This delay is to
-            //     allow database to commit all necessary values before perform test check.
+            await Task.Delay(DatabaseCommitBufferPeriod);
             Assert.Equal(NodeRole.Follower , node.Role);
 
             node.Stop();
@@ -1580,9 +1583,7 @@ public class RaftNodeTests
                 LeaderCommit = 0 ,
                 Entries = [] ,
             });
-            await Task.Delay(200);  // Important tolerant windows. Because the append entries request has a higher term and the term update to be commited to
-            //     the database. Therefore, it may possess a delay for the role update depending on implementation. This delay is to
-            //     allow database to commit all necessary values before perform test check.
+            await Task.Delay(DatabaseCommitBufferPeriod);
             Assert.Equal(NodeRole.Follower , node.Role);
 
             node.Stop();
@@ -1617,8 +1618,8 @@ public class RaftNodeTests
     private async Task HandleVoteRequest_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower()
     {
         const int ElectionTimeoutInterval = 500;
-        const int MaxTestTimeForCandidateNodeTest = (ElectionTimeoutInterval * 2) * 2;
-        const int MaxTestTimeForLeaderNodeTest = (ElectionTimeoutInterval * 3) * 2;
+        const int MaxTestTimeForCandidateNodeTest = (ElectionTimeoutInterval + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
+        const int MaxTestTimeForLeaderNodeTest = (ElectionTimeoutInterval * 2 + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
 
         Task test , completedTask;
 
@@ -1667,9 +1668,7 @@ public class RaftNodeTests
                 RequesterLastLogIndex = 0 ,
                 RequesterLastLogTerm = 0 ,
             });
-            await Task.Delay(100);  // Important tolerant windows. Because the append entries request has a higher term and the term update to be commited to
-            //     the database. Therefore, it may possess a delay for the role update depending on implementation. This delay is to
-            //     allow database to commit all necessary values before perform test check.
+            await Task.Delay(DatabaseCommitBufferPeriod);
             Assert.Equal(NodeRole.Follower , node.Role);
 
             node.Stop();
@@ -1714,9 +1713,7 @@ public class RaftNodeTests
                 RequesterLastLogIndex = 0 ,
                 RequesterLastLogTerm = 0 ,
             });
-            await Task.Delay(200);  // Important tolerant windows. Because the append entries request has a higher term and the term update to be commited to
-            //     the database. Therefore, it may possess a delay for the role update depending on implementation. This delay is to
-            //     allow database to commit all necessary values before perform test check.
+            await Task.Delay(DatabaseCommitBufferPeriod);
             Assert.Equal(NodeRole.Follower , node.Role);
 
             node.Stop();
@@ -1754,7 +1751,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1799,7 +1796,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1838,6 +1835,8 @@ public class RaftNodeTests
 
             async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
             {
+                await eventNotifyChannel.Writer.WriteAsync(true);
+                await Task.Delay(TestEvaluateWindow);
                 VoteRequestReply replyTemplate = new VoteRequestReply
                 {
                     RequestId = requestId ,
@@ -1848,8 +1847,6 @@ public class RaftNodeTests
                 };
                 await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
                 await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
-
-                await eventNotifyChannel.Writer.WriteAsync(true);
             }
         }
     }
@@ -1859,7 +1856,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1898,6 +1895,8 @@ public class RaftNodeTests
 
             async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
             {
+                await eventNotifyChannel.Writer.WriteAsync(true);
+                await Task.Delay(TestEvaluateWindow);
                 VoteRequestReply replyTemplate = new VoteRequestReply
                 {
                     RequestId = requestId ,
@@ -1908,8 +1907,6 @@ public class RaftNodeTests
                 };
                 await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
                 await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
-
-                await eventNotifyChannel.Writer.WriteAsync(true);
             }
         }
     }
@@ -1919,7 +1916,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 4) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 3 + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1952,6 +1949,8 @@ public class RaftNodeTests
 
             async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
             {
+                await eventNotifyChannel.Writer.WriteAsync(true);
+                await Task.Delay(TestEvaluateWindow);
                 await node.VoteRequestReplyChannel.Writer.WriteAsync(new VoteRequestReply
                 {
                     RequestId = requestId ,
@@ -1961,8 +1960,6 @@ public class RaftNodeTests
                     VoteGranted = true ,
                     ReplierId = s_node2Guid ,
                 });
-
-                await eventNotifyChannel.Writer.WriteAsync(true);
             }
         }
     }
@@ -1972,7 +1969,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 4) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 3 + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -2013,7 +2010,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor);
 
         testOutput.WriteLine("Test over candidate node:");
         Task test = PerformTest();
@@ -2081,7 +2078,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval + HeartBeatInterval) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -2143,7 +2140,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval + HeartBeatInterval * 3) * 10);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -2243,7 +2240,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -2300,7 +2297,6 @@ public class RaftNodeTests
                 Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
             {
                 await commitIndexChannel.Writer.WriteAsync(commitIndex);
-
                 AppendEntriesReply replyTemplate = new AppendEntriesReply
                 {
                     RequestId = requestId ,
@@ -2310,6 +2306,7 @@ public class RaftNodeTests
                     AppendSuccess = true ,
                     MatchIndex = node.LogEntries.Count - 1 ,
                 };
+                await Task.Delay(TestEvaluateWindow);
                 await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
                 await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
@@ -2336,7 +2333,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3) * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -2390,7 +2387,7 @@ public class RaftNodeTests
                 Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
             {
                 await commitIndexChannel.Writer.WriteAsync(commitIndex);
-
+                await Task.Delay(TestEvaluateWindow);
                 AppendEntriesReply replyTemplate = new AppendEntriesReply
                 {
                     RequestId = requestId ,
@@ -2426,7 +2423,7 @@ public class RaftNodeTests
     [Fact]
     private async Task ConstructorInit_RestartWithKeepExistData_RaftRestartAsFollowerNodeWithExistData()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -2436,8 +2433,6 @@ public class RaftNodeTests
 
         async Task PerformTest()
         {
-            VoteRequestReply voteReply;
-
             InitTraces(
                     nameof(ConstructorInit_RestartWithKeepExistData_RaftRestartAsFollowerNodeWithExistData) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
@@ -2484,7 +2479,7 @@ public class RaftNodeTests
     [Fact]
     private async Task ConstructorInit_RestartWithKeepExistData_RaftRestartWithVoteInfoRestored()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -2557,7 +2552,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval + HeartBeatInterval * 2) * 3 * 2);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval + ExtendedPeriod) * 3 * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -2660,7 +2655,7 @@ public class RaftNodeTests
     [Fact]
     private async Task ConstructorInit_RestartWithRemoveExistData_RaftRestartWithoutVoteInfoRestored()
     {
-        Task waitUnitTestTimeout = Task.Delay(2000);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
