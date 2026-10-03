@@ -552,6 +552,7 @@ public class RaftNode
     private async Task RunAsCandidateAsync()
     {
         Task raftStopSignal = stopRaftTcs?.Task ?? throw new InvalidOperationException();
+        Task waitForElectionIntervalChange = changeElectionIntervalTcs.Task;
         Task waitForNodeCountChange = changeNodeCountTcs.Task;
         Task waitForRevertToFollowerSignal = revertToFollowerTcs.Task;
 
@@ -578,7 +579,6 @@ public class RaftNode
         int voteGranted = 1 , voteReceived = 1;
         while (true)
         {
-            Task waitForElectionIntervalChange = changeElectionIntervalTcs.Task;
             Task waitForElectionTimerEnd = Task.Delay(electionTimeoutInterval);
             standardTrace.TraceInformation($"Start waiting for vote replies until {electionTimeoutInterval} of election timer runs out.");
             debugTrace.TraceInformation($"{loggingPrefix}: Start waiting for vote replies until {electionTimeoutInterval} of election timer runs out.");
@@ -611,6 +611,7 @@ public class RaftNode
                 }
                 if (completedTask == waitForElectionIntervalChange)
                 {
+                    waitForElectionIntervalChange = changeElectionIntervalTcs.Task;
                     standardTrace.TraceInformation("Election timer reset.");
                     debugTrace.TraceInformation($"{loggingPrefix}: Election timer reset.");
                     break;
