@@ -1,10 +1,10 @@
-﻿using Microsoft.Data.Sqlite;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Misc;
+﻿using RaftConsensusOnAspnet.RaftConsensus.Core.Misc;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers.Messages;
-using System.Diagnostics;
-using System.Text;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers;
+using System.Diagnostics;
+using System.Threading.Channels;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
 using Xunit.Abstractions;
 
 
@@ -12,1537 +12,2720 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
 
 public class RaftNodeTests
 {
-    private const int MaxTestTime = 30000;
-    private const string MaxTestTimeExceedMsg = "Test failed: overtimed.";
+    private const int DatabaseCommitBufferPeriod = 100;
+    private const int ExtendedPeriod = 500;
+    private const int MaxTimeDeviation = 500;
+    private const int OvertimeFactor = 2;
+    private const int RegularTestTimeout = 1000;
+    private const int TestEvaluateWindow = 100;
+    private const string OverTimeMessage = "Test overtime";
+
+    private static readonly Guid s_node1Guid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    private static readonly Guid s_node2Guid = Guid.Parse("00000000-0000-0000-0000-000000000002");
+    private static readonly Guid s_node3Guid = Guid.Parse("00000000-0000-0000-0000-000000000003");
+    private static readonly Guid s_node4Guid = Guid.Parse("00000000-0000-0000-0000-000000000004");
+    private static readonly Guid s_node5Guid = Guid.Parse("00000000-0000-0000-0000-000000000005");
+
     private readonly ITestOutputHelper testOutput;
 
 
-    public RaftNodeTests(ITestOutputHelper output) => testOutput = output;
+    public RaftNodeTests(ITestOutputHelper testOutputIn) => testOutput = testOutputIn;
 
 
-    [Fact]
-    private async Task RaftClusterTest_01LeaderElection_01OneCandidateOneRoundElection()
+    #region Election Timeout Tests
+    [Theory]
+    [InlineData(1000)]
+    [InlineData(1500)]
+    [InlineData(2000)]
+    [InlineData(2500)]
+    private async Task ConstructorInit_ElectionTimeoutInit_StartElectionAfterNodeStartAtSpecificInterval(int electionInterval)
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/01LeaderElection_01OneCandidateOneRoundElection.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/01LeaderElection_01OneCandidateOneRoundElection.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/01LeaderElection_01OneCandidateOneRoundElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/01LeaderElection_01OneCandidateOneRoundElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/01LeaderElection_01OneCandidateOneRoundElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/01LeaderElection_01OneCandidateOneRoundElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/01LeaderElection_01OneCandidateOneRoundElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("01LeaderElection_01OneCandidateOneRoundElection" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay((electionInterval + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(2000);
-            nodes[2].SetElectionTimeoutInterval(2000);
-            nodes[3].SetElectionTimeoutInterval(2000);
-            nodes[4].SetElectionTimeoutInterval(2000);
-            return (true , "");
+            TaskCompletionSource nodeBecomeElectionTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            InitTraces(
+                    nameof(ConstructorInit_ElectionTimeoutInit_StartElectionAfterNodeStartAtSpecificInterval) , electionInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , electionInterval , int.MaxValue , 1 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            Task waitUntilExpectTime = Task.Delay(electionInterval);
+
+            DateTime expectTime = DateTime.MinValue , actualTime = DateTime.MinValue;
+            List<Task> tasks = [waitUntilExpectTime , nodeBecomeElectionTcs.Task];
+            while (expectTime == DateTime.MinValue || actualTime == DateTime.MinValue)
+            {
+                Task completedTask = await Task.WhenAny(tasks);
+                if (completedTask == waitUntilExpectTime)
+                    expectTime = DateTime.Now;
+                else if (completedTask == nodeBecomeElectionTcs.Task)
+                    actualTime = DateTime.Now;
+                tasks.Remove(completedTask);
+            }
+
+            Assert.InRange((actualTime - expectTime).Milliseconds , -MaxTimeDeviation , MaxTimeDeviation);
+            await nodeStart;
+            return;
+
+
+            Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                nodeBecomeElectionTcs.SetResult();
+                node.Stop();
+                return Task.CompletedTask;
+            }
         }
+    }
 
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
+    [Theory]
+    [InlineData(1000)]
+    [InlineData(1500)]
+    [InlineData(2000)]
+    [InlineData(2500)]
+    private async Task SetElectionTimeoutInterval_ElectionTimeoutChangedAtFollowerPhase_UseNewTimerToWaitForHeartBeatSignal(int electionInterval)
+    {
+        const int DelayBeforeElectionTimeoutChanged = 200;
+
+        Task waitUnitTestTimeout = Task.Delay((DelayBeforeElectionTimeoutChanged + electionInterval + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
         {
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true , MessageDropped = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true , MessageDropped = true });
+            TaskCompletionSource nodeBecomeElectionTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            InitTraces(
+                    nameof(SetElectionTimeoutInterval_ElectionTimeoutChangedAtFollowerPhase_UseNewTimerToWaitForHeartBeatSignal) , electionInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue  , int.MaxValue , 1 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
-            return connections;
+            Task nodeStart = node.StartAsync();
+            await Task.Delay(DelayBeforeElectionTimeoutChanged);
+            node.SetElectionTimeoutInterval(electionInterval);
+            Task waitUntilExpectTime = Task.Delay(electionInterval);
+
+            DateTime expectTime = DateTime.MinValue , actualTime = DateTime.MinValue;
+            List<Task> tasks = [waitUntilExpectTime , nodeBecomeElectionTcs.Task];
+            while (expectTime == DateTime.MinValue || actualTime == DateTime.MinValue)
+            {
+                Task completedTask = await Task.WhenAny(tasks);
+                if (completedTask == waitUntilExpectTime)
+                    expectTime = DateTime.Now;
+                else if (completedTask == nodeBecomeElectionTcs.Task)
+                    actualTime = DateTime.Now;
+                tasks.Remove(completedTask);
+            }
+
+            Assert.InRange((actualTime - expectTime).Milliseconds , -MaxTimeDeviation , MaxTimeDeviation);
+            await nodeStart;
+            return;
+
+
+            Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                nodeBecomeElectionTcs.SetResult();
+                node.Stop();
+                return Task.CompletedTask;
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(1000)]
+    [InlineData(1500)]
+    [InlineData(2000)]
+    [InlineData(2500)]
+    private async Task SetElectionTimeoutInterval_ElectionTimeoutChangedAtCandidatePhase_UseNewTimerToWaitForResponseBeforeTimeout(int electionInterval)
+    {
+        const int InitialElectionInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + electionInterval + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<DateTime> voteRequestTimeStamp = Channel.CreateUnbounded<DateTime>();
+            InitTraces(
+                    nameof(SetElectionTimeoutInterval_ElectionTimeoutChangedAtCandidatePhase_UseNewTimerToWaitForResponseBeforeTimeout) ,
+                    electionInterval.ToString() , out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , InitialElectionInterval  , int.MaxValue , 1 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await voteRequestTimeStamp.Reader.ReadAsync();
+            await Task.Delay(electionInterval);
+            DateTime expectTime = DateTime.Now;
+            DateTime actualTime = await voteRequestTimeStamp.Reader.ReadAsync();
+
+            node.Stop();
+
+            Assert.InRange((actualTime - expectTime).Milliseconds , -MaxTimeDeviation , MaxTimeDeviation);
+            await nodeStart;
+            return;
+
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                ValueTask writeTimeStamp = voteRequestTimeStamp.Writer.WriteAsync(DateTime.Now);
+                node.SetElectionTimeoutInterval(electionInterval);
+                await writeTimeStamp;
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(1000)]
+    [InlineData(1500)]
+    [InlineData(2000)]
+    [InlineData(2500)]
+    private async Task SetElectionTimeoutInterval_ElectionTimeoutChangedAtLeaderPhase_DoNothing(int electionInterval)
+    {
+        const int InitialElectionInterval = 500;
+        const int HeartBeatInterval = 1000;
+
+        Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + electionInterval + HeartBeatInterval * 2 + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
+            InitTraces(
+                    nameof(SetElectionTimeoutInterval_ElectionTimeoutChangedAtLeaderPhase_DoNothing) , electionInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , InitialElectionInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await timestamp.Reader.ReadAsync();
+            await Task.Delay(HeartBeatInterval);
+            DateTime expectTime = DateTime.Now;
+            DateTime actualTime = await timestamp.Reader.ReadAsync();
+
+            node.Stop();
+
+            Assert.InRange((actualTime - expectTime).Milliseconds , -MaxTimeDeviation , MaxTimeDeviation);
+            await nodeStart;
+            return;
+
+
+            async Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+            {
+                await timestamp.Writer.WriteAsync(DateTime.Now);
+                node.SetElectionTimeoutInterval(electionInterval);
+            }
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+        }
+    }
+    #endregion
+
+    #region Heart Beat Interval Test
+    [Theory]
+    [InlineData(1000)]
+    [InlineData(1500)]
+    [InlineData(2000)]
+    [InlineData(2500)]
+    private async Task SetHeartBeatInterval_HeartBeatIntervalChangedAtFollowerPhase_DoNothing(int heartBeatInterval)
+    {
+        const int ElectionInterval = 500;
+        const int InitialHeartBeatInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionInterval + ElectionInterval + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
+            InitTraces(
+                    nameof(SetHeartBeatInterval_HeartBeatIntervalChangedAtFollowerPhase_DoNothing) , heartBeatInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionInterval , InitialHeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            Task waitUntilElectionStart = Task.Delay(ElectionInterval);
+            await Task.Delay(250);
+            node.SetHeartBeatInterval(heartBeatInterval);
+            await waitUntilElectionStart;
+            DateTime expectTime = DateTime.Now;
+            DateTime actualTime = await timestamp.Reader.ReadAsync();
+
+            Assert.InRange((actualTime - expectTime).Milliseconds , -MaxTimeDeviation , MaxTimeDeviation);
+            await nodeStart;
+            return;
+
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                await timestamp.Writer.WriteAsync(DateTime.Now);
+                node.SetHeartBeatInterval(heartBeatInterval);
+                node.Stop();
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(1000)]
+    [InlineData(1500)]
+    [InlineData(2000)]
+    [InlineData(2500)]
+    private async Task SetHeartBeatInterval_HeartBeatIntervalChangedAtCandidatePhase_DoNothing(int heartBeatInterval)
+    {
+        const int ElectionInterval = 500;
+        const int InitialHeartBeatInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionInterval * 2 + InitialHeartBeatInterval + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
+            InitTraces(
+                    nameof(SetHeartBeatInterval_HeartBeatIntervalChangedAtCandidatePhase_DoNothing) , heartBeatInterval.ToString() ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionInterval , InitialHeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await timestamp.Reader.ReadAsync();
+            await Task.Delay(ElectionInterval);
+            DateTime expectTime = DateTime.Now;
+            DateTime actualTime = await timestamp.Reader.ReadAsync();
+
+            node.Stop();
+
+            Assert.InRange((actualTime - expectTime).Milliseconds , -MaxTimeDeviation , MaxTimeDeviation);
+            await nodeStart;
+            return;
+
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                await timestamp.Writer.WriteAsync(DateTime.Now);
+                node.SetHeartBeatInterval(heartBeatInterval);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(1000)]
+    [InlineData(1500)]
+    [InlineData(2000)]
+    [InlineData(2500)]
+    private async Task SetHeartBeatInterval_HeartBeatIntervalChangedAtLeaderPhase_RestartHeartBeatTimerAndSendHeartBeatAfterNewTimerEnd(int heartBeatInterval)
+    {
+        const int InitialElectionInterval = 500;
+        const int InitialHeartBeatInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + InitialElectionInterval + heartBeatInterval + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<DateTime> timestamp = Channel.CreateUnbounded<DateTime>();
+            InitTraces(
+                    nameof(SetHeartBeatInterval_HeartBeatIntervalChangedAtLeaderPhase_RestartHeartBeatTimerAndSendHeartBeatAfterNewTimerEnd) ,
+                    heartBeatInterval.ToString() , out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , InitialElectionInterval , InitialHeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await timestamp.Reader.ReadAsync();
+            await Task.Delay(heartBeatInterval);
+            DateTime expectTime = DateTime.Now;
+            DateTime actualTime = await timestamp.Reader.ReadAsync();
+
+            node.Stop();
+
+            Assert.InRange((actualTime - expectTime).Milliseconds , -MaxTimeDeviation , MaxTimeDeviation);
+            await nodeStart;
+            return;
+
+
+            async Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+            {
+                await timestamp.Writer.WriteAsync(DateTime.Now);
+                node.SetHeartBeatInterval(heartBeatInterval);
+            }
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+        }
+    }
+    #endregion
+
+    #region HandleVoteRequest() Test
+    #region Test over `RequestVote RPC Receiver Implementation 1`, as written in Raft specification
+    [Fact]
+    private async Task HandleVoteRequest_RequesterTermEqualRequesteeTerm_VoteGranted()
+    {
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            InitTraces(
+                    nameof(HandleVoteRequest_RequesterTermEqualRequesteeTerm_VoteGranted) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Advance node into term 2
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry()] ,
+            });
+            Assert.Equal(2 , node.CurrentTerm);
+
+            // Core test logic
+            VoteRequestReply reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(reply.VoteGranted , "Expect vote granted, but rejected");
+
+            node.Stop();
+            await nodeStart;
         }
     }
 
     [Fact]
-    private async Task RaftClusterTest_01LeaderElection_02OneCandidateStartTwoElection()
+    private async Task HandleVoteRequest_RequesterTermHigherThanRequesteeTerm_VoteGranted()
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/01LeaderElection_02OneCandidateStartTwoElection.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/01LeaderElection_02OneCandidateStartTwoElection.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/01LeaderElection_02OneCandidateStartTwoElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/01LeaderElection_02OneCandidateStartTwoElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/01LeaderElection_02OneCandidateStartTwoElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/01LeaderElection_02OneCandidateStartTwoElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/01LeaderElection_02OneCandidateStartTwoElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("01LeaderElection_02OneCandidateStartTwoElection" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(3000);
-            nodes[2].SetElectionTimeoutInterval(3000);
-            nodes[3].SetElectionTimeoutInterval(3000);
-            nodes[4].SetElectionTimeoutInterval(3000);
-            return (true , "");
-        }
+            InitTraces(
+                    nameof(HandleVoteRequest_RequesterTermHigherThanRequesteeTerm_VoteGranted) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
-        {
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , MessageDropped = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , MessageDropped = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , MessageDropped = true });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
+            // Advance node into term 2
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
 
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true , MessageDropped = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry()] ,
+            });
+            Assert.Equal(2 , node.CurrentTerm);
 
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
+            // Core test logic
+            VoteRequestReply reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(reply.VoteGranted , "Expect vote granted, but rejected");
 
-            return connections;
+            node.Stop();
+            await nodeStart;
         }
     }
 
     [Fact]
-    private async Task RaftClusterTest_01LeaderElection_03TwoCandidateForElection()
+    private async Task HandleVoteRequest_RequesterTermLowerThanRequesteeTerm_VoteRejected()
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/01LeaderElection_03TwoCandidateForElection.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/01LeaderElection_03TwoCandidateForElection.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/01LeaderElection_03TwoCandidateForElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/01LeaderElection_03TwoCandidateForElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/01LeaderElection_03TwoCandidateForElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/01LeaderElection_03TwoCandidateForElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/01LeaderElection_03TwoCandidateForElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("01LeaderElection_03TwoCandidateForElection" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(2000);
-            nodes[1].SetElectionTimeoutInterval(3000);
-            nodes[2].SetElectionTimeoutInterval(3000);
-            nodes[3].SetElectionTimeoutInterval(4000);
-            nodes[4].SetElectionTimeoutInterval(4000);
-            return (true , "");
+            InitTraces(
+                    nameof(HandleVoteRequest_RequesterTermLowerThanRequesteeTerm_VoteRejected) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // Advance node into term 2
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry()] ,
+            });
+            Assert.Equal(2 , node.CurrentTerm);
+
+            // Core test logic
+            VoteRequestReply reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.False(reply.VoteGranted , "Expect vote rejected, but granted");
+
+            node.Stop();
+            await nodeStart;
         }
+    }
+    #endregion
 
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
+    #region Test over `RequestVote RPC Receiver Implementation 2`, as written in Raft specification
+    [Fact]
+    private async Task HandleVoteRequest_RequesterHasLessLogsCompareToRequestee_VoteRejected()
+    {
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
         {
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , MessageDropped = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , MessageDropped = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , MessageDropped = true });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
+            AppendEntriesReply appendEntriesReply;
 
-            await connections[2 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[2 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[2 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[2 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[2 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false });
-            await connections[2 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false });
-            await connections[2 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[2 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
+            InitTraces(
+                    nameof(HandleVoteRequest_RequesterHasLessLogsCompareToRequestee_VoteRejected) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            await connections[2 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[2].NodeId });
-            await connections[2 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[2].NodeId });
-            await connections[2 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[2].NodeId });
-            await connections[2 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[2].NodeId });
-            await connections[2 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[2 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[2 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[2 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
 
-            return connections;
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = node.LogEntries.Count     - 1 ,
+                PreviousLogIndex = node.LogEntries.Count - 1 ,
+                PreviousLogTerm = node.LogEntries[^1].Term ,
+                Entries = [] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
+
+            // Core test logic
+            VoteRequestReply voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 2 ,  // requester last log index < requestee last log index
+            });
+            Assert.False(voteResponse.VoteGranted , "Expect vote rejected, but granted.");
+
+            node.Stop();
+            await nodeStart;
         }
     }
 
     [Fact]
-    private async Task RaftClusterTest_01LeaderElection_04SplitVote()
+    private async Task HandleVoteRequest_RequesterHasMoreLogsCompareToRequestee_VoteGranted()
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/01LeaderElection_04SplitVote.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/01LeaderElection_04SplitVote.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/01LeaderElection_04SplitVote" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/01LeaderElection_04SplitVote" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/01LeaderElection_04SplitVote" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/01LeaderElection_04SplitVote" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/01LeaderElection_04SplitVote" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("01LeaderElection_04SplitVote" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(2000);
-            nodes[1].SetElectionTimeoutInterval(3000);
-            nodes[2].SetElectionTimeoutInterval(3000);
-            nodes[3].SetElectionTimeoutInterval(2000);
-            nodes[4].SetElectionTimeoutInterval(3000);
-            await Task.Delay(2100);
-            nodes[3].SetElectionTimeoutInterval(300);
-            return (true , "");
-        }
+            AppendEntriesReply appendEntriesReply;
 
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
-        {
-            // T = 2000
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
+            InitTraces(
+                    nameof(HandleVoteRequest_RequesterHasMoreLogsCompareToRequestee_VoteGranted) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            // T = 2000
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 1500 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 1500 });
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 1500 });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 1500 });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 1500 });
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
 
-            // T = 2000
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true , MessageDropped = true });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
 
-            // T = 2400 (node 3 election restart)
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
+                LeaderCommit = node.LogEntries.Count     - 1 ,
+                PreviousLogIndex = node.LogEntries.Count - 1 ,
+                PreviousLogTerm = node.LogEntries[^1].Term ,
+                Entries = [] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
 
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , LeaderId = nodes[3].NodeId , Entries = [] });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , LeaderId = nodes[3].NodeId , Entries = [] });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , LeaderId = nodes[3].NodeId , Entries = [] });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , LeaderId = nodes[3].NodeId , Entries = [] });
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true , MatchIndex = 0 });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true , MatchIndex = 0 });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true , MatchIndex = 0 });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true , MatchIndex = 0 });
+            // Core test logic
+            VoteRequestReply voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count ,  // requester last log index > requestee last log index
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
-            // T = 2900
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = false });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = false });
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = false });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = false });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = false });
-
-            return connections;
+            node.Stop();
+            await nodeStart;
         }
     }
 
     [Fact]
-    private async Task RaftClusterTest_01LeaderElection_05AllForElection()
+    private async Task HandleVoteRequest_RequesterHasSameLogAsRequestee_VoteGranted()
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/01LeaderElection_05AllForElection.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/01LeaderElection_05AllForElection.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/01LeaderElection_05AllForElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/01LeaderElection_05AllForElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/01LeaderElection_05AllForElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/01LeaderElection_05AllForElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/01LeaderElection_05AllForElection" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("01LeaderElection_05AllForElection" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(1000);
-            nodes[2].SetElectionTimeoutInterval(1000);
-            nodes[3].SetElectionTimeoutInterval(1000);
-            nodes[4].SetElectionTimeoutInterval(1000);
-            await Task.Delay(1600);
-            nodes[0].SetElectionTimeoutInterval(5000);
-            nodes[1].SetElectionTimeoutInterval(5000);
-            nodes[2].SetElectionTimeoutInterval(5000);
-            nodes[3].SetElectionTimeoutInterval(5000);
-            nodes[4].SetElectionTimeoutInterval(300);
-            return (true , "");
-        }
+            AppendEntriesReply appendEntriesReply;
 
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
-        {
-            // T = 1000
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
+            InitTraces(
+                    nameof(HandleVoteRequest_RequesterHasSameLogAsRequestee_VoteGranted) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            // T = 1000
-            await connections[1 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[1 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[1 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[1 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task nodeStart = node.StartAsync();
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
 
-            // T = 1000
-            await connections[2 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[2 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[2 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[2 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
+            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
 
-            // T = 1000
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
+                LeaderCommit = node.LogEntries.Count     - 1 ,
+                PreviousLogIndex = node.LogEntries.Count - 1 ,
+                PreviousLogTerm = node.LogEntries[^1].Term ,
+                Entries = [] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(4 , node.LogEntries.Count);
 
-            // T = 1000
-            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 , Delay = 500 });
+            // Core test logic
+            VoteRequestReply voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,  // requester last log index == requestee last log index
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
-            // T = 1500
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-
-            // T = 1500
-            await connections[1 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[1 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[1 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[1 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-
-            // T = 1500
-            await connections[2 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[2 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[2 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[2 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-
-            // T = 1500
-            await connections[3 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[3 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[3 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[3 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-
-            // T = 1500
-            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = false , Delay = 500 });
-
-            // T = 1600
-            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-
-            // T = 1600
-            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-
-            // T = 1600
-            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
-            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
-            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-
-            return connections;
+            node.Stop();
+            await nodeStart;
         }
     }
 
     [Fact]
-    private async Task RaftClusterTest_01LeaderElection_06LeaderRevertToFollower()
+    private async Task HandleVoteRequest_RequesteeHasVoteForAnotherNode_VoteRejected()
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/01LeaderElection_06LeaderRevertToFollower.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/01LeaderElection_06LeaderRevertToFollower.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/01LeaderElection_06LeaderRevertToFollower" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/01LeaderElection_06LeaderRevertToFollower" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/01LeaderElection_06LeaderRevertToFollower" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/01LeaderElection_06LeaderRevertToFollower" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/01LeaderElection_06LeaderRevertToFollower" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("01LeaderElection_06LeaderRevertToFollower" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(2000);
-            nodes[2].SetElectionTimeoutInterval(2000);
-            nodes[3].SetElectionTimeoutInterval(2000);
-            nodes[4].SetElectionTimeoutInterval(2000);
-            await Task.Delay(1100);
-            nodes[4].SetElectionTimeoutInterval(500);
-            return (true , "");
-        }
+            VoteRequestReply voteResponse;
 
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
-        {
-            // T = 1000
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
+            InitTraces(
+                    nameof(HandleVoteRequest_RequesteeHasVoteForAnotherNode_VoteRejected) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            // T = 1000
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task nodeStart = node.StartAsync();
 
-            // T = 1400
-            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 , MessageDropped = true });
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
-            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 , MessageDropped = true });
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 2 });
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 2 , Granted = true });
+            // Core test logic
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
-            // T = 1400
-            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
-            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 2 , Entries = [] , LeaderId = nodes[4].NodeId });
-            await connections[4 , 0].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[4 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[4 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
-            await connections[4 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 2 , Success = true });
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node3Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.False(voteResponse.VoteGranted , "Expect vote reject (because requestee has voted for another node), but granted.");
 
-            return connections;
+            node.Stop();
+            await nodeStart;
         }
     }
 
     [Fact]
-    private async Task RaftClusterTest_02LogReplication_01OneSimplePut()
+    private async Task HandleVoteRequest_RequesteeHasVoteForCandidate_VoteGrantedAgain()
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/02LogReplication_01OneSimplePut.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/02LogReplication_01OneSimplePut.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/02LogReplication_01OneSimplePut" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/02LogReplication_01OneSimplePut" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/02LogReplication_01OneSimplePut" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/02LogReplication_01OneSimplePut" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/02LogReplication_01OneSimplePut" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("02LogReplication_01OneSimplePut" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            (bool manipulationPassed , StringBuilder debugMsgBuilder) = (true , new StringBuilder());
-            Task watchDogTimer = Task.Delay(MaxTestTime);
+            VoteRequestReply voteResponse;
 
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(2000);
-            nodes[2].SetElectionTimeoutInterval(2000);
-            nodes[3].SetElectionTimeoutInterval(2000);
-            nodes[4].SetElectionTimeoutInterval(2000);
-            nodes[0].SetHeartBeatInterval(1000);
+            InitTraces(
+                    nameof(HandleVoteRequest_RequesteeHasVoteForCandidate_VoteGrantedAgain) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            await Task.Delay(1500);
-            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] proposeTasks =
-            [
-                nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-            ];
-            if (await Task.WhenAny(watchDogTimer , Task.WhenAll(proposeTasks)) == watchDogTimer)
-                return (false , MaxTestTimeExceedMsg);
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task nodeStart = node.StartAsync();
 
-            /* Verify propose. */
-            await Task.Delay(2000);
-            if (await proposeTasks[0] is not { Success: true, WrongNode: false, KeyFound: false })
+            // Core test logic
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
             {
-                debugMsgBuilder.Append(
-                        "Proposing new key-value pair to node 0 failed. "
-                        + string.Format(
-                                "Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
-                                (await proposeTasks[0]).Success , (await proposeTasks[0]).WrongNode
-                            )
-                    );
-                manipulationPassed = false;
-            }
-            for (int i = 1; i < nodes.Length; i++)
-                if (await proposeTasks[i] is not { Success: false, WrongNode: true })
-                {
-                    debugMsgBuilder.Append(
-                            $"Proposing new key-value pair to node {i} failed. Expect: Success = false, WrongNode = true. "
-                            + string.Format(
-                                    "but get: Success = {0}, WrongNode = {1}\n" ,
-                                    (await proposeTasks[i]).Success , (await proposeTasks[i]).WrongNode
-                                )
-                        );
-                    manipulationPassed = false;
-                }
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
-            for (int i = 0; i < nodes.Length; i++)
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
             {
-                const int ExpectValue = 1;
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted (because requestee has previously voted for requester), but rejected.");
 
-                (bool success , bool keyFound , object? value) = nodes[i].GetValue("test");
-                if (!success || !keyFound || !Equals(value , ExpectValue))
-                {
-                    debugMsgBuilder.Append(
-                            $"Get value from node {i} failed. Expect: Success = True, KeyFound = True, Value = 1. "
-                            + string.Format(
-                                    "but get: Success = {0}, KeyFound = {1}, Value = {2}\n" ,
-                                    success , keyFound , Equals(value , ExpectValue) ? ExpectValue : "N/A"
-                                )
-                        );
-                    manipulationPassed = false;
-                }
-            }
-
-            return (manipulationPassed , debugMsgBuilder.ToString());
-        }
-
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
-        {
-            connections = await ConfigureNetworkForLeaderElectionAsync(connections , nodes[0]);
-
-            LogEntry entry = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-
-            return connections;
+            node.Stop();
+            await nodeStart;
         }
     }
 
     [Fact]
-    private async Task RaftClusterTest_02LogReplication_02OneSimpleUpdate()
+    private async Task HandleVoteRequest_RequesteeHasVoteForAnotherNodeAtLowerTerm_VoteGranted()
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/02LogReplication_02OneSimpleUpdate.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/02LogReplication_02OneSimpleUpdate.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/02LogReplication_02OneSimpleUpdate" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/02LogReplication_02OneSimpleUpdate" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/02LogReplication_02OneSimpleUpdate" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/02LogReplication_02OneSimpleUpdate" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/02LogReplication_02OneSimpleUpdate" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("02LogReplication_02OneSimpleUpdate" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            (bool manipulationPassed , StringBuilder debugMsgBuilder) = (true , new StringBuilder());
-            Task watchDogTimer = Task.Delay(MaxTestTime);
+            VoteRequestReply voteResponse;
 
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(4000);
-            nodes[2].SetElectionTimeoutInterval(4000);
-            nodes[3].SetElectionTimeoutInterval(4000);
-            nodes[4].SetElectionTimeoutInterval(4000);
-            nodes[0].SetHeartBeatInterval(1000);
+            InitTraces(
+                    nameof(HandleVoteRequest_RequesteeHasVoteForAnotherNodeAtLowerTerm_VoteGranted) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            await Task.Delay(1500);
-            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
-            [
-                nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Put , "test" , 1) ,
-            ];
+            // Add log entries to the node
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task nodeStart = node.StartAsync();
 
-            await Task.Delay(1000);
-            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
-            [
-                nodes[0].ProposeAsync(LogEntryOperation.Put , "test" , 2) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Put , "test" , 2) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Put , "test" , 2) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Put , "test" , 2) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Put , "test" , 2) ,
-            ];
-
-            /* Wait for all task to finish. */
-            bool propose1Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose1Tasks)) != watchDogTimer;
-            bool propose2Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose2Tasks)) != watchDogTimer;
-            if (!propose1Finished || !propose2Finished)
-                return (false , MaxTestTimeExceedMsg);
-
-            /* Check propose 1 (Term 1: Put <test: 1>). */
-            await Task.Delay(2000);
-            if (await propose1Tasks[0] is not { Success: true, WrongNode: false, KeyFound: false })
+            // Core test logic
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
             {
-                debugMsgBuilder.Append(
-                        "Proposing new key-value pair (1) to node 0 failed. "
-                        + string.Format(
-                                "Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
-                                (await propose1Tasks[0]).Success , (await propose1Tasks[0]).WrongNode
-                            )
-                    );
-                manipulationPassed = false;
-            }
-            for (int i = 1; i < nodes.Length; i++)
-                if (await propose1Tasks[i] is not { Success: false, WrongNode: true })
-                {
-                    debugMsgBuilder.Append(
-                            $"Proposing new key-value pair to node {i} failed. "
-                            + string.Format(
-                                    "Expect: Success = false, WrongNode = true. but get: Success = {0}, WrongNode = {1}\n" ,
-                                    (await propose1Tasks[i]).Success , (await propose1Tasks[i]).WrongNode
-                                )
-                        );
-                    manipulationPassed = false;
-                }
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
-            /* Check propose 2 (Term 1: Put <test: 2>). */
-            if (await propose2Tasks[0] is not { Success: true, WrongNode: false, KeyFound: true })
+            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
             {
-                debugMsgBuilder.Append(
-                        "Proposing new key-value pair (1) to node 2 failed. "
-                        + string.Format(
-                                "Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
-                                (await propose2Tasks[0]).Success , (await propose2Tasks[0]).WrongNode
-                            )
-                    );
-                manipulationPassed = false;
-            }
-            for (int i = 1; i < nodes.Length; i++)
-                if (await propose2Tasks[i] is not { Success: false, WrongNode: true })
-                {
-                    debugMsgBuilder.Append(
-                            $"Proposing new key-value pair to node {i} failed. "
-                            + string.Format(
-                                    "Expect: Success = false, WrongNode = true. but get: Success = {0}, WrongNode = {1}\n" ,
-                                    (await propose2Tasks[i]).Success , (await propose2Tasks[i]).WrongNode
-                                )
-                        );
-                    manipulationPassed = false;
-                }
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node3Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+            });
+            Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
-            /* Try get values for correctness check. */
-            for (int i = 0; i < nodes.Length; i++)
-            {
-                const int ExpectValue = 2;
-
-                (bool success , bool keyFound , object? value) = nodes[i].GetValue("test");
-                if (!success || !keyFound || !Equals(value , ExpectValue))
-                {
-                    debugMsgBuilder.Append(
-                            $"Get value from node {i} failed. "
-                            + string.Format(
-                                    "Expect: Success = True, KeyFound = True, Value = 1. but get: Success = {0}, KeyFound = {1}, Value = {2}\n" ,
-                                    success , keyFound , Equals(value , ExpectValue) ? ExpectValue : "N/A"
-                                )
-                        );
-                    manipulationPassed = false;
-                }
-            }
-
-            return (manipulationPassed , debugMsgBuilder.ToString());
+            node.Stop();
+            await nodeStart;
         }
+    }
+    #endregion
+    #endregion
 
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
+    #region HandleAppendEntries() Test
+    #region Test over `AppendEntries RPC Receiver Implementation 1`, as written in Raft specification
+    [Fact]
+    private async Task HandleAppendEntries_RequesterTermEqualToRequestee_ReplyAppendSuccess()
+    {
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
         {
-            connections = await ConfigureNetworkForLeaderElectionAsync(connections , nodes[0]);
+            AppendEntriesReply reply;
 
-            LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+            InitTraces(
+                    nameof(HandleAppendEntries_RequesterTermEqualToRequestee_ReplyAppendSuccess) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            LogEntry entry2 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 2);
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1 , entry2] , LeaderId = nodes[0].NodeId , LeaderCommit = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1 , entry2] , LeaderId = nodes[0].NodeId , LeaderCommit = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
 
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
 
-            return connections;
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but rejected.");
+            Assert.Equal(0 , node.CurrentTerm);
+
+            node.Stop();
+            await nodeStart;
         }
     }
 
     [Fact]
-    private async Task RaftClusterTest_02LogReplication_03OneSimpleDelete()
+    private async Task HandleAppendEntries_RequesterTermHigherThanRequestee_ReplyAppendSuccess()
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/02LogReplication_03OneSimpleDelete.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/02LogReplication_03OneSimpleDelete.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/02LogReplication_03OneSimpleDelete" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/02LogReplication_03OneSimpleDelete" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/02LogReplication_03OneSimpleDelete" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/02LogReplication_03OneSimpleDelete" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/02LogReplication_03OneSimpleDelete" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("02LogReplication_03OneSimpleDelete" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            (bool manipulationPassed , StringBuilder debugMsgBuilder) = (true , new StringBuilder());
-            Task watchDogTimer = Task.Delay(MaxTestTime);
+            AppendEntriesReply reply;
 
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(4000);
-            nodes[2].SetElectionTimeoutInterval(4000);
-            nodes[3].SetElectionTimeoutInterval(4000);
-            nodes[4].SetElectionTimeoutInterval(4000);
-            nodes[0].SetHeartBeatInterval(1000);
+            InitTraces(
+                    nameof(HandleAppendEntries_RequesterTermHigherThanRequestee_ReplyAppendSuccess) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            await Task.Delay(1700);
-            const string ProposeKey = "test";
-            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
-            [
-                nodes[0].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1) ,
-            ];
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
 
-            await Task.Delay(1000);
-            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
-            [
-                nodes[0].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null) ,
-            ];
-
-            /* Wait for all task to finish. */
-            bool propose1Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose1Tasks)) != watchDogTimer;
-            bool propose2Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose2Tasks)) != watchDogTimer;
-            if (!propose1Finished || !propose2Finished)
-                return (false , MaxTestTimeExceedMsg);
-
-            /* Check propose 1 (Term 1: Put <test: 1>). */
-            await Task.Delay(4000);
-            if (await propose1Tasks[0] is not { Success: true, WrongNode: false, KeyFound: false })
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
             {
-                debugMsgBuilder.Append(
-                        "Proposing new key-value pair (1) to node 0 failed. "
-                        + string.Format(
-                                "Expect: Success = True, WrongNode = False. but get: Success = {0}, WrongNode = {1}\n" ,
-                                (await propose1Tasks[0]).Success , (await propose1Tasks[0]).WrongNode
-                            )
-                    );
-                manipulationPassed = false;
-            }
-            for (int i = 1; i < nodes.Length; i++)
-                if (await propose1Tasks[i] is not { Success: false, WrongNode: true })
-                {
-                    debugMsgBuilder.Append(
-                            $"Proposing new key-value (1) pair to node {i} failed. "
-                            + string.Format(
-                                    "Expect: Success = False, WrongNode = True. but get: Success = {0}, WrongNode = {1}\n" ,
-                                    (await propose1Tasks[i]).Success , (await propose1Tasks[i]).WrongNode
-                                )
-                        );
-                    manipulationPassed = false;
-                }
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
 
-            /* Check propose 2 (Term 1: Delete <test: 2>). */
-            if (await propose2Tasks[0] is not { Success: true, WrongNode: false, KeyFound: true })
-            {
-                debugMsgBuilder.Append(
-                        "Proposing new key-value pair (1) to node 0 failed. "
-                        + string.Format(
-                                "Expect: Success = True, WrongNode = False. but get: Success = {0}, WrongNode = {1}\n" ,
-                                (await propose2Tasks[0]).Success , (await propose2Tasks[0]).WrongNode
-                            )
-                    );
-                manipulationPassed = false;
-            }
-            for (int i = 1; i < nodes.Length; i++)
-                if (await propose2Tasks[i] is not { Success: false, WrongNode: true })
-                {
-                    debugMsgBuilder.Append(
-                            $"Proposing new key-value (1) pair to node {i} failed. "
-                            + string.Format(
-                                    "Expect: Success = False, WrongNode = True. but get: Success = {0}, WrongNode = {1}\n" ,
-                                    (await propose2Tasks[i]).Success , (await propose2Tasks[i]).WrongNode
-                                )
-                        );
-                    manipulationPassed = false;
-                }
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(1 , node.CurrentTerm);
 
-            /* Try get values for correctness check. */
-            for (int i = 0; i < nodes.Length; i++)
-            {
-                (bool success , bool keyFound , object? value) = nodes[i].GetValue("test");
-                if (!success || keyFound || !Equals(value , null))
-                {
-                    debugMsgBuilder.Append(
-                            $"Get value from node {i} failed. "
-                            + string.Format(
-                                    "Expect: Success = True, KeyFound = False, Value = null. but get: Success = {0}, KeyFound = {1}, Value = {2}\n" ,
-                                    success , keyFound , Equals(value , null) ? "null" : 1
-                                )
-                        );
-                    manipulationPassed = false;
-                }
-            }
-
-            return (manipulationPassed , debugMsgBuilder.ToString());
-        }
-
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
-        {
-            connections = await ConfigureNetworkForLeaderElectionAsync(connections , nodes[0]);
-
-            // heart beat #1
-            LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-
-            // heart beat #2
-            LogEntry entry2 = new Int32LogEntry(1 , LogEntryOperation.Delete , "test" , null);
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1 , entry2] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , MessageDropped = true , PreviousLogIndex = 1 , PreviousLogTerm = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1 , entry2] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1 , entry2] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-
-            // heart beat #3
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1 , entry2] , LeaderId = nodes[0].NodeId , LeaderCommit = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , LeaderCommit = 1 , PreviousLogIndex = 1 , PreviousLogTerm = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , LeaderCommit = 1 , PreviousLogIndex = 2 , PreviousLogTerm = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1 , entry2] , LeaderId = nodes[0].NodeId , LeaderCommit = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-
-            // heart beat #4
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-
-            return connections;
+            node.Stop();
+            await nodeStart;
         }
     }
 
     [Fact]
-    private async Task RaftClusterTest_02LogReplication_04DeleteNonExistKey()
+    private async Task HandleAppendEntries_RequesterTermLowerThanRequestee_ReplyAppendFail()
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/02LogReplication_04DeleteNonExistKey.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/02LogReplication_04DeleteNonExistKey.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/02LogReplication_04DeleteNonExistKey" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/02LogReplication_04DeleteNonExistKey" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/02LogReplication_04DeleteNonExistKey" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/02LogReplication_04DeleteNonExistKey" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/02LogReplication_04DeleteNonExistKey" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("02LogReplication_04DeleteNonExistKey" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            (bool manipulationPassed , StringBuilder debugMsgBuilder) = (true , new StringBuilder());
-            Task watchDogTimer = Task.Delay(MaxTestTime);
+            AppendEntriesReply reply;
 
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(4000);
-            nodes[2].SetElectionTimeoutInterval(4000);
-            nodes[3].SetElectionTimeoutInterval(4000);
-            nodes[4].SetElectionTimeoutInterval(4000);
-            nodes[0].SetHeartBeatInterval(1000);
+            InitTraces(
+                    nameof(HandleAppendEntries_RequesterTermLowerThanRequestee_ReplyAppendFail) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            await Task.Delay(1700);
-            const string Propose1Key = "test";
-            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose1Tasks =
-            [
-                nodes[0].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Put , Propose1Key , 1) ,
-            ];
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
 
-            await Task.Delay(1000);
-            const string Propose2Key = "test2";
-            Task<(bool Success , bool WrongNode , bool? KeyFound)>[] propose2Tasks =
-            [
-                nodes[0].ProposeAsync(LogEntryOperation.Delete , Propose2Key , null) ,
-                nodes[1].ProposeAsync(LogEntryOperation.Delete , Propose2Key , null) ,
-                nodes[2].ProposeAsync(LogEntryOperation.Delete , Propose2Key , null) ,
-                nodes[3].ProposeAsync(LogEntryOperation.Delete , Propose2Key , null) ,
-                nodes[4].ProposeAsync(LogEntryOperation.Delete , Propose2Key , null) ,
-            ];
-
-            /* Wait for all task to finish. */
-            bool propose1Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose1Tasks)) != watchDogTimer;
-            bool propose2Finished = await Task.WhenAny(watchDogTimer , Task.WhenAll(propose2Tasks)) != watchDogTimer;
-            if (!propose1Finished || !propose2Finished)
-                return (false , MaxTestTimeExceedMsg);
-
-            /* Check propose 1 (Term 1: Put <test: 1>). */
-            await Task.Delay(1000);
-            if (await propose1Tasks[0] is not { Success: true, WrongNode: false, KeyFound: false })
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
             {
-                debugMsgBuilder.Append(
-                        "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. "
-                        + string.Format(
-                                "but get: Success = {0}, WrongNode = {1}\n" ,
-                                (await propose1Tasks[0]).Success , (await propose1Tasks[0]).WrongNode
-                            )
-                    );
-                manipulationPassed = false;
-            }
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
 
-            /* Check propose 2 (Term 1: Delete <test: 2>). */
-            if (await propose2Tasks[0] is not { Success: false, WrongNode: false, KeyFound: false })
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(1 , node.CurrentTerm);
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
             {
-                debugMsgBuilder.Append(
-                        "Proposing new key-value pair (1) to node 2 failed. Expect: Success = true, WrongNode = false. "
-                        + string.Format(
-                                "but get: Success = {0}, WrongNode = {1}\n" ,
-                                (await propose2Tasks[0]).Success , (await propose2Tasks[0]).WrongNode
-                            )
-                    );
-                manipulationPassed = false;
-            }
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm - 1 ,
 
-            /* Try get values for correctness check. */
-            await Task.Delay(2000);
-            for (int i = 0; i < nodes.Length; i++)
-            {
-                (bool success , bool keyFound , object? value) = nodes[i].GetValue("test");
-                if (!success || !keyFound || !Equals(value , 1))
-                {
-                    debugMsgBuilder.Append(
-                            $"Get value from node {i} failed. Expect: Success = True, KeyFound = True , Value = null. "
-                            + string.Format(
-                                    "but get: Success = {0}, KeyFound = {1}, Value = {2}\n" ,
-                                    success , keyFound , Equals(value , 1) ? 1 : "N/A"
-                                )
-                        );
-                    manipulationPassed = false;
-                }
-            }
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
 
-            return (manipulationPassed , debugMsgBuilder.ToString());
+            node.Stop();
+            await nodeStart;
         }
+    }
+    #endregion
 
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
+    #region Test over `AppendEntries RPC Receiver Implementation 2`, as written in Raft specification
+    [Fact]
+    private async Task HandleAppendEntries_TermOfPreviousLogDoesNotMatchBetweenRequesterAndRequestee_ReplyAppendFail()
+    {
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
         {
-            connections = await ConfigureNetworkForLeaderElectionAsync(connections , nodes[0]);
+            AppendEntriesReply reply;
 
-            // heart beat #1
-            LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 , MessageDropped = true });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 , MessageDropped = true });
+            InitTraces(
+                    nameof(HandleAppendEntries_TermOfPreviousLogDoesNotMatchBetweenRequesterAndRequestee_ReplyAppendFail) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            // heart beat #2
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId , MessageDropped = true });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 , MessageDropped = true });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 , MessageDropped = true });
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
 
-            // heart beat #3
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
 
-            // heart beat #4
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry(Guid.NewGuid() , node.CurrentTerm + 1 , LogEntryOperation.None , null)] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(1 , node.CurrentTerm);
 
-            return connections;
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 1 ,
+                PreviousLogTerm = node.LogEntries[^1].Term - 1 ,
+                Entries = [] ,
+            });
+            Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 1 ,
+                PreviousLogTerm = node.LogEntries[^1].Term + 1 ,
+                Entries = [] ,
+            });
+            Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
+
+            node.Stop();
+            await nodeStart;
         }
     }
 
     [Fact]
-    private async Task RaftClusterTest_03ApplyLogEntries_01StateMachineValue()
+    private async Task HandleAppendEntries_RequesteeDoesNotHavePreviousLogAssumedByNewLeader_ReplyAppendFail()
     {
-        TraceListener[] standardTraceListeners =
-        [
-            new AlignedTraceListener("logs/03ApplyLogEntries_01StateMachineValue.log") ,
-        ];
-        TraceListener[] debugTraceListeners =
-        [
-            new XUnitTraceListener(testOutput) ,
-            new AlignedTraceListener("debug/03ApplyLogEntries_01StateMachineValue.log") ,
-        ];
-        Dictionary<Guid , int> nodeIdToDebugPos = [];
-        RaftNode[] nodes =
-        [
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000001") , 10000 , 10000 , 5 , "data/03ApplyLogEntries_01StateMachineValue" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000002") , 10000 , 10000 , 5 , "data/03ApplyLogEntries_01StateMachineValue" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000003") , 10000 , 10000 , 5 , "data/03ApplyLogEntries_01StateMachineValue" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000004") , 10000 , 10000 , 5 , "data/03ApplyLogEntries_01StateMachineValue" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-            new RaftNode(Guid.Parse("00000000-0000-0000-0000-000000000005") , 10000 , 10000 , 5 , "data/03ApplyLogEntries_01StateMachineValue" , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos) ,
-        ];
-        Assert.True(await CreateAndRunTestCaseAsync("03ApplyLogEntries_01StateMachineValue" , nodes , ManipulateNodes , CreateConfig));
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
         return;
 
 
-        async Task<(bool Success , string DebugMsg)> ManipulateNodes()
+        async Task PerformTest()
         {
-            (bool manipulationPassed , StringBuilder debugMsgBuilder) = (true , new StringBuilder());
-            Task watchDogTimer = Task.Delay(MaxTestTime);
+            AppendEntriesReply reply;
 
-            await Task.Delay(2000);
-            nodes[0].SetElectionTimeoutInterval(1000);
-            nodes[1].SetElectionTimeoutInterval(4000);
-            nodes[2].SetElectionTimeoutInterval(4000);
-            nodes[3].SetElectionTimeoutInterval(4000);
-            nodes[4].SetElectionTimeoutInterval(4000);
-            nodes[0].SetHeartBeatInterval(1000);
+            InitTraces(
+                    nameof(HandleAppendEntries_RequesteeDoesNotHavePreviousLogAssumedByNewLeader_ReplyAppendFail) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            await Task.Delay(1500);
-            const string ProposeKey = "test";
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
 
-            /* Propose (Term 1: Put <test: 1>). Then check if propose success and state machine values correct. */
-            Task<(bool Success , bool WrongNode , bool? KeyFound)> propose1Tasks = nodes[0].ProposeAsync(LogEntryOperation.Put , ProposeKey , 1);
-            bool propose1Finished = await Task.WhenAny(watchDogTimer , propose1Tasks) != watchDogTimer;
-            if (!propose1Finished)
-                return (false , MaxTestTimeExceedMsg);
-            if (await propose1Tasks is not { Success: true, WrongNode: false, KeyFound: false })
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
             {
-                debugMsgBuilder.Append(
-                        string.Format(
-                                "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. " +
-                                "but get: Success = {0}, WrongNode = {1}\n" ,
-                                (await propose1Tasks).Success , (await propose1Tasks).WrongNode
-                            )
-                    );
-                manipulationPassed = false;
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(1 , node.CurrentTerm);
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 1 ,
+                PreviousLogTerm = 1 ,
+                Entries = [] ,
+            });
+            Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+    #endregion
+
+    #region Test over `AppendEntries RPC Receiver Implementation 3`, as written in Raft specification
+    [Fact]
+    private async Task HandleAppendEntries_ExistingTermConflicts_DeleteAllFutureEntriesStartAndIncludingTheConflictingLog()
+    {
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply reply;
+
+            InitTraces(
+                    nameof(HandleAppendEntries_ExistingTermConflicts_DeleteAllFutureEntriesStartAndIncludingTheConflictingLog) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 1 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries =
+                [
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                ] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(4 , node.LogEntries.Count);
+            Assert.Equal(1 , node.CurrentTerm);
+            foreach (LogEntry entry in node.LogEntries.Skip(1))
+                Assert.Equal(1 , entry.Term);
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries =
+                [
+                    new LogEntry(Guid.NewGuid() , 2 , LogEntryOperation.None , null) ,
+                    new LogEntry(Guid.NewGuid() , 2 , LogEntryOperation.None , null) ,
+                ] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(3 , node.LogEntries.Count);
+            foreach (LogEntry entry in node.LogEntries.Skip(1))
+                Assert.Equal(2 , entry.Term);
+
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 3 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Single(node.LogEntries);
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+    #endregion
+
+    #region Test over `AppendEntries RPC Receiver Implementation 4`, as written in Raft specification
+    [Fact]
+    private async Task HandleAppendEntries_AppendEntriesWithCorrectArgs_AppendSuccess()
+    {
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            AppendEntriesReply reply;
+
+            InitTraces(
+                    nameof(HandleAppendEntries_AppendEntriesWithCorrectArgs_AppendSuccess) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+
+            Task nodeStart = node.StartAsync();
+            reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 1 ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries =
+                [
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                ] ,
+            });
+            Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
+            Assert.Equal(4 , node.LogEntries.Count);
+            Assert.Equal(1 , node.CurrentTerm);
+            foreach (LogEntry entry in node.LogEntries.Skip(1))
+                Assert.Equal(1 , entry.Term);
+
+            node.Stop();
+            await nodeStart;
+        }
+    }
+    #endregion
+    #endregion
+
+    #region Test on raft rules for each Raft role
+    #region Common part for all raft roles
+    [Fact]
+    private async Task HandleAppendEntries_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower()
+    {
+        const int ElectionTimeoutInterval = 500;
+        const int MaxTestTimeForCandidateNodeTest = (ElectionTimeoutInterval + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
+        const int MaxTestTimeForLeaderNodeTest = (ElectionTimeoutInterval * 2 + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
+
+        Task test , completedTask;
+
+        Task waitUnitTestTimeout = Task.Delay(MaxTestTimeForCandidateNodeTest + MaxTestTimeForLeaderNodeTest);
+
+        testOutput.WriteLine("Test over candidate node:");
+        test = PerformTestOnCandidateNode();
+        completedTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completedTask , OverTimeMessage);
+        await test;
+        testOutput.WriteLine("\n\n\n\n");
+        testOutput.WriteLine("Test over leader node:");
+        test = PerformTestOnLeaderNode();
+        completedTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completedTask , OverTimeMessage);
+        await test;
+
+        return;
+
+
+        async Task PerformTestOnCandidateNode()
+        {
+            InitTraces(
+                    $"{nameof(HandleAppendEntries_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower)}_OnCandidateNode" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            TaskCompletionSource nodeBecomeCandidateTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await nodeBecomeCandidateTcs.Task;
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                LeaderCommit = 0 ,
+                Entries = [] ,
+            });
+            await Task.Delay(DatabaseCommitBufferPeriod);
+            Assert.Equal(NodeRole.Follower , node.Role);
+
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                nodeBecomeCandidateTcs.SetResult();
+                node.SetElectionTimeoutInterval(int.MaxValue);
+                return Task.CompletedTask;
             }
-            await Task.Delay(1200);
-            foreach (RaftNode node in nodes.Where(node => node.LastAppliedLogEntryIndex != 1))
-            {
-                debugMsgBuilder.Append(
-                        string.Format(
-                                "State machine values out of sync with log entries at node {0} propose 1 (lastApplyIndex: expect 1, get {1}).\n" ,
-                                node.NodeIdToDebugPos[node.NodeId] , node.LastAppliedLogEntryIndex
-                            )
-                    );
-                manipulationPassed = false;
-            }
-            CheckNodeStateMachineValues(1);
+        }
 
-            /* Propose (Term 1: Put <test: 2>). Then check if propose success and state machine values correct. */
-            Task<(bool Success , bool WrongNode , bool? KeyFound)> propose2Tasks = nodes[0].ProposeAsync(LogEntryOperation.Put , ProposeKey , 2);
-            bool propose2Finished = await Task.WhenAny(watchDogTimer , propose2Tasks) != watchDogTimer;
-            if (!propose2Finished)
-                return (false , MaxTestTimeExceedMsg);
-            if (await propose2Tasks is not { Success: true, WrongNode: false, KeyFound: true })
-            {
-                debugMsgBuilder.Append(
-                        "Proposing new key-value pair (1) to node 0 failed. Expect: Success = true, WrongNode = false. "
-                        + string.Format(
-                                "but get: Success = {0}, WrongNode = {1}\n" ,
-                                (await propose2Tasks).Success , (await propose2Tasks).WrongNode
-                            )
-                    );
-                manipulationPassed = false;
-            }
-            await Task.Delay(1200);
-            foreach (RaftNode node in nodes.Where(node => node.LastAppliedLogEntryIndex != 2))
-            {
-                debugMsgBuilder.Append(
-                        string.Format(
-                                "State machine values out of sync with log entries at node {0} propose 2 (lastApplyIndex: expect 2, get {1}).\n" ,
-                                node.NodeIdToDebugPos[node.NodeId] , node.LastAppliedLogEntryIndex
-                            )
-                    );
-                manipulationPassed = false;
-            }
-            CheckNodeStateMachineValues(2);
+        async Task PerformTestOnLeaderNode()
+        {
+            InitTraces(
+                    $"{nameof(HandleAppendEntries_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower)}_OnLeaderNode" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
 
-            /* Propose (Term 1: Delete <test: null>). Then check if propose success and state machine values correct. */
-            Task<(bool Success , bool WrongNode , bool? KeyFound)> propose3Tasks = nodes[0].ProposeAsync(LogEntryOperation.Delete , ProposeKey , null);
-            bool propose3Finished = await Task.WhenAny(watchDogTimer , propose3Tasks) != watchDogTimer;
-            if (!propose3Finished)
-                return (false , MaxTestTimeExceedMsg);
-            if (await propose3Tasks is not { Success: true, WrongNode: false, KeyFound: true })
-            {
-                debugMsgBuilder.Append(
-                        string.Format(
-                                "Proposing new key-value pair (1) to node 0 failed. "
-                                + "Expect: Success = true, WrongNode = false. but get: Success = {0}, WrongNode = {1}\n" ,
-                                (await propose3Tasks).Success , (await propose3Tasks).WrongNode
-                            )
-                    );
-                manipulationPassed = false;
-            }
-            await Task.Delay(1200);
-            foreach (RaftNode node in nodes.Where(node => node.LastAppliedLogEntryIndex != 3))
-            {
-                debugMsgBuilder.Append(
-                        string.Format(
-                                "State machine values out of sync with log entries at node {0} propose 2 (lastApplyIndex: expect 3, get {1}).\n" ,
-                                node.NodeIdToDebugPos[node.NodeId] , node.LastAppliedLogEntryIndex
-                            )
-                    );
-                manipulationPassed = false;
-            }
-            CheckNodeStateMachineValues(null);
+            TaskCompletionSource nodeBecomeLeaderTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            return (manipulationPassed , debugMsgBuilder.ToString());
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await nodeBecomeLeaderTcs.Task;
+            Assert.Equal(NodeRole.Leader , node.Role);
+            node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                LeaderCommit = 0 ,
+                Entries = [] ,
+            });
+            await Task.Delay(DatabaseCommitBufferPeriod);
+            Assert.Equal(NodeRole.Follower , node.Role);
+
+            node.Stop();
+            await nodeStart;
+            return;
 
 
-            void CheckNodeStateMachineValues(int? expectResult)
+            Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
             {
-                foreach (RaftNode node in nodes)
+                nodeBecomeLeaderTcs.SetResult();
+                return Task.CompletedTask;
+            }
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                VoteRequestReply replyTemplate = new VoteRequestReply
                 {
-                    using SqliteConnection connection = DbHelper.CreateNewConnection($"data/03ApplyLogEntries_01StateMachineValue/{node.NodeId}.db");
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+        }
+    }
 
-                    using SqliteCommand getRecordCount = new SqliteCommand($"SELECT COUNT(*) FROM {LogEntryList.StateMachineValuesTableName};" , connection);
-                    int recordCount = Convert.ToInt32(getRecordCount.ExecuteScalar());
-                    int expectRecordCount = expectResult is null ? 0 : 1;
-                    if (recordCount != expectRecordCount)
+    [Fact]
+    private async Task HandleVoteRequest_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower()
+    {
+        const int ElectionTimeoutInterval = 500;
+        const int MaxTestTimeForCandidateNodeTest = (ElectionTimeoutInterval + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
+        const int MaxTestTimeForLeaderNodeTest = (ElectionTimeoutInterval * 2 + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
+
+        Task test , completedTask;
+
+        Task waitUnitTestTimeout = Task.Delay(MaxTestTimeForCandidateNodeTest + MaxTestTimeForLeaderNodeTest);
+
+        testOutput.WriteLine("Test over candidate node:");
+        test = PerformTestOnCandidateNode();
+        completedTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completedTask , OverTimeMessage);
+        await test;
+        testOutput.WriteLine("\n\n\n\n");
+        testOutput.WriteLine("Test over leader node:");
+        test = PerformTestOnLeaderNode();
+        completedTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completedTask , OverTimeMessage);
+        await test;
+
+        return;
+
+
+        async Task PerformTestOnCandidateNode()
+        {
+            InitTraces(
+                    $"{nameof(HandleVoteRequest_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower)}_OnCandidateNode" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            TaskCompletionSource nodeBecomeCandidateTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await nodeBecomeCandidateTcs.Task;
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+
+                RequesterLastLogIndex = 0 ,
+                RequesterLastLogTerm = 0 ,
+            });
+            await Task.Delay(DatabaseCommitBufferPeriod);
+            Assert.Equal(NodeRole.Follower , node.Role);
+
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                nodeBecomeCandidateTcs.SetResult();
+                node.SetElectionTimeoutInterval(int.MaxValue);
+                return Task.CompletedTask;
+            }
+        }
+
+        async Task PerformTestOnLeaderNode()
+        {
+            InitTraces(
+                    $"{nameof(HandleVoteRequest_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower)}_OnLeaderNode" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            TaskCompletionSource nodeBecomeLeaderTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await nodeBecomeLeaderTcs.Task;
+            Assert.Equal(NodeRole.Leader , node.Role);
+            node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+
+                RequesterLastLogIndex = 0 ,
+                RequesterLastLogTerm = 0 ,
+            });
+            await Task.Delay(DatabaseCommitBufferPeriod);
+            Assert.Equal(NodeRole.Follower , node.Role);
+
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+            {
+                nodeBecomeLeaderTcs.SetResult();
+                return Task.CompletedTask;
+            }
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+        }
+    }
+    #endregion
+
+    #region Follower Node
+    [Fact]
+    private async Task StartAsync_FollowerNoHeartBeatOrVoteRequestBeforeElectionTimeout_BecomeCandidate()
+    {
+        const int ElectionTimeoutInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            TaskCompletionSource nodeTimeoutTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            InitTraces(
+                    nameof(StartAsync_FollowerNoHeartBeatOrVoteRequestBeforeElectionTimeout_BecomeCandidate) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 1 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await nodeTimeoutTcs.Task;
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                nodeTimeoutTcs.SetResult();
+                return Task.CompletedTask;
+            }
+        }
+    }
+    #endregion
+
+    #region Candidate Node
+    [Fact]
+    private async Task StartAsync_CandidateWhenAllVoteGranted_BecomeLeader()
+    {
+        const int ElectionTimeoutInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<bool> eventNotifyChannel = Channel.CreateUnbounded<bool>();
+            InitTraces(
+                    nameof(StartAsync_CandidateWhenAllVoteGranted_BecomeLeader) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Leader , node.Role);
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            async Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+                => await eventNotifyChannel.Writer.WriteAsync(true);
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                await eventNotifyChannel.Writer.WriteAsync(true);
+                await Task.Delay(TestEvaluateWindow);
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+        }
+    }
+
+    [Fact]
+    private async Task StartAsync_CandidateWhenMajorVoteGranted_BecomeLeader()
+    {
+        const int ElectionTimeoutInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<bool> eventNotifyChannel = Channel.CreateUnbounded<bool>();
+            InitTraces(
+                    nameof(StartAsync_CandidateWhenMajorVoteGranted_BecomeLeader) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 5 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Leader , node.Role);
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            async Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+                => await eventNotifyChannel.Writer.WriteAsync(true);
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                await eventNotifyChannel.Writer.WriteAsync(true);
+                await Task.Delay(TestEvaluateWindow);
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+        }
+    }
+
+    [Fact]
+    private async Task StartAsync_CandidateWhenMinorVoteGranted_StartNewElection()
+    {
+        const int ElectionTimeoutInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 3 + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<bool> eventNotifyChannel = Channel.CreateUnbounded<bool>();
+            InitTraces(
+                    nameof(StartAsync_CandidateWhenMinorVoteGranted_StartNewElection) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 5 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            node.Stop();
+            await nodeStart;
+            return;
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                await eventNotifyChannel.Writer.WriteAsync(true);
+                await Task.Delay(TestEvaluateWindow);
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                    ReplierId = s_node2Guid ,
+                });
+            }
+        }
+    }
+
+    [Fact]
+    private async Task StartAsync_CandidateWhenNoVoteResponse_StartNewElection()
+    {
+        const int ElectionTimeoutInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 3 + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<bool> eventNotifyChannel = Channel.CreateUnbounded<bool>();
+            InitTraces(
+                    nameof(StartAsync_CandidateWhenNoVoteResponse_StartNewElection) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 5 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            await eventNotifyChannel.Reader.ReadAsync();
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            node.Stop();
+            await nodeStart;
+            return;
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+                => await eventNotifyChannel.Writer.WriteAsync(true);
+        }
+    }
+
+    [Fact]
+    private async Task StartAsync_CandidateAppendEntriesReceivedFromLeaderWithSameTerm_BecomeFollower()
+    {
+        const int ElectionTimeoutInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor);
+
+        testOutput.WriteLine("Test over candidate node:");
+        Task test = PerformTest();
+        Task completedTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completedTask , OverTimeMessage);
+        await test;
+
+        return;
+
+
+        async Task PerformTest()
+        {
+            InitTraces(
+                    $"{nameof(StartAsync_CandidateAppendEntriesReceivedFromLeaderWithSameTerm_BecomeFollower)}_OnCandidateNode" , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            TaskCompletionSource nodeBecomeCandidateTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await nodeBecomeCandidateTcs.Task;
+            Assert.Equal(NodeRole.Candidate , node.Role);
+            node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                LeaderCommit = 0 ,
+                Entries = [] ,
+            });
+            await Task.Delay(100);  // Important tolerant windows. Because the append entries request has a higher term and the term update to be commited to
+            //     the database. Therefore, it may possess a delay for the role update depending on implementation. This delay is to
+            //     allow database to commit all necessary values before perform test check.
+            Assert.Equal(NodeRole.Follower , node.Role);
+
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                nodeBecomeCandidateTcs.SetResult();
+                node.SetElectionTimeoutInterval(int.MaxValue);
+                return Task.CompletedTask;
+            }
+        }
+    }
+    #endregion
+
+    #region Leader Node
+    [Fact]
+    private async Task StartAsync_LeaderAfterInit_SendAppendEntriesToOtherNodes()
+    {
+        const int ElectionTimeoutInterval = 500;
+        const int HeartBeatInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            TaskCompletionSource appendEntriesRequestSentTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            InitTraces(
+                    nameof(StartAsync_LeaderAfterInit_SendAppendEntriesToOtherNodes) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            await appendEntriesRequestSentTcs.Task;
+            Assert.Equal(NodeRole.Leader , node.Role);
+
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+            {
+                appendEntriesRequestSentTcs.SetResult();
+                return Task.CompletedTask;
+            }
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+        }
+    }
+
+    [Fact]
+    private async Task StartAsync_LeaderReceivedAppendEntriesFailed_DecrementNextIndex()
+    {
+        const int ElectionTimeoutInterval = 500;
+        const int HeartBeatInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            IReadOnlyDictionary<Guid , int> nextIndexes;
+
+            Channel<IReadOnlyDictionary<Guid , int>> nextIndexesFromNode = Channel.CreateUnbounded<IReadOnlyDictionary<Guid , int>>();
+            Channel<bool> appendRequestSuccessOrNot = Channel.CreateUnbounded<bool>();
+
+            InitTraces(
+                    nameof(StartAsync_LeaderReceivedAppendEntriesFailed_DecrementNextIndex) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            AppendEntriesReply appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 1 ,
+                ReceiverId = node.NodeId ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries =
+                [
+                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test1" , 1) ,
+                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test2" , 2) ,
+                ] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect 2 test entry to be appended to the node, but failed.");
+            Assert.Equal(3 , node.LogEntries.Count);  // Total log entries count should be 2 newly appended and an initial entry.
+            nextIndexes = await nextIndexesFromNode.Reader.ReadAsync();  // wait until test node become leader
+            foreach ((_ , int nextIndex) in nextIndexes)
+                Assert.Equal(3 , nextIndex);
+            await appendRequestSuccessOrNot.Writer.WriteAsync(false);
+            nextIndexes = await nextIndexesFromNode.Reader.ReadAsync();
+            foreach ((_ , int nextIndex) in nextIndexes.Where(nextIndex => nextIndex.Key != Guid.Empty))
+                Assert.Equal(2 , nextIndex);
+
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            async Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexesIn)
+            {
+                await nextIndexesFromNode.Writer.WriteAsync(nextIndexesIn);
+
+                bool appendSuccess = await appendRequestSuccessOrNot.Reader.ReadAsync();
+                AppendEntriesReply replyTemplate = new AppendEntriesReply
+                {
+                    RequestId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+
+                    AppendSuccess = appendSuccess ,
+                    MatchIndex = 0 ,
+                };
+                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+        }
+    }
+
+    [Fact]
+    private async Task StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueInCurrentTerm_SetCommitIndexToThatValue()
+    {
+        const int ElectionTimeoutInterval = 500;
+        const int HeartBeatInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<int> commitIndexChannel = Channel.CreateUnbounded<int>();
+            InitTraces(
+                    nameof(StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueInCurrentTerm_SetCommitIndexToThatValue) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            AppendEntriesReply appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 1 ,
+                ReceiverId = node.NodeId ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries =
+                [
+                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test1" , 1) ,
+                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test2" , 2) ,
+                ] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect 2 test entry to be appended to the node, but failed.");
+            Assert.Equal(3 , node.LogEntries.Count);  // Total log entries count should be 2 newly appended and an initial entry.
+            Assert.Equal(0 , await commitIndexChannel.Reader.ReadAsync());
+            Task propose = node.ProposeAsync(LogEntryOperation.Put , "test3" , 1);
+            Assert.Equal(0 , await commitIndexChannel.Reader.ReadAsync());
+            Assert.Equal(3 , await commitIndexChannel.Reader.ReadAsync());
+
+            await propose;
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            async Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+            {
+                await commitIndexChannel.Writer.WriteAsync(commitIndex);
+                AppendEntriesReply replyTemplate = new AppendEntriesReply
+                {
+                    RequestId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+
+                    AppendSuccess = true ,
+                    MatchIndex = node.LogEntries.Count - 1 ,
+                };
+                await Task.Delay(TestEvaluateWindow);
+                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+        }
+    }
+
+    [Fact]
+    private async Task StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueButNotInCurrentTerm_DoNothing()
+    {
+        const int ElectionTimeoutInterval = 500;
+        const int HeartBeatInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<int> commitIndexChannel = Channel.CreateUnbounded<int>();
+            InitTraces(
+                    nameof(StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueButNotInCurrentTerm_DoNothing) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
+
+            Task nodeStart = node.StartAsync();
+            AppendEntriesReply appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 1 ,
+                ReceiverId = node.NodeId ,
+
+                LeaderCommit = 0 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries =
+                [
+                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test1" , 1) ,
+                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test2" , 2) ,
+                ] ,
+            });
+            Assert.True(appendEntriesReply.AppendSuccess , "Expect 2 test entry to be appended to the node, but failed.");
+            Assert.Equal(3 , node.LogEntries.Count);  // Total log entries count should be 2 newly appended and an initial entry.
+            Assert.Equal(0 , await commitIndexChannel.Reader.ReadAsync());
+            Assert.Equal(0 , await commitIndexChannel.Reader.ReadAsync());
+
+            node.Stop();
+            await nodeStart;
+            return;
+
+
+            async Task AppendEntriesToOtherNodes(
+                Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes)
+            {
+                await commitIndexChannel.Writer.WriteAsync(commitIndex);
+                await Task.Delay(TestEvaluateWindow);
+                AppendEntriesReply replyTemplate = new AppendEntriesReply
+                {
+                    RequestId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+
+                    AppendSuccess = true ,
+                    MatchIndex = 2 ,
+                };
+                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+
+            async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
+            {
+                VoteRequestReply replyTemplate = new VoteRequestReply
+                {
+                    RequestId = requestId ,
+                    ReplierTerm = node.CurrentTerm ,
+                    ReceiverId = requestId ,
+                    TermOfRequest = node.CurrentTerm ,
+                    VoteGranted = true ,
+                };
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+            }
+        }
+    }
+    #endregion
+    #endregion
+
+    #region Restart With/Without Existing Data
+    [Fact]
+    private async Task ConstructorInit_RestartWithKeepExistData_RaftRestartAsFollowerNodeWithExistData()
+    {
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            InitTraces(
+                    nameof(ConstructorInit_RestartWithKeepExistData_RaftRestartAsFollowerNodeWithExistData) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // run node for initial data generation
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round1 = node.StartAsync();
+            AppendEntriesReply reply = node.HandleAppendEntries(new AppendEntriesArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                ReceiverId = node.NodeId ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = 2 ,
+
+                LeaderCommit = 2 ,
+                PreviousLogIndex = 0 ,
+                PreviousLogTerm = 0 ,
+                Entries = [new LogEntry()] ,
+            });
+            Assert.True(reply.AppendSuccess);
+            await Task.Delay(200);
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(2 , node.LogEntries.Count);
+            node.Stop();
+            await round1;
+
+            // round two for actual test
+            node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round2 = node.StartAsync();
+            Assert.Equal(2 , node.CurrentTerm);
+            Assert.Equal(2 , node.LogEntries.Count);
+            node.Stop();
+            await round2;
+        }
+    }
+
+    [Fact]
+    private async Task ConstructorInit_RestartWithKeepExistData_RaftRestartWithVoteInfoRestored()
+    {
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            VoteRequestReply reply;
+
+            InitTraces(
+                    nameof(ConstructorInit_RestartWithKeepExistData_RaftRestartWithVoteInfoRestored) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // run node for initial data generation
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round1 = node.StartAsync();
+            reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+                ReceiverId = node.NodeId ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+            });
+            Assert.True(reply.VoteGranted);
+            node.Stop();
+            await round1;
+
+            // round two for actual test
+            node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round2 = node.StartAsync();
+            reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                ReceiverId = node.NodeId ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+            });
+            Assert.True(reply.VoteGranted);
+            reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node3Guid ,
+                RequesterTerm = node.CurrentTerm ,
+                ReceiverId = node.NodeId ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+            });
+            Assert.False(reply.VoteGranted);
+            node.Stop();
+            await round2;
+        }
+    }
+
+    [Fact]
+    private async Task ConstructorInit_RestartWithRemoveExistData_RaftRestartAsNewNode()
+    {
+        const int ElectionTimeoutInterval = 500;
+        const int HeartBeatInterval = 500;
+
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval + ExtendedPeriod) * 3 * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
+
+
+        async Task PerformTest()
+        {
+            Channel<bool> entriesAppended = Channel.CreateUnbounded<bool>();
+            InitTraces(
+                    nameof(ConstructorInit_RestartWithRemoveExistData_RaftRestartAsNewNode) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // run node for initial data generation
+            RaftNode node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
+            node.AppendEntriesToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task round1 = node.StartAsync();
+            await entriesAppended.Reader.ReadAsync();
+            await entriesAppended.Reader.ReadAsync();
+            node.Stop();
+            await round1;
+
+            // round two for actual test
+            node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
+            node.AppendEntriesToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task round2 = node.StartAsync();
+            await entriesAppended.Reader.ReadAsync();
+            await entriesAppended.Reader.ReadAsync();
+            node.Stop();
+            await round2;
+
+            // round three to double-check if it works
+            node = new RaftNode(
+                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
+            node.AppendEntriesToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
+            Assert.Equal(0 , node.CurrentTerm);
+            Assert.Empty(node.LogEntries);
+            Task round3 = node.StartAsync();
+            await entriesAppended.Reader.ReadAsync();
+            await entriesAppended.Reader.ReadAsync();
+            node.Stop();
+            await round3;
+
+            return;
+
+
+            Func<Guid , Guid , int , int , Task> CreateSendVoteRequestToOtherNodesFunc(RaftNode nodeIn)
+                => async (Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm) =>
+                {
+                    VoteRequestReply replyTemplate = new VoteRequestReply
                     {
-                        debugMsgBuilder.Append(
-                                string.Format(
-                                        "Unmatch record count in node {0}. Expect number of record in {1} is {2}, but get {3}\n" ,
-                                        node.NodeIdToDebugPos[node.NodeId] , LogEntryList.StateMachineValuesTableName , expectRecordCount , recordCount
-                                    )
-                            );
-                        manipulationPassed = false;
-                        continue;
-                    }
+                        RequestId = requestId ,
+                        ReceiverId = requesterId ,
+                        ReplierTerm = node.CurrentTerm ,
 
-                    if (expectResult is not null)
+                        TermOfRequest = node.CurrentTerm ,
+                        VoteGranted = true ,
+                    };
+                    await nodeIn.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                    await nodeIn.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                };
+
+            Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task> CreateAppendEntriesToOtherNodesFunc(RaftNode nodeIn)
+                => async (Guid requestId , Guid requesterId , int commitIndex ,
+                          IReadOnlyList<LogEntry> logEntries , IReadOnlyDictionary<Guid , int> nextIndexes) =>
+                {
+                    AppendEntriesReply replyTemplate = new AppendEntriesReply
                     {
-                        using SqliteCommand getRecords
-                            = new SqliteCommand($"SELECT Key , Value , Type FROM {LogEntryList.StateMachineValuesTableName};" , connection);
-                        using SqliteDataReader recordsReader = getRecords.ExecuteReader();
-                        recordsReader.Read();
-                        string key   = recordsReader.GetString(0);
-                        int    value = int.Parse(recordsReader.GetString(1));
-                        string type  = recordsReader.GetString(2);
-                        if ((key , value , type) != ("test" , expectResult , Int32LogEntry.LogType))
-                        {
-                            debugMsgBuilder.Append(
-                                    string.Format(
-                                            "Unmatch record count in node {0}. Expect (\"test\", {1}, {2}), but get (\"{3}\", {4}, \"{5}\")\n" ,
-                                            node.NodeIdToDebugPos[node.NodeId] , expectResult , Int32LogEntry.LogType , key , value , type
-                                        )
-                                );
-                            manipulationPassed = false;
-                        }
-                    }
-                }
-            }
-        }
+                        RequestId = requestId ,
+                        ReceiverId = requesterId ,
+                        ReplierTerm = node.CurrentTerm ,
 
-        async Task<NetworkConnection[,]> CreateConfig(NetworkConnection[,] connections)
-        {
-            connections = await ConfigureNetworkForLeaderElectionAsync(connections , nodes[0]);
-
-            // heart beat #1 and #2
-            LogEntry entry1 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 1);
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry1] , LeaderId = nodes[0].NodeId });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 1 });
-
-            // heart beat #3 and #4
-            LogEntry entry2 = new Int32LogEntry(1 , LogEntryOperation.Put , "test" , 2);
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry2] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 1 , PreviousLogTerm = 1 , LeaderCommit = 1 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 2 });
-
-            // heart beat #5 amd #6
-            LogEntry entry3 = new Int32LogEntry(1 , LogEntryOperation.Delete , "test" , null);
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry3] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry3] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry3] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [entry3] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 2 , PreviousLogTerm = 1 , LeaderCommit = 2 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 3 , PreviousLogTerm = 1 , LeaderCommit = 3 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 3 , PreviousLogTerm = 1 , LeaderCommit = 3 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 3 , PreviousLogTerm = 1 , LeaderCommit = 3 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = nodes[0].NodeId , PreviousLogIndex = 3 , PreviousLogTerm = 1 , LeaderCommit = 3 });
-            await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
-            await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
-            await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
-            await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true , MatchIndex = 3 });
-
-            return connections;
+                        AppendSuccess = true ,
+                        MatchIndex = logEntries.Count - 1 ,
+                    };
+                    await nodeIn.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                    await nodeIn.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                    await entriesAppended.Writer.WriteAsync(true);
+                };
         }
     }
 
-    private static async Task<NetworkConnection[,]> ConfigureNetworkForLeaderElectionAsync(NetworkConnection[,] connections , RaftNode winningNode)
+    [Fact]
+    private async Task ConstructorInit_RestartWithRemoveExistData_RaftRestartWithoutVoteInfoRestored()
     {
-        await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-        await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-        await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-        await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestSendPackage { Term = 1 });
-        await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-        await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-        await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
-        await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new VoteRequestReceivePackage { Term = 1 , Granted = true });
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task test = PerformTest();
+        Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
+        Assert.True(test == completeTask , OverTimeMessage);
+        await test;
+        return;
 
-        await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = winningNode.NodeId });
-        await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = winningNode.NodeId });
-        await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = winningNode.NodeId });
-        await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesSendPackage { Term = 1 , Entries = [] , LeaderId = winningNode.NodeId });
-        await connections[0 , 1].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-        await connections[0 , 2].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-        await connections[0 , 3].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
-        await connections[0 , 4].ExpectedMessagesChannel.Writer.WriteAsync(new AppendEntriesReceivePackage { Term = 1 , Success = true });
 
-        return connections;
+        async Task PerformTest()
+        {
+            VoteRequestReply reply;
+
+            InitTraces(
+                    nameof(ConstructorInit_RestartWithRemoveExistData_RaftRestartWithoutVoteInfoRestored) , null ,
+                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
+                );
+
+            // run node for initial data generation
+            RaftNode node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round1 = node.StartAsync();
+            reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node2Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+                ReceiverId = node.NodeId ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+            });
+            Assert.True(reply.VoteGranted);
+            node.Stop();
+            await round1;
+
+            // round two for actual test
+            node = new RaftNode(
+                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
+                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                );
+            Task round2 = node.StartAsync();
+            reply = node.HandleVoteRequest(new VoteRequestArgs
+            {
+                RequestId = Guid.NewGuid() ,
+                RequesterId = s_node3Guid ,
+                RequesterTerm = node.CurrentTerm + 1 ,
+                ReceiverId = node.NodeId ,
+                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                RequesterLastLogTerm = node.LogEntries[^1].Term ,
+            });
+            Assert.True(reply.VoteGranted);
+            node.Stop();
+            await round2;
+        }
     }
+    #endregion
 
-    private async Task<bool> CreateAndRunTestCaseAsync(
-         string testName , RaftNode[] nodes ,
-        Func<Task<(bool Success , string DebugMsg)>> nodeManipulation , Func<NetworkConnection[,] , Task<NetworkConnection[,]>> configs)
+    #region Helper Function
+    private void InitTraces(string testName , string? parameter , out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners)
     {
-        testOutput.WriteLine($"Begin test {testName}");
-
-        /* Prepare test environment. */
-        NetworkConnection[,] connections = new NetworkConnection[nodes.Length , nodes.Length];
-        for (int i = 0; i < nodes.Length; i++)
-        {
-            for (int j = 0; j < nodes.Length; j++)
-            {
-                connections[i , j] = new NetworkConnection(nodes[i] , nodes[j] , testOutput);
-
-                if (i == j)
-                    continue;
-
-                nodes[i].SendVoteRequestToOtherNodes += connections[i , j].HandleVoteRequestAsync;
-                nodes[i].AppendEntriesToOtherNodes += connections[i , j].HandleAppendEntriesAsync;
-            }
-        }
-        await configs.Invoke(connections);  // encode the correct raft node behavior
-
-        /* Start raft nodes. */
-        Task[] raftStartTasks = new Task[nodes.Length];
-        for (int i = 0; i < nodes.Length; i++)
-            raftStartTasks[i] = nodes[i].StartAsync();
-        (bool manipulationPassed , string manipulationDebugMsg) = await nodeManipulation.Invoke();
-        Task watchDogInterrupt = Task.Delay(MaxTestTime);
-
-        /* Wait to finalize the test case. */
-        List<Task> waitForExpectMsgChannelReaderCloses = new List<Task>(connections.Length);
-        foreach (NetworkConnection connection in connections)
-        {
-            connection.ExpectedMessagesChannel.Writer.Complete();
-            waitForExpectMsgChannelReaderCloses.Add(connection.ExpectedMessagesChannel.Reader.Completion);
-        }
-        Task waitForAllExpectMsgChannelClose = Task.WhenAll(waitForExpectMsgChannelReaderCloses);
-        Task finishedTask = await Task.WhenAny(waitForAllExpectMsgChannelClose , watchDogInterrupt);
-        if (finishedTask == watchDogInterrupt)
-        {
-            testOutput.WriteLine(MaxTestTimeExceedMsg);
-            return false;
-        }
-        Array.ForEach(nodes , node => node.Stop());
-        await Task.WhenAll(raftStartTasks);
-        Trace.Listeners.Clear();
-
-        /* Check for any mismatch behaviour */
-        bool[,] missingMessages = new bool[nodes.Length , nodes.Length];
-        (DateTime firstErrorTime , int firstErrorSource) = (DateTime.Now , -1);
-        for (int i = 0; i < nodes.Length; i++)
-            for (int j = 0; j < nodes.Length; j++)
-            {
-                if (i == j)
-                    continue;
-
-                if (connections[i , j].ExpectedMessagesChannel.Reader.Count > 0)
-                    missingMessages[i , j] = true;
-
-                foreach ((MessagePackageBase expect , MessagePackageBase actual , DateTime time) in connections[i , j].DebugLogs)
-                    if (expect != actual && firstErrorTime > time)
-                        (firstErrorTime , firstErrorSource) = (time , i);
-            }
-
-        /* Report the final result. */
-        bool hasMismatchMessage = connections.Cast<NetworkConnection>().Any(connection => connection.HasMismatchMessage);
-        bool hasMissingMessage = missingMessages.Cast<bool>().Any(miss => miss);
-        if (manipulationPassed && firstErrorSource == -1 && !hasMismatchMessage && !hasMissingMessage)
-        {
-            testOutput.WriteLine($"Raft test {testName} passed.");
-            return true;
-        }
-        testOutput.WriteLine($"Raft test {testName} failed.");
-        testOutput.WriteLine(manipulationDebugMsg);
-        if (hasMismatchMessage)
-        {
-            for (int i = 0; i < nodes.Length; i++)
-                for (int j = 0; j < nodes.Length; j++)
-                    if (connections[i , j].HasMismatchMessage)
-                        testOutput.WriteLine($"Mismatch message type on {i} and {j}.");
-        }
-        if (hasMissingMessage)
-        {
-            for (int i = 0; i < nodes.Length; i++)
-                for (int j = 0; j < nodes.Length; j++)
-                    if (missingMessages[i , j])
-                        testOutput.WriteLine($"Missing message on {i} and {j} (missing {connections[i , j].ExpectedMessagesChannel.Reader.Count} message).");
-        }
-        if (hasMismatchMessage || hasMissingMessage)
-        {
-            (DateTime Time , RaftNode sourceNode , RaftNode targetNode , MessagePackageBase Expected , MessagePackageBase Actual)[] logs =
-            [
-                ..  from connection in connections.Cast<NetworkConnection>()
-                    from log in connection.DebugLogs
-                    orderby log.Time
-                    select (log.Time , connection.Source , connection.Target , log.Expected , log.Actual) ,
-            ];
-            (StringBuilder expectOutputBuilder , StringBuilder actualOutputBuilder) = (new StringBuilder() , new StringBuilder());
-            foreach ((_ , RaftNode sourceNode , RaftNode targetNode , MessagePackageBase expect , MessagePackageBase actual) in logs)
-            {
-                expectOutputBuilder.Append($"\t{NetworkConnection.MessagePackageToString(sourceNode , targetNode , expect)}\n");
-                actualOutputBuilder.Append($"\t{NetworkConnection.MessagePackageToString(sourceNode , targetNode , actual)}\n");
-            }
-            testOutput.WriteLine("Global expect logs:");
-            testOutput.WriteLine(expectOutputBuilder.ToString());
-            testOutput.WriteLine("But get:");
-            testOutput.WriteLine(actualOutputBuilder.ToString());
-
-            if (firstErrorSource != -1)
-                testOutput.WriteLine("\n\n");
-        }
-        if (firstErrorSource != -1)
-        {
-            (DateTime Time , RaftNode sourceNode , RaftNode targetNode , MessagePackageBase Expected , MessagePackageBase Actual)[] logDiffs =
-            [
-                ..  from connection in connections.Cast<NetworkConnection>()
-                    where connection.Source == nodes[firstErrorSource]
-                    from log in connection.DebugLogs
-                    orderby log.Time
-                    select (log.Time , connection.Source , connection.Target , log.Expected , log.Actual) ,
-            ];
-            (StringBuilder expectOutputBuilder , StringBuilder actualOutputBuilder) = (new StringBuilder() , new StringBuilder());
-            foreach ((_ , RaftNode sourceNode , RaftNode targetNode , MessagePackageBase expect , MessagePackageBase actual) in logDiffs)
-            {
-                expectOutputBuilder.Append($"\t{NetworkConnection.MessagePackageToString(sourceNode , targetNode , expect)}\n");
-                actualOutputBuilder.Append($"\t{NetworkConnection.MessagePackageToString(sourceNode , targetNode , actual)}\n");
-            }
-            testOutput.WriteLine($"Expected (for node {firstErrorSource}):");
-            testOutput.WriteLine(expectOutputBuilder.ToString());
-            testOutput.WriteLine("But get:");
-            testOutput.WriteLine(actualOutputBuilder.ToString());
-        }
-        return false;
+        string fileName = $"{testName}{(parameter is null ? "" : $"_{parameter}")}.log";
+        standardTraceListeners =
+        [
+            new AlignedTraceListener($"logs/{fileName}") ,
+        ];
+        debugTraceListeners =
+        [
+            new XUnitTraceListener(testOutput) ,
+            new AlignedTraceListener($"debug/{fileName}") ,
+        ];
     }
+    #endregion
 }
