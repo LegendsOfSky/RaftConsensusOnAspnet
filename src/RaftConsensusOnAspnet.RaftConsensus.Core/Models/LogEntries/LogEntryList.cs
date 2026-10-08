@@ -83,24 +83,19 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
     public async Task StartSynchronizingStateMachineValueAsync()
     {
         standardTrace.TraceEvent(TraceEventType.Start , 0 , "State machine values sync start.");
+        debugTrace.TraceEvent(TraceEventType.Start , 0 , "State machine values sync start.");
         stopStateMachineSyncTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Task stop = stopStateMachineSyncTcs.Task;
-        while (true)
+        while (!stopStateMachineSyncTcs.Task.IsCompleted)
         {
             debugTrace.TraceEvent(TraceEventType.Verbose , 0 , "Syncing state machine values.");
             await Task.Run(ApplyEntries);
-
-            Task finishedTask = await Task.WhenAny(Task.Delay(StateMachineValueSyncCooldownInterval) , stop);
-            if (finishedTask == stop)
-                break;
+            await Task.Delay(StateMachineValueSyncCooldownInterval);
         }
+        standardTrace.TraceEvent(TraceEventType.Stop , 0 , "State machine values sync stop.");
+        debugTrace.TraceEvent(TraceEventType.Stop , 0 , "State machine values sync stop.");
     }
 
-    public void StopSynchronizingStateMachineValue()
-    {
-        standardTrace.TraceEvent(TraceEventType.Start , 0 , "State machine values sync stop.");
-        stopStateMachineSyncTcs?.TrySetResult();
-    }
+    public void StopSynchronizingStateMachineValue() => stopStateMachineSyncTcs?.TrySetResult();
     #endregion
 
     public void AddRange(IEnumerable<LogEntry> newEntries)

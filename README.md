@@ -209,12 +209,11 @@ cd .\target_test
 ```
 
 ### Test on RaftConsensusOnAspnet.RaftConsensus.Core
-```powershell
+```bash
 git clone https://github.com/LegendsOfSky/RaftConsensusOnAspnet.git
-cd RaftConsensusOnAspnet\test\RaftConsensusOnAspnet.RaftConsensus.Core.Test
+cd RaftConsensusOnAspnet/test/RaftConsensusOnAspnet.RaftConsensus.Core.Test
 dotnet test
 ```
-The current test is ported from CUHK's poorly designed unit test, therefore it will fail easily over Linux machine because of CPU scheduling issues. Hence the test should be run on Microsoft Windows enviroment to provide smoother timing delays for those tests. Tests will be changed on the future to have a much clear objective and less subjective to CPU scheduling.
 
 
 ## Credits
