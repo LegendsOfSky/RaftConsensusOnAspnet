@@ -1,0 +1,56 @@
+services:
+  test-helper:
+    image: python
+    container_name: test-helper
+    hostname: test-helper
+    command:
+      - /src/run.sh
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./TestHelper:/src:ro
+    networks:
+      - raft-net
+
+  nginx:
+    image: nginx
+    container_name: nginx
+    hostname: nginx
+    volumes:
+      - ../../Nginx/configs:/etc/nginx/conf.d:ro
+    ports:
+      - "7194:7195"
+    depends_on:
+      - node
+    networks:
+      - raft-net
+    
+  node:
+    image: raft-node:latest
+    container_name: node
+    hostname: node
+    command:
+      - --debug
+      - --timeout-interval
+      - "10000"
+      - --heart-beat-interval
+      - "1000"
+      - --id
+      - "00000000-0000-0000-0000-000000000001"
+    ports:
+      - "7195:7195"
+    build:
+      context: ../../../../..
+      dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
+    networks:
+      - raft-net
+
+networks:
+  raft-net:
+    name: raft-net
+    driver: bridge
