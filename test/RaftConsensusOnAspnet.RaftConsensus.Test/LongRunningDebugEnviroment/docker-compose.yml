@@ -14,7 +14,7 @@ services:
     ports:
       - "7195:7195"
     build:
-      context: ../../../..
+      context: ../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -39,7 +39,7 @@ services:
     ports:
       - "7196:7195"
     build:
-      context: ../../../..
+      context: ../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -64,7 +64,7 @@ services:
     ports:
       - "7197:7195"
     build:
-      context: ../../../..
+      context: ../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -89,7 +89,7 @@ services:
     ports:
       - "7198:7195"
     build:
-      context: ../../../..
+      context: ../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -114,7 +114,7 @@ services:
     ports:
       - "7199:7195"
     build:
-      context: ../../../..
+      context: ../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
