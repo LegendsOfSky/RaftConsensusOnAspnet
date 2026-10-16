@@ -2,8 +2,7 @@
 
 import RequestHandler
 import RequestSender
-import uuid
-from RequestSender import LogEntries , Operation
+from threading import Thread
 from time import sleep
 
 
@@ -13,8 +12,12 @@ def main(host="0.0.0.0", port=7195):
 
 if __name__ == "__main__":
     ip = "http://node:7195"
-    RequestSender.put_entries(
-        ip , uuid.uuid4() , uuid.UUID("00000000-0000-0000-0000-000000000002") , 16 , 0 , 0 , 0 ,
-        [LogEntries(uuid.uuid4() , "NonValue" , 1 , Operation.NO_OP , None , None)])
-    sleep(2)
+    receiver_thread = Thread(target=RequestHandler.start_handler , args=("0.0.0.0", 7195))
+    receiver_thread.start()
+
+    RequestSender.post_election_timeout_interval(ip , 2000)
+    sleep(10)
+
     RequestSender.stop_node(ip)
+    RequestHandler.stop_handler()
+    receiver_thread.join()

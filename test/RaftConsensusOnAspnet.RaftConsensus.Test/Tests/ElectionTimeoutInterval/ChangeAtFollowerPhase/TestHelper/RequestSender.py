@@ -1,32 +1,7 @@
 import requests
 import urllib.parse
-import uuid
-from dataclasses import dataclass , asdict
-from enum import Enum
-from typing import Optional
+from RequestReplyHelper import to_payload
 
-
-class Operation(str , Enum):
-    NO_OP = "None"
-    PUT = "Put"
-    DELETE = "Delete"
-
-@dataclass
-class LogEntries:
-    guid : uuid.UUID
-    logType : str
-    term : int
-    operation : Operation
-    key : Optional[str] = None
-    value : Optional[str] = None
-
-
-def to_payload(item: LogEntries) -> dict:
-    d = asdict(item)
-    for k, v in d.items():
-        if isinstance(v, uuid.UUID):
-            d[k] = str(v)
-    return d
 
 def stop_node(ip):
     requests.delete(f"{ip}/api/node")

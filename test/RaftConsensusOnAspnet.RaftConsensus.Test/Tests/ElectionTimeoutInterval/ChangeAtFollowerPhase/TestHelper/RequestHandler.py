@@ -1,6 +1,8 @@
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+handler_started = False
+
 
 class RequestHandler(BaseHTTPRequestHandler):
     def log_message(self , format , *args):
@@ -40,10 +42,17 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.do_PUT()  # treat similarly for demo
 
 def start_handler(host="0.0.0.0", port=7195):
+    global handler_started
     server = HTTPServer((host , port) , RequestHandler)
     print(f"Listening on http://{host}:{port}")
     try:
-        server.serve_forever()
+        handler_started = True
+        while handler_started:
+            server.handle_request()
     except KeyboardInterrupt:
         print("\nShutting down...")
         server.shutdown()
+
+def stop_handler():
+    global handler_started
+    handler_started = False
