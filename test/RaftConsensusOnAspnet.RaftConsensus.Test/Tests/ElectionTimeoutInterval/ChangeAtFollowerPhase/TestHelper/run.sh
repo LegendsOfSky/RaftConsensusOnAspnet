@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-pip install requests \
+pip install -r requirements.txt \
     && /src/test-helper.py

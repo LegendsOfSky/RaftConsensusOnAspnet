@@ -3,6 +3,7 @@ services:
     image: python
     container_name: test-helper
     hostname: test-helper
+    working_dir: /src
     command:
       - /src/run.sh
     environment:
