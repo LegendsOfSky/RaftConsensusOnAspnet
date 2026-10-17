@@ -1,8 +1,12 @@
 import json
+import uuid
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from RequestReplyHelper import AppendEntriesReply , VoteRequestReply , to_payload
+
 
 handler_started = False
-
+put_entries_replies = []
+patch_vote_replies = []
 
 class RequestHandler(BaseHTTPRequestHandler):
     def log_message(self , format , *args):
@@ -20,26 +24,23 @@ class RequestHandler(BaseHTTPRequestHandler):
         """
         /api/node/entries
         """
-        content_length = int(self.headers.get("Content-Length" , 0))
-        body_bytes = self.rfile.read(content_length)
-        try:  # Try to parse as JSON, fall back to raw.
-            body_data = json.loads(body_bytes)
-        except json.JSONDecodeError:
-            body_data = body_bytes.decode("utf-8" , errors="replace")
-        response = {
-            "method": "POST" ,
-            "path": self.path ,
-            "headers": dict(self.headers) ,
-            "body": body_data
-        }
-        body = json.dumps(response , indent=2).encode()
+        if len(put_entries_replies) == 0:
+            reply = AppendEntriesReply(uuid.uuid4() , uuid.uuid4() , uuid.uuid4() , 0 ,False , 0)
+        else:
+            reply = put_entries_replies.pop()
+        body = json.dumps(to_payload(reply) , indent=2).encode()
         self._send_response(200 , body)
 
     def do_PATCH(self):
         """
         /api/node/vote
         """
-        self.do_PUT()  # treat similarly for demo
+        if len(patch_vote_replies) == 0:
+            reply = VoteRequestReply(uuid.uuid4() , uuid.uuid4() , uuid.uuid4() , 0 , 0 , False)
+        else:
+            reply = patch_vote_replies.pop()
+        body = json.dumps(to_payload(reply) , indent=2).encode()
+        self._send_response(200 , body)
 
 def start_handler(host="0.0.0.0", port=7195):
     global handler_started
