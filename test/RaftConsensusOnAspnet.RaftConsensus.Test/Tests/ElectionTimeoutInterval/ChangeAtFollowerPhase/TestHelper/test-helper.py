@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
 
-import RequestHandler
 import RequestSender
-from threading import Thread
+import signal
+import subprocess
 from time import sleep
 
+# start the test environment
+ip = "http://node:7195"
+process = subprocess.Popen(["python3", "./RequestHandler.py"], stdout=subprocess.PIPE , text=True)
 
-def main(host="0.0.0.0", port=7195):
-    RequestHandler.start_handler(host, port)
+# core test logic in here
+RequestSender.post_election_timeout_interval(ip, 2000)
+sleep(10)
 
+# clean up test environment
+RequestSender.stop_node(ip)
+process.send_signal(signal.SIGINT)
 
-if __name__ == "__main__":
-    ip = "http://node:7195"
-    receiver_thread = Thread(target=RequestHandler.start_handler , args=("0.0.0.0", 7195))
-    receiver_thread.start()
-
-    RequestSender.post_election_timeout_interval(ip , 2000)
-    sleep(10)
-
-    RequestSender.stop_node(ip)
-    RequestHandler.stop_handler()
-    receiver_thread.join()
+# get result from fake node
+output , error = process.communicate()
+print(f"output = {output}")
