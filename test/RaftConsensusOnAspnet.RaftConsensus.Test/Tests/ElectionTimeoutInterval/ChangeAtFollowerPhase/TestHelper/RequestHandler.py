@@ -1,5 +1,7 @@
 import json
+import OutputHelper
 import uuid
+from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from RequestReplyHelper import AppendEntriesReply , VoteRequestReply , to_payload
 
@@ -17,16 +19,12 @@ patch_vote_replies = []
 class RequestHandler(BaseHTTPRequestHandler):
     def log_message(self , format , *args):
         # Custom logging
-        print(f"[{self.log_date_time_string()}] {self.address_string()} - {format % args}")
+        OutputHelper.log(f"[{datetime.now()}] {self.address_string()} - {format % args}")
 
     def do_PUT(self):
         APPEND_ENTRIES_REQUEST_PATH = "/api/node/entries"
         path, query_parameters, request_body = self.get_request_info()
-        for param in query_parameters:
-            print(f"{param} => {query_parameters[param]}")
         response_body = ""
-        content_length = int(self.headers['Content-Length'])
-        print(f"length = {content_length} data = {self.rfile.readlines()}")
         if path == APPEND_ENTRIES_REQUEST_PATH:
             if len(put_entries_replies) == 0:
                 request_id = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
@@ -78,7 +76,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 def main(host="0.0.0.0", port=7195):
     global handler_started
     server = HTTPServer((host , port) , RequestHandler)
-    print(f"Listening on http://{host}:{port}")
+    OutputHelper.log(f"Listening on http://{host}:{port}")
     server.serve_forever()
 
 if __name__ == "__main__":
