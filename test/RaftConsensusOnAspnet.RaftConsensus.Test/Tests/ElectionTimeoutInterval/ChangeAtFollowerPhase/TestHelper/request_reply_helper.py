@@ -3,6 +3,7 @@ from dataclasses import dataclass , asdict
 from enum import Enum
 from typing import Optional
 
+
 @dataclass
 class AppendEntriesReply:
     RequestId : uuid.UUID

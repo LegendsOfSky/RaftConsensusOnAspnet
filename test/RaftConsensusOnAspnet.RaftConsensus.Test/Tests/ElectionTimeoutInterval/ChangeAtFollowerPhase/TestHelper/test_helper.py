@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from DateTime.interfaces import IDateTime
-
 import output_helper
 import request_handler
 import request_sender
