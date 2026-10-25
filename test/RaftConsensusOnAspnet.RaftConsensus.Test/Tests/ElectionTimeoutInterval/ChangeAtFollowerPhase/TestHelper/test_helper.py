@@ -15,23 +15,23 @@ def output_failure_and_exit():
     sys.exit(-1)
 
 
+IP = "http://node:7195"
 MAX_TIME_DEVIATION = 0.5
 TOLERANCE_FACTOR = 2
 
 ''' start the test environment '''
-ip = "http://node:7195"
 process = subprocess.Popen(["python3", "./request_handler.py"], stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
 ELECTION_TIMEOUT_INTERVAL = 2
-request_sender.post_election_timeout_interval(ip, ELECTION_TIMEOUT_INTERVAL * 1000)
+request_sender.post_election_timeout_interval(IP, ELECTION_TIMEOUT_INTERVAL * 1000)
 sleep(ELECTION_TIMEOUT_INTERVAL)
 expect_time = datetime.now()
 print(f"expect_time = {expect_time}")
 sleep(MAX_TIME_DEVIATION * TOLERANCE_FACTOR)
 
 ''' stop test environment, extract test message and print loggings from fake node '''
-request_sender.stop_node(ip)
+request_sender.stop_node(IP)
 process.send_signal(signal.SIGINT)
 stdout , stderr = process.communicate()
 print("\nLog output:")
