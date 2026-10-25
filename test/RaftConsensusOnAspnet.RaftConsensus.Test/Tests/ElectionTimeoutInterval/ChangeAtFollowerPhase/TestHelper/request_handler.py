@@ -1,11 +1,14 @@
 import json
-import OutputHelper
+import output_helper
 import uuid
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from RequestReplyHelper import AppendEntriesReply , VoteRequestReply , to_payload
+from request_reply_helper import AppendEntriesReply , VoteRequestReply , to_payload
 
 
+TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
+PATH_APPEND_ENTRIES_REQUEST = "/api/node/entries"
+PATH_VOTE_REQUEST = "/api/node/vote"
 QUERY_REQUEST_ID = "requestId"
 QUERY_REQUESTER_ID = "requesterId"
 QUERY_REQUESTER_TERM = "requesterTerm"
@@ -19,13 +22,13 @@ patch_vote_replies = []
 class RequestHandler(BaseHTTPRequestHandler):
     def log_message(self , format , *args):
         # Custom logging
-        OutputHelper.log(f"[{datetime.now()}] {self.address_string()} - {format % args}")
+        output_helper.log(f"[{datetime.now()}] {self.address_string()} - {format % args}")
 
     def do_PUT(self):
-        APPEND_ENTRIES_REQUEST_PATH = "/api/node/entries"
+        self.create_test_output_from_current_request()
         path, query_parameters, request_body = self.get_request_info()
         response_body = ""
-        if path == APPEND_ENTRIES_REQUEST_PATH:
+        if path == PATH_APPEND_ENTRIES_REQUEST:
             if len(put_entries_replies) == 0:
                 request_id = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
                 receiver_id = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
@@ -37,10 +40,10 @@ class RequestHandler(BaseHTTPRequestHandler):
         self._send_response(200 , response_body)
 
     def do_PATCH(self):
-        VOTE_REQUEST_PATH = "/api/node/vote"
+        self.create_test_output_from_current_request()
         path, query_parameters, request_body = self.get_request_info()
         response_body = ""
-        if path == VOTE_REQUEST_PATH:
+        if path == PATH_VOTE_REQUEST:
             if len(patch_vote_replies) == 0:
                 request_id = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
                 receiver_id = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
@@ -73,10 +76,31 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         return path , query_parameters , request_body
 
+    def create_test_output_from_current_request(self):
+        content_length = int(self.headers['Content-Length'])
+        request_body = self.rfile.read(content_length)
+        output_helper.test_output(f"{datetime.strftime(datetime.now(), TIME_FORMAT)}---{self.path},,,<{str(request_body)}>")
+
+    @staticmethod
+    def extract_info_from_test_output(test_output):
+        try:
+            time , rest = test_output.split("---" , maxsplit=1)
+            path_and_parameters , request_body = rest.split(",,," , maxsplit=1)
+            path , url_parameters = path_and_parameters.split("?" , maxsplit=1)
+            query_parameters = {}
+            for param in url_parameters.split("&"):
+                segments = param.split("=")
+                key, value = segments[0], segments[1]
+                query_parameters[key] = value
+            return True , datetime.strptime(time , TIME_FORMAT) , path , query_parameters , "" if len(request_body) <= 2 else request_body[1:-1]
+        except ValueError:
+            return False , None , None , None , None
+
+
 def main(host="0.0.0.0", port=7195):
     global handler_started
     server = HTTPServer((host , port) , RequestHandler)
-    OutputHelper.log(f"Listening on http://{host}:{port}")
+    output_helper.log(f"Listening on http://{host}:{port}")
     server.serve_forever()
 
 if __name__ == "__main__":

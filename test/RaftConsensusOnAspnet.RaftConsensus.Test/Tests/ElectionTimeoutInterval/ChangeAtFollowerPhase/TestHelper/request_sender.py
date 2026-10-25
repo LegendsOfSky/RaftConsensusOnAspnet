@@ -1,6 +1,6 @@
 import requests
 import urllib.parse
-from RequestReplyHelper import to_payload
+from request_reply_helper import to_payload
 
 
 def stop_node(ip):
