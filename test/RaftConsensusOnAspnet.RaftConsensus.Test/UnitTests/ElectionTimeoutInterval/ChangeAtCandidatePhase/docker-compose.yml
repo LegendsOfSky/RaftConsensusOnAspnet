@@ -6,6 +6,8 @@ services:
     working_dir: /src
     command:
       - /src/run.sh
+    ports:
+      - "7190:7190"
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
@@ -25,8 +27,6 @@ services:
       - "1000"
       - --id
       - "00000000-0000-0000-0000-000000000001"
-    ports:
-      - "7195:7195"
     build:
       context: ../../../../..
       dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile

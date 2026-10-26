@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import os
 import output_helper
 import request_handler
 import request_sender
 import signal
+import socket
 import subprocess
 import sys
 from request_handler import RequestHandler
@@ -12,7 +14,18 @@ from time import sleep
 
 def output_failure_and_exit():
     print("Failed")
+    print("Wait for automated test platform to connect...")
+    client_connection , client_address = server_socket.accept()
+    print(f"Automated test platform has connected via {client_address}")
+    client_connection.send("Failed".encode())
+    print("Result has been sent to automated test platform.")
+    client_connection.close()
+    server_socket.close()
     sys.exit(-1)
+
+def read_from_notification_pipe(pipe):
+    data_length = int(os.read(pipe , 3))
+    return os.read(pipe, data_length).decode()
 
 
 IP = "http://node:7195"
@@ -20,6 +33,9 @@ MAX_TIME_DEVIATION = 0.5
 TOLERANCE_FACTOR = 2
 
 ''' start the test environment '''
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind(("", 7190))
+server_socket.listen(1)
 process = subprocess.Popen(["python3", "./request_handler.py"], stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
@@ -59,5 +75,12 @@ time_deviation = abs_time_diff.total_seconds()
 success &= time_deviation <= MAX_TIME_DEVIATION
 if success:
     print("\nSuccess")
+    print("Wait for automated test platform to connect...")
+    client_connection , client_address = server_socket.accept()
+    print(f"Automated test platform has connected via {client_address}")
+    client_connection.send("Passed".encode())
+    print("Result has been sent to automated test platform.")
+    client_connection.close()
+    server_socket.close()
 else:
     output_failure_and_exit()
