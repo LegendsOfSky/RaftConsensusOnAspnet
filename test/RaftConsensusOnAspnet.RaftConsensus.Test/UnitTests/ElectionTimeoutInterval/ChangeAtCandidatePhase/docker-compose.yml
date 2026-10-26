@@ -12,19 +12,6 @@ services:
       - ./TestHelper:/src:ro
     networks:
       - raft-net
-
-  nginx:
-    image: nginx
-    container_name: nginx
-    hostname: nginx
-    volumes:
-      - ../../Nginx/configs:/etc/nginx/conf.d:ro
-    ports:
-      - "7194:7195"
-    depends_on:
-      - node
-    networks:
-      - raft-net
     
   node:
     image: raft-node:latest
