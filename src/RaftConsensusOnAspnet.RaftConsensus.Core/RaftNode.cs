@@ -744,73 +744,78 @@ public class RaftNode
                 }
             );
 
-        Task waitForHeartBeatIntervalChanged = changeHeartBeatIntervalTcs.Task;
-        Task waitForHeartBeatTimerEnd = Task.Delay(heartBeatInterval);
         while (true)
         {
-            debugTrace.TraceInformation($"{loggingPrefix}: Wait for replies of append entries requests.");
-            Task waitForNewAppendEntriesRequestReply = AppendEntriesReplyChannel.Reader.WaitToReadAsync().AsTask();
-            Task completedTask = await Task.WhenAny(
-                    raftStopSignal ,
-                    waitForHeartBeatTimerEnd ,
-                    waitForHeartBeatIntervalChanged ,
-                    waitForRevertToFollowerSignal ,
-                    waitForNewAppendEntriesRequestReply
-                );
-            if (completedTask == raftStopSignal)
-                return;
-            if (completedTask == waitForRevertToFollowerSignal)
+            Task waitForHeartBeatIntervalChanged = changeHeartBeatIntervalTcs.Task;
+            Task waitForHeartBeatTimerEnd = Task.Delay(heartBeatInterval);
+            while (true)
             {
-                standardTrace.TraceInformation("Revert to follower.");
-                debugTrace.TraceInformation($"{loggingPrefix}: Revert to follower.");
-                (Role , LeaderId) = (NodeRole.Follower , null);
-                return;
-            }
-            if (completedTask == waitForHeartBeatTimerEnd)
-            {
-                debugTrace.TraceInformation($"{loggingPrefix}: Heart beat timer triggered.");
-                return;
-            }
-            if (completedTask == waitForNewAppendEntriesRequestReply)
-            {
-                AppendEntriesReply reply = await AppendEntriesReplyChannel.Reader.ReadAsync();
-
-                if (reply.MatchIndex >= logEntries.Count || reply.MatchIndex < 0)
+                debugTrace.TraceInformation($"{loggingPrefix}: Wait for replies of append entries requests.");
+                Task waitForNewAppendEntriesRequestReply = AppendEntriesReplyChannel.Reader.WaitToReadAsync().AsTask();
+                Task completedTask = await Task.WhenAny(
+                        raftStopSignal ,
+                        waitForHeartBeatTimerEnd ,
+                        waitForHeartBeatIntervalChanged ,
+                        waitForRevertToFollowerSignal ,
+                        waitForNewAppendEntriesRequestReply
+                    );
+                if (completedTask == raftStopSignal)
+                    return;
+                if (completedTask == waitForHeartBeatIntervalChanged)
+                    break;
+                if (completedTask == waitForRevertToFollowerSignal)
                 {
-                    debugTrace.TraceInformation($"{loggingPrefix}: Received reply with match index outside of possible values. This reply will be ignored.");
-                    standardTrace.TraceInformation("Received reply with match index outside of possible values. This reply will be ignored.");
-                    continue;
+                    standardTrace.TraceInformation("Revert to follower.");
+                    debugTrace.TraceInformation($"{loggingPrefix}: Revert to follower.");
+                    (Role , LeaderId) = (NodeRole.Follower , null);
+                    return;
                 }
-
-                if (reply.RequestId != requestId)
+                if (completedTask == waitForHeartBeatTimerEnd)
                 {
-                    debugTrace.TraceInformation($"{loggingPrefix}: Old reply received from node {GetDebugNodeIntId(reply.ReplierId)}.");
-                    continue;
+                    debugTrace.TraceInformation($"{loggingPrefix}: Heart beat timer triggered.");
+                    return;
                 }
-                debugTrace.TraceInformation($"{loggingPrefix}: New reply received from node {GetDebugNodeIntId(reply.ReplierId)}.");
-
-                Guid replyNodeId = reply.ReplierId;
-                int replyMatchIndex = reply.MatchIndex;
-                if (reply.AppendSuccess)
-                    (nextIndexes[replyNodeId] , matchIndexes[replyNodeId]) = (replyMatchIndex + 1 , replyMatchIndex);
-                else
-                    nextIndexes[replyNodeId] = Math.Max(nextIndexes.GetValueOrDefault(replyNodeId , logEntries.Count) - 1 , 1);
-
-                int newCommitIndex = matchIndexes
-                    .Where(
-                        candidateMatchIndex => matchIndexes.Count(kvp => kvp.Value >= candidateMatchIndex.Value) >= nodeCount / 2
-                        )
-                    .Where(candidateNextIndex => logEntries[candidateNextIndex.Value].Term == CurrentTerm)
-                    .DefaultIfEmpty(new KeyValuePair<Guid , int>(Guid.Empty , 0))
-                    .Max(kvp => kvp.Value);
-                if (newCommitIndex != commitIndex)
+                if (completedTask == waitForNewAppendEntriesRequestReply)
                 {
-                    commitIndex = newCommitIndex;
-                    commitNewEntryTcs.TrySetResult();
-                    commitNewEntryTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    AppendEntriesReply reply = await AppendEntriesReplyChannel.Reader.ReadAsync();
+
+                    if (reply.MatchIndex >= logEntries.Count || reply.MatchIndex < 0)
+                    {
+                        debugTrace.TraceInformation($"{loggingPrefix}: Received reply with match index outside of possible values. This reply will be ignored.");
+                        standardTrace.TraceInformation("Received reply with match index outside of possible values. This reply will be ignored.");
+                        continue;
+                    }
+
+                    if (reply.RequestId != requestId)
+                    {
+                        debugTrace.TraceInformation($"{loggingPrefix}: Old reply received from node {GetDebugNodeIntId(reply.ReplierId)}.");
+                        continue;
+                    }
+                    debugTrace.TraceInformation($"{loggingPrefix}: New reply received from node {GetDebugNodeIntId(reply.ReplierId)}.");
+
+                    Guid replyNodeId = reply.ReplierId;
+                    int replyMatchIndex = reply.MatchIndex;
+                    if (reply.AppendSuccess)
+                        (nextIndexes[replyNodeId] , matchIndexes[replyNodeId]) = (replyMatchIndex + 1 , replyMatchIndex);
+                    else
+                        nextIndexes[replyNodeId] = Math.Max(nextIndexes.GetValueOrDefault(replyNodeId , logEntries.Count) - 1 , 1);
+
+                    int newCommitIndex = matchIndexes
+                        .Where(
+                            candidateMatchIndex => matchIndexes.Count(kvp => kvp.Value >= candidateMatchIndex.Value) >= nodeCount / 2
+                            )
+                        .Where(candidateNextIndex => logEntries[candidateNextIndex.Value].Term == CurrentTerm)
+                        .DefaultIfEmpty(new KeyValuePair<Guid , int>(Guid.Empty , 0))
+                        .Max(kvp => kvp.Value);
+                    if (newCommitIndex != commitIndex)
+                    {
+                        commitIndex = newCommitIndex;
+                        commitNewEntryTcs.TrySetResult();
+                        commitNewEntryTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    }
+                    standardTrace.TraceInformation($"Commit index has been set to {newCommitIndex}.");
+                    debugTrace.TraceInformation($"{loggingPrefix}: Commit index has been set to {newCommitIndex}.");
                 }
-                standardTrace.TraceInformation($"Commit index has been set to {newCommitIndex}.");
-                debugTrace.TraceInformation($"{loggingPrefix}: Commit index has been set to {newCommitIndex}.");
             }
         }
     }
