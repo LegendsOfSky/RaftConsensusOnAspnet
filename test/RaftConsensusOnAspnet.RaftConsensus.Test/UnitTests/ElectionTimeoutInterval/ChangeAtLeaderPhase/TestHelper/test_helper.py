@@ -24,9 +24,10 @@ def output_failure_and_exit():
     server_socket.close()
     sys.exit(-1)
 
+
 def read_from_notification_pipe(pipe):
     data_length = int(os.read(pipe , 3))
-    return os.read(pipe, data_length).decode()
+    return os.read(pipe , data_length).decode()
 
 
 IP = "http://node:7195"
@@ -34,26 +35,26 @@ MAX_TIME_DEVIATION = 0.5
 TOLERANCE_FACTOR = 2
 
 ''' start the test environment '''
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(("", 7190))
+server_socket = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
+server_socket.bind(("" , 7190))
 server_socket.listen(1)
 try:
     os.mkfifo(request_handler.PIPE_NOTIFICATION_CHANNEL)
 except FileExistsError:
     pass
-pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL, os.O_RDWR , os.O_RDONLY)
-process = subprocess.Popen(["python3", "./request_handler.py"], stdout=subprocess.PIPE , text=True)
+pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL , os.O_RDWR , os.O_RDONLY)
+process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
 heart_beat_interval = 1.5
 request_sender.post_heart_beat_interval(IP , int(heart_beat_interval * 1000))
 election_timeout_interval = 1
-request_sender.post_election_timeout_interval(IP, int(election_timeout_interval * 1000))
+request_sender.post_election_timeout_interval(IP , int(election_timeout_interval * 1000))
 sleep(election_timeout_interval)
 print(f"first recv: {read_from_notification_pipe(pipe)}")
 # received vote requesting from node and node become leader at this moment
 election_timeout_interval = 2
-request_sender.post_election_timeout_interval(IP, int(election_timeout_interval * 1000))
+request_sender.post_election_timeout_interval(IP , int(election_timeout_interval * 1000))
 sleep(heart_beat_interval)
 expect_time = datetime.now()
 sleep(MAX_TIME_DEVIATION)

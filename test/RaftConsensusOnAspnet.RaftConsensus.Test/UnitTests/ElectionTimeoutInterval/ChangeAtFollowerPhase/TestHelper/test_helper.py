@@ -23,9 +23,10 @@ def output_failure_and_exit():
     server_socket.close()
     sys.exit(-1)
 
+
 def read_from_notification_pipe(pipe):
     data_length = int(os.read(pipe , 3))
-    return os.read(pipe, data_length).decode()
+    return os.read(pipe , data_length).decode()
 
 
 IP = "http://node:7195"
@@ -33,14 +34,14 @@ MAX_TIME_DEVIATION = 0.5
 TOLERANCE_FACTOR = 2
 
 ''' start the test environment '''
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(("", 7190))
+server_socket = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
+server_socket.bind(("" , 7190))
 server_socket.listen(1)
-process = subprocess.Popen(["python3", "./request_handler.py"], stdout=subprocess.PIPE , text=True)
+process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
 ELECTION_TIMEOUT_INTERVAL = 2
-request_sender.post_election_timeout_interval(IP, ELECTION_TIMEOUT_INTERVAL * 1000)
+request_sender.post_election_timeout_interval(IP , ELECTION_TIMEOUT_INTERVAL * 1000)
 sleep(ELECTION_TIMEOUT_INTERVAL)
 expect_time = datetime.now()
 print(f"expect_time = {expect_time}")

@@ -24,9 +24,10 @@ def output_failure_and_exit():
     server_socket.close()
     sys.exit(-1)
 
+
 def read_from_notification_pipe(pipe):
     data_length = int(os.read(pipe , 3))
-    return os.read(pipe, data_length).decode()
+    return os.read(pipe , data_length).decode()
 
 
 IP = "http://node:7195"
@@ -34,15 +35,15 @@ MAX_TIME_DEVIATION = 0.5
 TOLERANCE_FACTOR = 2
 
 ''' start the test environment '''
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(("", 7190))
+server_socket = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
+server_socket.bind(("" , 7190))
 server_socket.listen(1)
 try:
     os.mkfifo(request_handler.PIPE_NOTIFICATION_CHANNEL)
 except FileExistsError:
     pass
-pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL, os.O_RDWR , os.O_RDONLY)
-process = subprocess.Popen(["python3", "./request_handler.py"], stdout=subprocess.PIPE , text=True)
+pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL , os.O_RDWR , os.O_RDONLY)
+process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
 election_timeout_interval = 1

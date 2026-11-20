@@ -2,9 +2,8 @@ import json
 import output_helper
 import uuid
 from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer , BaseHTTPRequestHandler
 from request_reply_helper import AppendEntriesReply , VoteRequestReply , to_payload
-
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
 PATH_APPEND_ENTRIES_REQUEST = "/api/node/entries"
@@ -19,6 +18,7 @@ REPLIER_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 put_entries_replies = []
 patch_vote_replies = []
 
+
 class RequestHandler(BaseHTTPRequestHandler):
     def log_message(self , format , *args):
         # Custom logging
@@ -26,7 +26,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_PUT(self):
         self.create_test_output_from_current_request()
-        path, query_parameters, request_body = self.get_request_info()
+        path , query_parameters , request_body = self.get_request_info()
         response_body = ""
         if path == PATH_APPEND_ENTRIES_REQUEST:
             if len(put_entries_replies) == 0:
@@ -39,12 +39,12 @@ class RequestHandler(BaseHTTPRequestHandler):
                 receiver_id = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
                 reply = put_entries_replies.pop()
                 reply = AppendEntriesReply(request_id , REPLIER_ID , receiver_id , reply.TermOfRequest , reply.VoteGranted , reply.ReplierTerm)
-            response_body = json.dumps(to_payload(reply), indent=2).encode()
+            response_body = json.dumps(to_payload(reply) , indent=2).encode()
         self._send_response(200 , response_body)
 
     def do_PATCH(self):
         self.create_test_output_from_current_request()
-        path, query_parameters, request_body = self.get_request_info()
+        path , query_parameters , request_body = self.get_request_info()
         response_body = ""
         if path == PATH_VOTE_REQUEST:
             if len(patch_vote_replies) == 0:
@@ -61,7 +61,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             output_helper.log(response_body.encode('utf-8'))
         self._send_response(200 , response_body.encode())
 
-    def _send_response(self , code, body , content_type="application/json"):
+    def _send_response(self , code , body , content_type="application/json"):
         self.send_response(code)
         self.send_header("Content-Type" , content_type)
         self.send_header("Content-Length" , str(len(body)))
@@ -92,7 +92,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             request_body = b''
         else:
             request_body = self.rfile.read(int(content_length))
-        output_helper.test_output(f"{datetime.strftime(datetime.now(), TIME_FORMAT)}---{self.path},,,<{str(request_body)}>")
+        output_helper.test_output(f"{datetime.strftime(datetime.now() , TIME_FORMAT)}---{self.path},,,<{str(request_body)}>")
 
     @staticmethod
     def extract_info_from_test_output(test_output):
@@ -103,18 +103,19 @@ class RequestHandler(BaseHTTPRequestHandler):
             query_parameters = {}
             for param in url_parameters.split("&"):
                 segments = param.split("=")
-                key, value = segments[0], segments[1]
+                key , value = segments[0] , segments[1]
                 query_parameters[key] = value
             return True , datetime.strptime(time , TIME_FORMAT) , path , query_parameters , "" if len(request_body) <= 2 else request_body[1:-1]
         except ValueError:
             return False , None , None , None , None
 
 
-def main(host="0.0.0.0", port=7195):
+def main(host="0.0.0.0" , port=7195):
     global handler_started
     server = HTTPServer((host , port) , RequestHandler)
     output_helper.log(f"Listening on http://{host}:{port}")
     server.serve_forever()
+
 
 if __name__ == "__main__":
     main()
