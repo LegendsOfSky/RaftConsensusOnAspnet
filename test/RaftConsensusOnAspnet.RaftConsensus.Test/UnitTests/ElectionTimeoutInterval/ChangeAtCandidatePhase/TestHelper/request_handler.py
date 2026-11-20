@@ -40,9 +40,12 @@ class RequestHandler(BaseHTTPRequestHandler):
                 request_id = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
                 receiver_id = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
                 term_of_request = query_parameters[QUERY_REQUESTER_TERM]
-                reply = AppendEntriesReply(request_id , REPLIER_ID , receiver_id , term_of_request ,False , 0)
+                reply = AppendEntriesReply(request_id , REPLIER_ID , receiver_id , term_of_request , False , 0)
             else:
+                request_id = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
+                receiver_id = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
                 reply = put_entries_replies.pop()
+                reply = AppendEntriesReply(request_id , REPLIER_ID , receiver_id , reply.TermOfRequest , reply.VoteGranted , reply.ReplierTerm)
             response_body = json.dumps(to_payload(reply), indent=2).encode()
         self._send_response(200 , response_body)
 
@@ -57,8 +60,12 @@ class RequestHandler(BaseHTTPRequestHandler):
                 term_of_request = query_parameters[QUERY_REQUESTER_TERM]
                 reply = VoteRequestReply(request_id , REPLIER_ID , receiver_id , term_of_request , term_of_request , False)
             else:
-                reply = patch_vote_replies.pop()
+                request_id = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
+                receiver_id = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
+                term_of_request = query_parameters[QUERY_REQUESTER_TERM]
+                reply = VoteRequestReply(request_id , REPLIER_ID , receiver_id , term_of_request , term_of_request , patch_vote_replies.pop())
             response_body = json.dumps(to_payload(reply) , indent=2)
+            output_helper.log(response_body.encode('utf-8'))
         self._send_response(200 , response_body.encode())
         self.send_notification(datetime.strftime(datetime.now(), TIME_FORMAT))
 
@@ -79,14 +86,20 @@ class RequestHandler(BaseHTTPRequestHandler):
             key , value = segments[0] , segments[1]
             query_parameters[key] = value
 
-        content_length = int(self.headers['Content-Length'])
-        request_body = self.rfile.read(content_length)
+        content_length = self.headers.get('Content-Length')
+        if content_length is None:
+            request_body = b''
+        else:
+            request_body = self.rfile.read(int(content_length))
 
         return path , query_parameters , request_body
 
     def create_test_output_from_current_request(self):
-        content_length = int(self.headers['Content-Length'])
-        request_body = self.rfile.read(content_length)
+        content_length = self.headers.get('Content-Length')
+        if content_length is None:
+            request_body = b''
+        else:
+            request_body = self.rfile.read(int(content_length))
         output_helper.test_output(f"{datetime.strftime(datetime.now(), TIME_FORMAT)}---{self.path},,,<{str(request_body)}>")
 
     def send_notification(self , msg):

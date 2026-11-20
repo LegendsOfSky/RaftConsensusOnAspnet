@@ -9,8 +9,7 @@ if docker_start_result.returncode != 0:
     exit(-1)
 
 try:
-    ''' wait for pip install before start connecting to test environment '''
-    sleep(15)
+    sleep(15)  # wait for pip install before start connecting to test environment
     print("Try to establish connect to test environment...")
     client_socket = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
     client_socket.settimeout(30)

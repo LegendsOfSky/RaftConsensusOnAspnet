@@ -61,12 +61,12 @@ print("\n")  # double new line
 
 ''' verify test result '''
 success = len(test_messages) > 0
-
-extract_success , actual_time , path , query_parameters , request_body = RequestHandler.extract_info_from_test_output(test_messages[0])
-success &= extract_success and path == request_handler.PATH_VOTE_REQUEST         \
-    and query_parameters[request_handler.QUERY_REQUESTER_TERM] == "1"            \
-    and query_parameters[request_handler.QUERY_REQUESTER_LAST_LOG_TERM] == "0"   \
-    and query_parameters[request_handler.QUERY_REQUESTER_LAST_LOG_INDEX] == "0"
+if success:
+    extract_success , actual_time , path , query_parameters , request_body = RequestHandler.extract_info_from_test_output(test_messages[0])
+    success &= extract_success and path == request_handler.PATH_VOTE_REQUEST \
+               and query_parameters[request_handler.QUERY_REQUESTER_TERM] == "1" \
+               and query_parameters[request_handler.QUERY_REQUESTER_LAST_LOG_TERM] == "0" \
+               and query_parameters[request_handler.QUERY_REQUESTER_LAST_LOG_INDEX] == "0"
 if not success:
     output_failure_and_exit()
 

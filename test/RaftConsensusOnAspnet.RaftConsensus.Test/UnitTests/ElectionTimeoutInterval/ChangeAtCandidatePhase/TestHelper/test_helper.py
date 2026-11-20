@@ -46,10 +46,10 @@ process = subprocess.Popen(["python3", "./request_handler.py"], stdout=subproces
 
 ''' core test logic in here '''
 election_timeout_interval = 1
-request_sender.post_election_timeout_interval(IP, election_timeout_interval * 1000)
+request_sender.post_election_timeout_interval(IP , int(election_timeout_interval * 1000))
 read_from_notification_pipe(pipe)
 election_timeout_interval = 2
-request_sender.post_election_timeout_interval(IP, election_timeout_interval * 1000)
+request_sender.post_election_timeout_interval(IP , int(election_timeout_interval * 1000))
 sleep(election_timeout_interval)
 expect_time = datetime.now()
 actual_time = datetime.strptime(read_from_notification_pipe(pipe) , request_handler.TIME_FORMAT)
