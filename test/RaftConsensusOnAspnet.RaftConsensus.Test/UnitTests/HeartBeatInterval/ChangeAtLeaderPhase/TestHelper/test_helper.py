@@ -55,7 +55,7 @@ request_sender.post_heart_beat_interval(IP , int(heart_beat_interval * 1000))
 election_timeout_interval = 1
 request_sender.post_election_timeout_interval(IP , int(election_timeout_interval * 1000))
 print(f"1st recv {read_from_notification_pipe(pipe)}")  # received vote request from node
-print(f"2nd recv {read_from_notification_pipe(pipe)}")  # received append entries request from node
+print(f"2nd recv {read_from_notification_pipe(pipe)}")  # received append entries request from node (node become leader)
 print(f"3rd recv {read_from_notification_pipe(pipe)}")  # received append entries request from node
 sleep(heart_beat_interval / 2)
 heart_beat_interval = 2
