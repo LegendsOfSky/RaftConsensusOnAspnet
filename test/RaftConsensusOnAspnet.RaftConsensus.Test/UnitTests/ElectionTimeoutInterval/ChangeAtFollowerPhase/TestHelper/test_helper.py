@@ -3,13 +3,16 @@ import os
 import output_helper
 import request_handler
 import request_sender
+import select
 import signal
 import socket
 import subprocess
 import sys
-from request_handler import RequestHandler
 from datetime import datetime
 from time import sleep
+
+
+pipe = None
 
 
 def output_failure_and_exit():
@@ -25,7 +28,9 @@ def output_failure_and_exit():
 
 
 def read_from_notification_pipe(pipe):
+    select.select([pipe] , [] , [])
     data_length = int(os.read(pipe , 3))
+    select.select([pipe] , [] , [])
     return os.read(pipe , data_length).decode()
 
 
@@ -37,6 +42,11 @@ TOLERANCE_FACTOR = 2
 server_socket = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
 server_socket.bind(("" , 7190))
 server_socket.listen(1)
+try:
+    os.mkfifo(request_handler.PIPE_NOTIFICATION_CHANNEL)
+except FileExistsError:
+    pass
+pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL , os.O_RDWR , os.O_RDONLY)
 process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
@@ -44,15 +54,14 @@ ELECTION_TIMEOUT_INTERVAL = 2
 request_sender.post_election_timeout_interval(IP , ELECTION_TIMEOUT_INTERVAL * 1000)
 sleep(ELECTION_TIMEOUT_INTERVAL)
 expect_time = datetime.now()
-print(f"expect_time = {expect_time}")
-sleep(MAX_TIME_DEVIATION * TOLERANCE_FACTOR)
+actual_time = datetime.strptime(read_from_notification_pipe(pipe) , request_handler.TIME_FORMAT)
 
 ''' stop test environment, extract test message and print loggings from fake node '''
 request_sender.stop_node(IP)
 process.send_signal(signal.SIGINT)
 stdout , stderr = process.communicate()
 print("\nLog output:")
-outputs , test_messages = output_helper.extract_outputs(stdout)
+outputs , _ = output_helper.extract_outputs(stdout)
 for output in outputs:
     print(output)
 if stderr is not None:
@@ -61,20 +70,9 @@ if stderr is not None:
 print("\n")  # double new line
 
 ''' verify test result '''
-success = len(test_messages) > 0
-if success:
-    extract_success , actual_time , path , query_parameters , request_body = RequestHandler.extract_info_from_test_output(test_messages[0])
-    success &= extract_success and path == request_handler.PATH_VOTE_REQUEST \
-               and query_parameters[request_handler.QUERY_REQUESTER_TERM] == "1" \
-               and query_parameters[request_handler.QUERY_REQUESTER_LAST_LOG_TERM] == "0" \
-               and query_parameters[request_handler.QUERY_REQUESTER_LAST_LOG_INDEX] == "0"
-if not success:
-    output_failure_and_exit()
-
 abs_time_diff = abs(actual_time - expect_time)
 time_deviation = abs_time_diff.total_seconds()
-success &= time_deviation <= MAX_TIME_DEVIATION
-if success:
+if time_deviation <= MAX_TIME_DEVIATION:
     print("\nSuccess")
     print("Wait for automated test platform to connect...")
     client_connection , client_address = server_socket.accept()

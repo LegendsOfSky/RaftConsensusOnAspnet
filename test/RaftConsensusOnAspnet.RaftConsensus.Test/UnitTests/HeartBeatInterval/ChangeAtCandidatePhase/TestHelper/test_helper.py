@@ -3,12 +3,14 @@ import os
 import output_helper
 import request_handler
 import request_sender
+import select
 import signal
 import socket
 import subprocess
 import sys
 from datetime import datetime
 from time import sleep
+
 
 pipe = None
 
@@ -26,7 +28,9 @@ def output_failure_and_exit():
 
 
 def read_from_notification_pipe(pipe):
+    select.select([pipe] , [] , [])
     data_length = int(os.read(pipe , 3))
+    select.select([pipe] , [] , [])
     return os.read(pipe , data_length).decode()
 
 
@@ -48,8 +52,7 @@ process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subproc
 ''' core test logic in here '''
 election_timeout_interval = 1
 request_sender.post_election_timeout_interval(IP , int(election_timeout_interval * 1000))
-read_from_notification_pipe(pipe)
-# node send vote request
+read_from_notification_pipe(pipe)  # node send vote request
 hear_beat_interval = 2
 request_sender.post_heart_beat_interval(IP , int(hear_beat_interval * 1000))
 sleep(election_timeout_interval)
@@ -62,7 +65,7 @@ request_sender.stop_node(IP)
 process.send_signal(signal.SIGINT)
 stdout , stderr = process.communicate()
 print("\nLog output:")
-outputs , test_messages = output_helper.extract_outputs(stdout)
+outputs , _ = output_helper.extract_outputs(stdout)
 for output in outputs:
     print(output)
 if stderr is not None:

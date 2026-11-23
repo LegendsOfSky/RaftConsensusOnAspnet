@@ -3,12 +3,14 @@ import os
 import output_helper
 import request_handler
 import request_sender
+import select
 import signal
 import socket
 import subprocess
 import sys
 from datetime import datetime
 from time import sleep
+
 
 pipe = None
 
@@ -26,7 +28,9 @@ def output_failure_and_exit():
 
 
 def read_from_notification_pipe(pipe):
+    select.select([pipe] , [] , [])
     data_length = int(os.read(pipe , 3))
+    select.select([pipe] , [] , [])
     return os.read(pipe , data_length).decode()
 
 
@@ -48,17 +52,15 @@ process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subproc
 ''' core test logic in here '''
 heart_beat_interval = 1.5
 request_sender.post_heart_beat_interval(IP , int(heart_beat_interval * 1000))
-election_timeout_interval = 1
-request_sender.post_election_timeout_interval(IP , int(election_timeout_interval * 1000))
-sleep(election_timeout_interval)
-print(f"first recv: {read_from_notification_pipe(pipe)}")
-# received vote requesting from node and node become leader at this moment
 election_timeout_interval = 2
 request_sender.post_election_timeout_interval(IP , int(election_timeout_interval * 1000))
+print(f"first recv: {read_from_notification_pipe(pipe)}")  # received vote requesting from node
+print(f"second recv: {read_from_notification_pipe(pipe)}")  # become raft leader
+election_timeout_interval = 1
+request_sender.post_election_timeout_interval(IP , int(election_timeout_interval * 1000))
+read_from_notification_pipe(pipe)
 sleep(heart_beat_interval)
 expect_time = datetime.now()
-sleep(MAX_TIME_DEVIATION)
-read_from_notification_pipe(pipe)
 actual_time = datetime.strptime(read_from_notification_pipe(pipe) , request_handler.TIME_FORMAT)
 
 ''' stop test environment, extract test message and print loggings from fake node '''
@@ -66,7 +68,7 @@ request_sender.stop_node(IP)
 process.send_signal(signal.SIGINT)
 stdout , stderr = process.communicate()
 print("\nLog output:")
-outputs , test_messages = output_helper.extract_outputs(stdout)
+outputs , _ = output_helper.extract_outputs(stdout)
 for output in outputs:
     print(output)
 if stderr is not None:

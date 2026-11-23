@@ -10,10 +10,11 @@ services:
       - "7190:7190"
     environment:
       - PYTHONUNBUFFERED=1
+      - PIP_ROOT_USER_ACTION=ignore
     volumes:
       - ./TestHelper:/src:ro
     networks:
-      - raft-net
+      - raft-net-unit-election-timeout-interval-follower
     
   node:
     image: raft-node:latest
@@ -36,9 +37,9 @@ services:
     volumes:
       - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
     networks:
-      - raft-net
+      - raft-net-unit-election-timeout-interval-follower
 
 networks:
-  raft-net:
-    name: raft-net
+  raft-net-unit-election-timeout-interval-follower:
+    name: raft-net-unit-election-timeout-interval-follower
     driver: bridge

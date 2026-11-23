@@ -4,10 +4,12 @@ TEST_MESSAGE_PREFIX = "<TEST>"
 
 def log(message):
     print(f"{LOGGING_PREFIX}{message}")
+    return
 
 
 def test_output(message):
     print(f"{TEST_MESSAGE_PREFIX}{message}")
+    return
 
 
 def extract_outputs(outputs):

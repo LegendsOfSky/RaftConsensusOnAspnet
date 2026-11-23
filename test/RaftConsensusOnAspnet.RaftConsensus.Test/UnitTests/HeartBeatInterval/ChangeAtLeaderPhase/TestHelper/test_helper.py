@@ -3,12 +3,14 @@ import os
 import output_helper
 import request_handler
 import request_sender
+import select
 import signal
 import socket
 import subprocess
 import sys
 from datetime import datetime
 from time import sleep
+
 
 pipe = None
 
@@ -26,7 +28,9 @@ def output_failure_and_exit():
 
 
 def read_from_notification_pipe(pipe):
+    select.select([pipe] , [] , [])
     data_length = int(os.read(pipe , 3))
+    select.select([pipe] , [] , [])
     return os.read(pipe , data_length).decode()
 
 
@@ -50,21 +54,14 @@ heart_beat_interval = 1
 request_sender.post_heart_beat_interval(IP , int(heart_beat_interval * 1000))
 election_timeout_interval = 1
 request_sender.post_election_timeout_interval(IP , int(election_timeout_interval * 1000))
-sleep(election_timeout_interval)
-# received vote request from node
-# received append entries request from node
-sleep(heart_beat_interval)
-# received append entries request from node
+print(f"1st recv {read_from_notification_pipe(pipe)}")  # received vote request from node
+print(f"2nd recv {read_from_notification_pipe(pipe)}")  # received append entries request from node
+print(f"3rd recv {read_from_notification_pipe(pipe)}")  # received append entries request from node
 sleep(heart_beat_interval / 2)
 heart_beat_interval = 2
 request_sender.post_heart_beat_interval(IP , int(heart_beat_interval * 1000))
-sleep(heart_beat_interval)
-# receive append entries request from node
+sleep(heart_beat_interval)  # receive append entries request from node
 expect_time = datetime.now()
-sleep(MAX_TIME_DEVIATION * TOLERANCE_FACTOR)
-read_from_notification_pipe(pipe)
-read_from_notification_pipe(pipe)
-read_from_notification_pipe(pipe)
 actual_time = datetime.strptime(read_from_notification_pipe(pipe) , request_handler.TIME_FORMAT)
 
 ''' stop test environment, extract test message and print loggings from fake node '''
@@ -72,7 +69,7 @@ request_sender.stop_node(IP)
 process.send_signal(signal.SIGINT)
 stdout , stderr = process.communicate()
 print("\nLog output:")
-outputs , test_messages = output_helper.extract_outputs(stdout)
+outputs , _ = output_helper.extract_outputs(stdout)
 for output in outputs:
     print(output)
 if stderr is not None:

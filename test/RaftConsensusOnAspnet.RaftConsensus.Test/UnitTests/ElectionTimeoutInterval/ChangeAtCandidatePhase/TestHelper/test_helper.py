@@ -3,12 +3,14 @@ import os
 import output_helper
 import request_handler
 import request_sender
+import select
 import signal
 import socket
 import subprocess
 import sys
 from datetime import datetime
 from time import sleep
+
 
 pipe = None
 
@@ -26,7 +28,9 @@ def output_failure_and_exit():
 
 
 def read_from_notification_pipe(pipe):
+    select.select([pipe] , [] , [])
     data_length = int(os.read(pipe , 3))
+    select.select([pipe] , [] , [])
     return os.read(pipe , data_length).decode()
 
 

@@ -2,6 +2,7 @@ import socket
 import subprocess
 from time import sleep
 
+
 docker_start_result = subprocess.run(["docker" , "compose" , "up" , "--build" , "-d"])
 if docker_start_result.returncode != 0:
     print("Docker start failed")

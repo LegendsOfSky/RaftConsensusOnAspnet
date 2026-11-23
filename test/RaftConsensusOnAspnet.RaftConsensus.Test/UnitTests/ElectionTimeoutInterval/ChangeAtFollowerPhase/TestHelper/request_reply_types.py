@@ -6,9 +6,9 @@ from typing import Optional
 
 @dataclass
 class AppendEntriesReply:
-    RequestId: uuid.UUID
+    RequestId: Optional[uuid.UUID]
     ReplierId: uuid.UUID
-    ReceiverId: uuid.UUID
+    ReceiverId: Optional[uuid.UUID]
     ReplierTerm: int
     AppendSuccess: bool
     MatchIndex: int
@@ -16,9 +16,9 @@ class AppendEntriesReply:
 
 @dataclass
 class VoteRequestReply:
-    RequestId: uuid.UUID
+    RequestId: Optional[uuid.UUID]
     ReplierId: uuid.UUID
-    ReceiverId: uuid.UUID
+    ReceiverId: Optional[uuid.UUID]
     ReplierTerm: int
     TermOfRequest: int
     VoteGranted: bool
