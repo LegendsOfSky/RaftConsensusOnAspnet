@@ -1,6 +1,7 @@
+import json
 import requests
 import urllib.parse
-from request_data_types import to_payload
+from request_data_types import AppendEntriesReply , VoteRequestReply , to_payload
 
 
 def stop_node(ip):
@@ -16,8 +17,13 @@ def patch_vote(ip , request_id , requester_id , requester_term , requester_last_
         'requesterLastLogTerm': requester_last_log_term ,
         'requesterLastLogIndex': requester_last_log_index
     }
-    requests.patch(f"{ip}/api/node/vote?{urllib.parse.urlencode(params)}")
-    return
+    response = requests.patch(f"{ip}/api/node/vote?{urllib.parse.urlencode(params)}")
+    response_content = json.loads(response.text)
+    reply = VoteRequestReply(
+            response_content['requestId'] , response_content['replierId'] , response_content['receiverId'] , response_content['replierTerm'] ,
+            response_content['termOfRequest'] , response_content['voteGranted']
+        )
+    return reply
 
 
 def put_entries(ip , request_id , requester_id , requester_term , previous_log_index , previous_log_term , leader_commit , entries):
@@ -30,8 +36,13 @@ def put_entries(ip , request_id , requester_id , requester_term , previous_log_i
         'leaderCommit': leader_commit
     }
     payload_entries = [to_payload(entry) for entry in entries]
-    requests.put(f"{ip}/api/node/entries?{urllib.parse.urlencode(params)}" , json=payload_entries)
-    return
+    response = requests.put(f"{ip}/api/node/entries?{urllib.parse.urlencode(params)}" , json=payload_entries)
+    response_content = json.loads(response.text)
+    reply = AppendEntriesReply(
+            response_content['requestId'] , response_content['replierId'] , response_content['receiverId'] , response_content['replierTerm'] ,
+            response_content['appendSuccess'] , response_content['matchIndex']
+        )
+    return reply
 
 
 def post_heart_beat_interval(ip , interval):

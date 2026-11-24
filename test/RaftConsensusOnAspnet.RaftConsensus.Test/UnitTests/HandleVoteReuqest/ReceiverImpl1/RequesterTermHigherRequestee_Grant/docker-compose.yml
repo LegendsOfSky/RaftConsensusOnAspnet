@@ -47,6 +47,6 @@ services:
       - raft-net-unit-qt7a5pXxh3uTAi9y
 
 networks:
-  raft-net-unit-qt7a5pXxh3uTAi9yr:
+  raft-net-unit-qt7a5pXxh3uTAi9y:
     name: raft-net-unit-qt7a5pXxh3uTAi9y
     driver: bridge

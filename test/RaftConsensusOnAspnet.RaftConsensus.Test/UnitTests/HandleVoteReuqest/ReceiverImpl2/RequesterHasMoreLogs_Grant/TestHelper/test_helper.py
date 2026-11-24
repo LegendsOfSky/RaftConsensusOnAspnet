@@ -8,11 +8,12 @@ import signal
 import socket
 import subprocess
 import sys
-from datetime import datetime
-from time import sleep
+import uuid
+from request_data_types import LogEntries , Operation
 
 
 pipe = None
+ALT_NODE = uuid.UUID("00000000-0000-0000-0000-000000000003")
 
 
 def output_failure_and_exit():
@@ -50,8 +51,16 @@ pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL , os.O_RDWR , os.O_RDON
 process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
-print("TODO empty core test logic")
-output_failure_and_exit()
+append_reply1 = request_sender.put_entries(
+        IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 2 , 0 , 0 , 0 ,
+        [
+            LogEntries(uuid.uuid4() , "" , 0 , Operation.NO_OP) ,
+            LogEntries(uuid.uuid4() , "" , 0 , Operation.NO_OP) ,
+            LogEntries(uuid.uuid4() , "" , 0 , Operation.NO_OP)
+        ]
+    )
+append_reply2 = request_sender.put_entries(IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 2 , 3 , 0 , 3 , [])
+vote_reply = request_sender.patch_vote(IP , uuid.uuid4() , ALT_NODE , 3 , 0 , 5)
 
 ''' stop test environment, extract test message and print loggings from fake node '''
 request_sender.stop_node(IP)
@@ -67,9 +76,7 @@ if stderr is not None:
 print("\n")  # double new line
 
 ''' verify test result '''
-abs_time_diff = abs(actual_time - expect_time)
-time_deviation = abs_time_diff.total_seconds()
-if time_deviation <= MAX_TIME_DEVIATION:
+if append_reply1.AppendSuccess and append_reply2.AppendSuccess and vote_reply.VoteGranted:
     print("\nSuccess")
     print("Wait for automated test platform to connect...")
     client_connection , client_address = server_socket.accept()
@@ -78,6 +85,12 @@ if time_deviation <= MAX_TIME_DEVIATION:
     print("Result has been sent to automated test platform.")
     client_connection.close()
     server_socket.close()
+elif not (append_reply1.AppendSuccess and append_reply2.AppendSuccess):
+    print(f"Expect append success, but get {append_reply1.AppendSuccess}, {append_reply2.AppendSuccess} for append entries")
+    print(f"Detailed for append entries response 1: {append_reply1}")
+    print(f"Detailed for append entries response 2: {append_reply2}")
+    output_failure_and_exit()
 else:
-    print(f"Expect time = {expect_time}, but actual time = {actual_time}")
+    print(f"Expect rejected, but get {vote_reply.VoteGranted} for granted")
+    print(f"Detailed for vote response: {vote_reply}")
     output_failure_and_exit()

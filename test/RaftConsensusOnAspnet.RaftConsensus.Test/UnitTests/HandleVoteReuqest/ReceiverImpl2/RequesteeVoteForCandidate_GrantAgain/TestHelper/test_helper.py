@@ -8,8 +8,7 @@ import signal
 import socket
 import subprocess
 import sys
-from datetime import datetime
-from time import sleep
+import uuid
 
 
 pipe = None
@@ -50,8 +49,8 @@ pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL , os.O_RDWR , os.O_RDON
 process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
-print("TODO empty core test logic")
-output_failure_and_exit()
+reply1 = request_sender.patch_vote(IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 1 , 0 , 0)
+reply2 = request_sender.patch_vote(IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 1 , 0 , 0)
 
 ''' stop test environment, extract test message and print loggings from fake node '''
 request_sender.stop_node(IP)
@@ -67,9 +66,7 @@ if stderr is not None:
 print("\n")  # double new line
 
 ''' verify test result '''
-abs_time_diff = abs(actual_time - expect_time)
-time_deviation = abs_time_diff.total_seconds()
-if time_deviation <= MAX_TIME_DEVIATION:
+if reply1.VoteGranted and reply2.VoteGranted:
     print("\nSuccess")
     print("Wait for automated test platform to connect...")
     client_connection , client_address = server_socket.accept()
@@ -79,5 +76,7 @@ if time_deviation <= MAX_TIME_DEVIATION:
     client_connection.close()
     server_socket.close()
 else:
-    print(f"Expect time = {expect_time}, but actual time = {actual_time}")
+    print(f"Expect granted, but get {reply1.VoteGranted} and {reply2.VoteGranted} for granted")
+    print(f"Detailed for vote response 1: {reply1}")
+    print(f"Detailed for vote response 2: {reply2}")
     output_failure_and_exit()
