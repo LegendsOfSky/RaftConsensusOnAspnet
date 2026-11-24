@@ -5,7 +5,7 @@ import test_responses
 import uuid
 from datetime import datetime
 from http.server import HTTPServer , BaseHTTPRequestHandler
-from request_reply_types import AppendEntriesReply , VoteRequestReply , to_payload
+from request_data_types import AppendEntriesReply , VoteRequestReply , to_payload
 
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"

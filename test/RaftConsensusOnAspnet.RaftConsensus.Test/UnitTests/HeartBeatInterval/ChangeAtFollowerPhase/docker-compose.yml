@@ -14,7 +14,7 @@ services:
     volumes:
       - ../../CommonCode/output_helper.py:/src/output_helper.py:ro
       - ../../CommonCode/request_handler.py:/src/request_handler.py:ro
-      - ../../CommonCode/request_reply_types.py:/src/request_reply_types.py:ro
+      - ../../CommonCode/request_data_types.py:/src/request_data_types.py:ro
       - ../../CommonCode/request_sender.py:/src/request_sender.py:ro
       - ../../CommonCode/requirements.txt:/src/requirements.txt:ro
       - ./TestHelper/run.sh:/src/run.sh:ro

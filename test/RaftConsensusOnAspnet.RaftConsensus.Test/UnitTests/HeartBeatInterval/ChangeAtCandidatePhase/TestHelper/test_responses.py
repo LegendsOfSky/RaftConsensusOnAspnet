@@ -1,5 +1,5 @@
 import uuid
-from request_reply_types import AppendEntriesReply , VoteRequestReply
+from request_data_types import AppendEntriesReply , VoteRequestReply
 
 
 DEFAULT_REPLIER_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
