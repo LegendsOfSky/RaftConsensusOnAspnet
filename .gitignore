@@ -55,6 +55,9 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# IDE settings
 /.vs
 /src/RaftConsensusOnAspnet.RaftConsensus/RaftConsensusOnAspnet.RaftConsensus.csproj.user
 /RaftConsensusOnAspnet.sln.DotSettings.user
+/.idea/workspace.xml

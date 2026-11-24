@@ -1,0 +1,52 @@
+services:
+  test-helper:
+    image: python
+    container_name: test-helper
+    hostname: test-helper
+    working_dir: /src
+    command:
+      - /src/run.sh
+    ports:
+      - "7190:7190"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PIP_ROOT_USER_ACTION=ignore
+    volumes:
+      - ../../../CommonCode/output_helper.py:/src/output_helper.py:ro
+      - ../../../CommonCode/request_handler.py:/src/request_handler.py:ro
+      - ../../../CommonCode/request_data_types.py:/src/request_data_types.py:ro
+      - ../../../CommonCode/request_sender.py:/src/request_sender.py:ro
+      - ../../../CommonCode/requirements.txt:/src/requirements.txt:ro
+      - ./TestHelper/run.sh:/src/run.sh:ro
+      - ./TestHelper/test_helper.py:/src/test_helper.py:ro
+      - ./TestHelper/test_responses.py:/src/test_responses.py:ro
+    networks:
+      - raft-net-unit-UMOlMYwaCFcTi81T
+
+  node:
+    image: raft-node:latest
+    container_name: node
+    hostname: node
+    command:
+      - --debug
+      - --timeout-interval
+      - "10000"
+      - --heart-beat-interval
+      - "1000"
+      - --id
+      - "00000000-0000-0000-0000-000000000001"
+    build:
+      context: ../../../../../..
+      dockerfile: ./src/RaftConsensusOnAspnet.RaftConsensus/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:7195
+    volumes:
+      - ./RaftNodeConfigs/cluster.settings.json:/app/configs/cluster.settings.json:ro
+    networks:
+      - raft-net-unit-UMOlMYwaCFcTi81T
+
+networks:
+  raft-net-unit-UMOlMYwaCFcTi81T:
+    name: raft-net-unit-UMOlMYwaCFcTi81T
+    driver: bridge

@@ -128,7 +128,7 @@ public class Program
                         throw new InvalidOperationException("This node does not fit into the cluster option.");
 
                     s_RaftNode = new RaftNode(
-                            nodeId , electionTimeoutInterval , heartBeatInterval , 5 ,
+                            nodeId , electionTimeoutInterval , heartBeatInterval , s_ClusterInfo.Nodes.Count ,
                             dataPath , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos
                         );
 
@@ -209,12 +209,14 @@ public class Program
     {
         string contentRoot = builder.Environment.ContentRootPath;
         string clusterFile = Path.Combine(contentRoot , "configs" , "cluster.settings.json");
-        string sampleFile  = Path.Combine(contentRoot ,  "configs" , "sample.cluster.settings.json");
+        string sampleFile  = Path.Combine(contentRoot , "configs" , "sample.cluster.settings.json");
         if (File.Exists(clusterFile))
             builder.Configuration.AddJsonFile("configs/cluster.settings.json" , optional: false , reloadOnChange: true);
         else if (File.Exists(sampleFile))
+        {
+            Trace.TraceWarning("Missing cluster config. Fallback to sample config.");
             builder.Configuration.AddJsonFile("configs/sample.cluster.settings.json" , optional: false , reloadOnChange: true);
-        else
-            Trace.TraceError("Missing cluster settings.");
+        }
+        else Trace.TraceError("Missing cluster settings.");
     }
 }

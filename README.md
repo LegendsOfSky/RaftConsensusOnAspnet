@@ -75,7 +75,7 @@ curl -X 'POST' "localhost:7195/api/node/election-timeout-interval?newValue=2000"
 
 ### Run quick test enviroment
 ```bash
-cd test/RaftConsensusOnAspnet.RaftConsensus.Test/Tests/Test_RunInDockerCompose_Runs
+cd test/RaftConsensusOnAspnet.RaftConsensus.Test/Tests/LongRunningDebugEnviroment
 docker compose up --build
 
 # sample curl
