@@ -9,6 +9,7 @@ import socket
 import subprocess
 import sys
 import uuid
+from request_data_types import LogEntries , Operation
 
 
 pipe = None
@@ -49,8 +50,7 @@ pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL , os.O_RDWR , os.O_RDON
 process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
-print("TODO core test logic")
-output_failure_and_exit()
+reply = request_sender.put_entries(IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 2 , 3 , 2 , 3 , [])
 
 ''' stop test environment, extract test message and print loggings from fake node '''
 request_sender.stop_node(IP)
@@ -66,7 +66,7 @@ if stderr is not None:
 print("\n")  # double new line
 
 ''' verify test result '''
-if reply.VoteGranted:
+if not reply.AppendSuccess:
     print("\nSuccess")
     print("Wait for automated test platform to connect...")
     client_connection , client_address = server_socket.accept()
@@ -76,6 +76,6 @@ if reply.VoteGranted:
     client_connection.close()
     server_socket.close()
 else:
-    print(f"Expect granted, but get {reply.VoteGranted} for granted")
-    print(f"Detailed for vote response: {reply}")
+    print(f"Expect append failed, but get {reply.AppendSuccess} for append success")
+    print(f"Detailed for append entries response: {reply}")
     output_failure_and_exit()
