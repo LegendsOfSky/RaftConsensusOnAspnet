@@ -6,8 +6,9 @@ from time import sleep
 docker_start_result = subprocess.run(["docker" , "compose" , "up" , "--build" , "-d"])
 if docker_start_result.returncode != 0:
     print("Docker start failed")
-    exit(-1)
+    exit(1)
 
+passed = False
 try:
     sleep(15)  # wait for pip install before start connecting to test environment
     print("Try to establish connect to test environment...")
@@ -18,6 +19,7 @@ try:
     test_result = client_socket.recv(1024)
     if test_result.decode() == "Passed":
         print("Success")
+        passed = True
     elif test_result.decode() == "Failed":
         print("Failure")
     else:
@@ -28,3 +30,6 @@ finally:
     docker_stop_result = subprocess.run(["docker" , "compose" , "rm" , "-s" , "-f"])
     if docker_stop_result.returncode != 0:
         print("Docker stop failed. You may need to perform manual clean up.")
+
+if not passed:
+    exit(1)
