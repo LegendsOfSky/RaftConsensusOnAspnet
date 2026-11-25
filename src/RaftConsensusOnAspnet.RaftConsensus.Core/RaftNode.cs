@@ -465,7 +465,7 @@ public class RaftNode
         }
 
         debugTrace.TraceInformation($"{loggingPrefix}: Append new entries (Impl Ref #4).");
-        if (!logEntries.TryEraseAndAppendEntriesAt(args.Entries , args.PreviousLogIndex + 1))
+        if (!logEntries.TryOverrideEntriesStartFromAndEraseFutureEntries(args.Entries , args.PreviousLogIndex + 1))
         {
             standardTrace.TraceInformation("Append new entries failed.");
             return reply;
