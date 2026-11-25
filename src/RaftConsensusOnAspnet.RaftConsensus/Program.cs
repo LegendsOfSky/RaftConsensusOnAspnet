@@ -154,6 +154,9 @@ public class Program
                             return Results.Ok("Shutting down");
                         })
                         .WithName("StopRaftNode");
+                    app.MapPost(
+                            "/api/node/election-timeout-interval" , (int newValue) => s_RaftNode.SetElectionTimeoutInterval(newValue)
+                        ).WithName("ModifyElectionTimeoutInterval");
                     app.MapPatch(
                             "/api/node/entries" ,
                             object (Guid requestId , Guid requesterId , int requesterTerm ,
@@ -177,9 +180,6 @@ public class Program
                     app.MapPost(
                             "/api/node/heart-beat-interval" , (int newValue) => s_RaftNode.SetHeartBeatInterval(newValue)
                         ).WithName("ModifyHeartBeatInterval");
-                    app.MapPost(
-                            "/api/node/election-timeout-interval" , (int newValue) => s_RaftNode.SetElectionTimeoutInterval(newValue)
-                        ).WithName("ModifyElectionTimeoutInterval");
                     app.MapPatch(
                             "/api/node/vote" ,
                             object (Guid requestId , Guid requesterId , int requesterTerm , int requesterLastLogTerm , int requesterLastLogIndex)
