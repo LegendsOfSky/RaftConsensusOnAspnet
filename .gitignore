@@ -56,6 +56,10 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 
+# Python Cache
+*.pyc
+__pycache__/
+
 # IDE settings
 /.vs
 /src/RaftConsensusOnAspnet.RaftConsensus/RaftConsensusOnAspnet.RaftConsensus.csproj.user
