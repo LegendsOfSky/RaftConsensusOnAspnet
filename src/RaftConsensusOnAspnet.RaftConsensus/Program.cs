@@ -156,21 +156,23 @@ public class Program
                         .WithName("StopRaftNode");
                     app.MapPatch(
                             "/api/node/entries" ,
-                            (Guid requestId , Guid requesterId , int requesterTerm ,
-                             int previousLogIndex , int previousLogTerm , int leaderCommit , IReadOnlyList<LogEntry> entries)
-                                => s_RaftNode.HandleAppendEntries(
-                                        new AppendEntriesArgs
-                                        {
-                                            RequestId = requestId ,
-                                            RequesterId = requesterId ,
-                                            ReceiverId = nodeId ,
-                                            RequesterTerm = requesterTerm ,
-                                            PreviousLogIndex = previousLogIndex ,
-                                            PreviousLogTerm = previousLogTerm ,
-                                            LeaderCommit = leaderCommit ,
-                                            Entries = entries ,
-                                        }
-                                    )
+                            object (Guid requestId , Guid requesterId , int requesterTerm ,
+                                    int previousLogIndex , int previousLogTerm , int leaderCommit , IReadOnlyList<LogEntry> entries)
+                                => !s_ClusterInfo.Nodes.Exists(node => node.NodeId == requesterId)
+                                    ? Results.Unauthorized()
+                                    : s_RaftNode.HandleAppendEntries(
+                                            new AppendEntriesArgs
+                                            {
+                                                RequestId = requestId ,
+                                                RequesterId = requesterId ,
+                                                ReceiverId = nodeId ,
+                                                RequesterTerm = requesterTerm ,
+                                                PreviousLogIndex = previousLogIndex ,
+                                                PreviousLogTerm = previousLogTerm ,
+                                                LeaderCommit = leaderCommit ,
+                                                Entries = entries ,
+                                            }
+                                        )
                         ).WithName("AppendEntries");
                     app.MapPost(
                             "/api/node/heart-beat-interval" , (int newValue) => s_RaftNode.SetHeartBeatInterval(newValue)
@@ -180,18 +182,20 @@ public class Program
                         ).WithName("ModifyElectionTimeoutInterval");
                     app.MapPatch(
                             "/api/node/vote" ,
-                            (Guid requestId , Guid requesterId , int requesterTerm , int requesterLastLogTerm , int requesterLastLogIndex)
-                                => s_RaftNode.HandleVoteRequest(
-                                        new VoteRequestArgs
-                                        {
-                                            RequestId = requestId ,
-                                            RequesterId = requesterId ,
-                                            ReceiverId = nodeId ,
-                                            RequesterTerm = requesterTerm ,
-                                            RequesterLastLogTerm = requesterLastLogTerm ,
-                                            RequesterLastLogIndex = requesterLastLogIndex ,
-                                        }
-                                    )
+                            object (Guid requestId , Guid requesterId , int requesterTerm , int requesterLastLogTerm , int requesterLastLogIndex)
+                                => !s_ClusterInfo.Nodes.Exists(node => node.NodeId == requesterId)
+                                    ? Results.Unauthorized()
+                                    : s_RaftNode.HandleVoteRequest(
+                                            new VoteRequestArgs
+                                            {
+                                                RequestId = requestId ,
+                                                RequesterId = requesterId ,
+                                                ReceiverId = nodeId ,
+                                                RequesterTerm = requesterTerm ,
+                                                RequesterLastLogTerm = requesterLastLogTerm ,
+                                                RequesterLastLogIndex = requesterLastLogIndex ,
+                                            }
+                                        )
                         ).WithName("RequestVote");
                     #endregion
 
