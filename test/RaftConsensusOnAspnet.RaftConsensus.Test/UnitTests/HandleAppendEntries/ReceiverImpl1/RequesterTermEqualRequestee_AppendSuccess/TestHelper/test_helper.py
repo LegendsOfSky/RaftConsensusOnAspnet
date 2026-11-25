@@ -50,7 +50,7 @@ pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL , os.O_RDWR , os.O_RDON
 process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
-reply = request_sender.put_entries(
+reply = request_sender.patch_entries(
         IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 0 , 0 , 0 , 0 ,
         [
             LogEntries(uuid.uuid4() , "" , 0 , Operation.NO_OP) ,

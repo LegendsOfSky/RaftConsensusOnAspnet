@@ -50,7 +50,7 @@ pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL , os.O_RDWR , os.O_RDON
 process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
-reply = request_sender.put_entries(IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 2 , 3 , 0 , 3 , [])
+reply = request_sender.patch_entries(IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 2 , 3 , 0 , 3 , [])
 
 ''' stop test environment, extract test message and print loggings from fake node '''
 request_sender.stop_node(IP)

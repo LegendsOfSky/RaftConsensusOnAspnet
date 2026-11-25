@@ -29,7 +29,7 @@ public class AppendEntriesRequestSender
     {
         HttpClient client = httpClientFactory.CreateClient(ClientName);
         int nextIndex = nextIndexes.TryGetValue(HostNode.NodeId , out int i) ? i : nextIndexes[Guid.Empty];
-        using HttpResponseMessage response = await client.PutAsJsonAsync(
+        using HttpResponseMessage response = await client.PatchAsJsonAsync(
                 $"{Destination.TrimEnd('/')}/api/node/entries" +
                 $"?requestId={requestId}" +
                 $"&requesterId={requesterId}" +

@@ -26,7 +26,7 @@ def patch_vote(ip , request_id , requester_id , requester_term , requester_last_
     return reply
 
 
-def put_entries(ip , request_id , requester_id , requester_term , previous_log_index , previous_log_term , leader_commit , entries):
+def patch_entries(ip, request_id, requester_id, requester_term, previous_log_index, previous_log_term, leader_commit, entries):
     params = {
         'requestId': request_id ,
         'requesterId': requester_id ,
@@ -36,7 +36,7 @@ def put_entries(ip , request_id , requester_id , requester_term , previous_log_i
         'leaderCommit': leader_commit
     }
     payload_entries = [to_payload(entry) for entry in entries]
-    response = requests.put(f"{ip}/api/node/entries?{urllib.parse.urlencode(params)}" , json=payload_entries)
+    response = requests.patch(f"{ip}/api/node/entries?{urllib.parse.urlencode(params)}" , json=payload_entries)
     response_content = json.loads(response.text)
     reply = AppendEntriesReply(
             response_content['requestId'] , response_content['replierId'] , response_content['receiverId'] , response_content['replierTerm'] ,

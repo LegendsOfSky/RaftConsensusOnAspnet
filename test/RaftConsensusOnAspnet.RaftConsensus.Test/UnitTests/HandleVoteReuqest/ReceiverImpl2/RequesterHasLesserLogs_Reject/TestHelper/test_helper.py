@@ -51,7 +51,7 @@ pipe = os.open(request_handler.PIPE_NOTIFICATION_CHANNEL , os.O_RDWR , os.O_RDON
 process = subprocess.Popen(["python3" , "./request_handler.py"] , stdout=subprocess.PIPE , text=True)
 
 ''' core test logic in here '''
-append_reply1 = request_sender.put_entries(
+append_reply1 = request_sender.patch_entries(
         IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 2 , 0 , 0 , 0 ,
         [
             LogEntries(uuid.uuid4() , "" , 0 , Operation.NO_OP) ,
@@ -59,7 +59,7 @@ append_reply1 = request_sender.put_entries(
             LogEntries(uuid.uuid4() , "" , 0 , Operation.NO_OP)
         ]
     )
-append_reply2 = request_sender.put_entries(IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 2 , 3 , 0 , 3 , [])
+append_reply2 = request_sender.patch_entries(IP , uuid.uuid4() , request_handler.FALLBACK_REPLIER_ID , 2 , 3 , 0 , 3 , [])
 vote_reply = request_sender.patch_vote(IP , uuid.uuid4() , ALT_NODE , 3 , 0 , 0)
 
 ''' stop test environment, extract test message and print loggings from fake node '''

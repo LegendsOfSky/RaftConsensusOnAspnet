@@ -38,22 +38,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_PUT(self):
         self.__create_test_output_from_current_request()
-        path , query_parameters , request_body = self.__get_request_info()
         response_body = ""
-        if path == PATH_APPEND_ENTRIES_REQUEST:
-            if len(test_responses.put_entries_replies) == 0:
-                request_id = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
-                receiver_id = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
-                term_of_request = query_parameters[QUERY_REQUESTER_TERM]
-                reply = AppendEntriesReply(request_id , FALLBACK_REPLIER_ID , receiver_id , term_of_request , False , 0)
-            else:
-                reply = test_responses.put_entries_replies.pop()
-                reply.RequestId = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
-                reply.ReceiverId = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
-            response_body = json.dumps(to_payload(reply) , indent=2)
-            output_helper.log(f"replied with {response_body.encode('utf-8')}")
-        self.__send_response(200 , response_body.encode())
-        self.__send_notification(datetime.strftime(datetime.now() , TIME_FORMAT))
+        self.__send_response(400 , response_body.encode())
         return
 
 
@@ -69,6 +55,18 @@ class RequestHandler(BaseHTTPRequestHandler):
                 reply = VoteRequestReply(request_id , FALLBACK_REPLIER_ID , receiver_id , term_of_request , term_of_request , False)
             else:
                 reply = test_responses.patch_vote_replies.pop()
+                reply.RequestId = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
+                reply.ReceiverId = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
+            response_body = json.dumps(to_payload(reply) , indent=2)
+            output_helper.log(f"replied with {response_body.encode('utf-8')}")
+        elif path == PATH_APPEND_ENTRIES_REQUEST:
+            if len(test_responses.put_entries_replies) == 0:
+                request_id = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
+                receiver_id = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
+                term_of_request = query_parameters[QUERY_REQUESTER_TERM]
+                reply = AppendEntriesReply(request_id , FALLBACK_REPLIER_ID , receiver_id , term_of_request , False , 0)
+            else:
+                reply = test_responses.put_entries_replies.pop()
                 reply.RequestId = uuid.UUID(query_parameters[QUERY_REQUEST_ID])
                 reply.ReceiverId = uuid.UUID(query_parameters[QUERY_REQUESTER_ID])
             response_body = json.dumps(to_payload(reply) , indent=2)

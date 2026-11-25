@@ -154,7 +154,7 @@ public class Program
                             return Results.Ok("Shutting down");
                         })
                         .WithName("StopRaftNode");
-                    app.MapPut(
+                    app.MapPatch(
                             "/api/node/entries" ,
                             (Guid requestId , Guid requesterId , int requesterTerm ,
                              int previousLogIndex , int previousLogTerm , int leaderCommit , IReadOnlyList<LogEntry> entries)
