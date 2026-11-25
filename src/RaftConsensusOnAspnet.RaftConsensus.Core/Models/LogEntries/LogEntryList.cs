@@ -16,7 +16,6 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
     }
     public bool IsReadOnly => false;
     public int Count => CachedLogEntries.Count;
-    public int LastAppliedIndex { get; private set; } = -1;
     [NotNull] private IReadOnlyList<LogEntry>? CachedLogEntries
     {
         get => field ??= ReadFromDatabase();
@@ -24,12 +23,10 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
     }
 
     public const string StateMachineValuesTableName = "StateMachineValues";
-    private const int StateMachineValueSyncCooldownInterval = 500;
 
     private readonly string dbFilePath;
     private readonly TraceSource debugTrace;
     private readonly TraceSource standardTrace;
-    private TaskCompletionSource? stopStateMachineSyncTcs;
 
 
     public LogEntryList(string filePath , Guid nodeId , bool clearEntries = false ,
@@ -77,22 +74,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         foreach (TraceListener listener in debugTraceListenersIn ?? [])                 //    |
             debugTrace.Listeners.Add(listener);  // <-----------------------------------------+
     }
-
-
-    #region Parallel services
-    public async Task StartSynchronizingStateMachineValueAsync()
-    {
-        stopStateMachineSyncTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        while (!stopStateMachineSyncTcs.Task.IsCompleted)
-        {
-            debugTrace.TraceEvent(TraceEventType.Verbose , 0 , "Syncing state machine values.");
-            await Task.Run(ApplyEntries);
-            await Task.Delay(StateMachineValueSyncCooldownInterval);
-        }
-    }
-
-    public void StopSynchronizingStateMachineValue() => stopStateMachineSyncTcs?.TrySetResult();
-    #endregion
+    
 
     public void AddRange(IEnumerable<LogEntry> newEntries)
     {
@@ -135,44 +117,6 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
             throw;
         }
         CachedLogEntries = null;
-    }
-
-    public void ApplyEntries()
-    {
-        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-        using SqliteTransaction transaction = connection.BeginTransaction();
-        try
-        {
-            using SqliteCommand deleteExistValues = new SqliteCommand($"DELETE FROM {StateMachineValuesTableName};" , connection , transaction);
-            deleteExistValues.ExecuteNonQuery();
-
-            using SqliteCommand applyEntries = new SqliteCommand(
-                    $"""
-                    INSERT INTO {StateMachineValuesTableName} (Key , Value , Type)
-                    SELECT Key , Value , LogType AS Type FROM (
-                        SELECT MAX(Id) AS Id , Term , Operation , LogType , Key , Value FROM LogEntries
-                        WHERE Key IS NOT NULL
-                        GROUP BY Key
-                        ORDER BY Id DESC
-                    )
-                    WHERE Operation != {(int)LogEntryOperation.Delete}
-                    """ , connection , transaction
-                );
-            applyEntries.ExecuteNonQuery();
-
-            using SqliteCommand getMaxAppliedIndex = new SqliteCommand("SELECT MAX(Id) FROM LogEntries;" , connection , transaction);
-            int maxAppliedIndex = Convert.ToInt32(getMaxAppliedIndex.ExecuteScalar());
-
-            transaction.Commit();
-
-            LastAppliedIndex = maxAppliedIndex;
-        }
-        catch (Exception e)
-        {
-            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot apply log entries to state machine database. Error: \n{e}");
-            transaction.Rollback();
-            throw;
-        }
     }
 
     /// <remarks> <b>REMARKS:</b> Removes all entries after startIndex. </remarks>

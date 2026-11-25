@@ -21,7 +21,6 @@ public class RaftNode
             field = ReadCurrentTermFromDb();
         }
     }
-    public int LastAppliedLogEntryIndex => logEntries.LastAppliedIndex;
     public NodeRole Role { get; private set; }
     public Guid? LeaderId { get; private set; }
     public IReadOnlyList<LogEntry> LogEntries => logEntries;
@@ -150,7 +149,6 @@ public class RaftNode
         stopRaftTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         if (logEntries.Count == 0)
             logEntries.Add(new LogEntry { Term = 0 });
-        Task logEntriesSync = logEntries.StartSynchronizingStateMachineValueAsync();
         while (!stopRaftTcs.Task.IsCompleted)
             switch (Role)
             {
@@ -159,9 +157,6 @@ public class RaftNode
                 case NodeRole.Leader:    await RunAsLeaderAsync();    break;
                 default:                 throw new UnreachableException();
             }
-
-        logEntries.StopSynchronizingStateMachineValue();
-        await logEntriesSync;
 
         standardTrace.TraceEvent(TraceEventType.Stop , 0 , "Raft node stop.");
         debugTrace.TraceEvent(TraceEventType.Stop , 0 , "Raft node stop.");
