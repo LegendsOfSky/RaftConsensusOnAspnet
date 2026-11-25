@@ -460,10 +460,11 @@ public class RaftNode
 
         if (logEntries[args.PreviousLogIndex].Term != args.PreviousLogTerm)
         {
-            debugTrace.TraceInformation($"{loggingPrefix}: Remove conflicting logs and subsequent logs (Impl Ref #3).");
-            logEntries.RemoveRange(args.PreviousLogIndex , logEntries.Count - args.PreviousLogIndex);
+            debugTrace.TraceInformation($"{loggingPrefix}: Mismatch previous log.");
+            return reply;
         }
 
+        debugTrace.TraceInformation($"{loggingPrefix}: Remove conflicting logs and subsequent logs (Impl Ref #3).");
         debugTrace.TraceInformation($"{loggingPrefix}: Append new entries (Impl Ref #4).");
         if (!logEntries.TryOverrideEntriesStartFromAndEraseFutureEntries(args.Entries , args.PreviousLogIndex + 1))
         {
