@@ -82,8 +82,6 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
     #region Parallel services
     public async Task StartSynchronizingStateMachineValueAsync()
     {
-        standardTrace.TraceEvent(TraceEventType.Start , 0 , "State machine values sync start.");
-        debugTrace.TraceEvent(TraceEventType.Start , 0 , "State machine values sync start.");
         stopStateMachineSyncTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         while (!stopStateMachineSyncTcs.Task.IsCompleted)
         {
@@ -91,8 +89,6 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
             await Task.Run(ApplyEntries);
             await Task.Delay(StateMachineValueSyncCooldownInterval);
         }
-        standardTrace.TraceEvent(TraceEventType.Stop , 0 , "State machine values sync stop.");
-        debugTrace.TraceEvent(TraceEventType.Stop , 0 , "State machine values sync stop.");
     }
 
     public void StopSynchronizingStateMachineValue() => stopStateMachineSyncTcs?.TrySetResult();
