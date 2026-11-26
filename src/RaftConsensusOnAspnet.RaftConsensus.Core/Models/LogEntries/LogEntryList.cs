@@ -2,7 +2,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Data.Sqlite;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Misc;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;

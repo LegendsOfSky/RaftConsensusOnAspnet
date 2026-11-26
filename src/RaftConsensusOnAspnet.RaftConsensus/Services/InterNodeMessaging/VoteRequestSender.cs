@@ -1,9 +1,9 @@
 ﻿using System.Diagnostics;
 using RaftConsensusOnAspnet.RaftConsensus.Core;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
 
 
-namespace RaftConsensusOnAspnet.RaftConsensus.Messaging;
+namespace RaftConsensusOnAspnet.RaftConsensus.Services.InterNodeMessaging;
 
 internal class VoteRequestSender
 {

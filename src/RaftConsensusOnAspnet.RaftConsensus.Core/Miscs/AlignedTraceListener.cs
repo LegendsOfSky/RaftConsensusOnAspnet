@@ -2,7 +2,7 @@
 using System.Text;
 
 
-namespace RaftConsensusOnAspnet.RaftConsensus.Core.Misc;
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 
 public sealed class AlignedTraceListener : TraceListener
 {

@@ -1,10 +1,10 @@
 ﻿using System.Diagnostics;
 using RaftConsensusOnAspnet.RaftConsensus.Core;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 
-namespace RaftConsensusOnAspnet.RaftConsensus.Messaging;
+namespace RaftConsensusOnAspnet.RaftConsensus.Services.InterNodeMessaging;
 
 public class AppendEntriesRequestSender
 {

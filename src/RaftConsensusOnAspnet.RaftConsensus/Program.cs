@@ -1,12 +1,12 @@
 using RaftConsensusOnAspnet.RaftConsensus.Core;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Misc;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 using System.CommandLine;
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
-using RaftConsensusOnAspnet.RaftConsensus.Messaging;
+using RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 using RaftConsensusOnAspnet.RaftConsensus.Models.Config.Clusters;
+using RaftConsensusOnAspnet.RaftConsensus.Services.InterNodeMessaging;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus;
@@ -212,14 +212,14 @@ public class Program
     private static void AddClusterConfigToBuilderConfiguration(WebApplicationBuilder builder)
     {
         string contentRoot = builder.Environment.ContentRootPath;
-        string clusterFile = Path.Combine(contentRoot , "configs" , "cluster.settings.json");
-        string sampleFile  = Path.Combine(contentRoot , "configs" , "sample.cluster.settings.json");
-        if (File.Exists(clusterFile))
-            builder.Configuration.AddJsonFile("configs/cluster.settings.json" , optional: false , reloadOnChange: true);
-        else if (File.Exists(sampleFile))
+        string clusterFilePath = Path.Combine(contentRoot , "configs" , "cluster.settings.json");
+        string sampleFilePath  = Path.Combine(contentRoot , "configs" , "sample.cluster.settings.json");
+        if (File.Exists(clusterFilePath))
+            builder.Configuration.AddJsonFile(clusterFilePath , optional: false , reloadOnChange: true);
+        else if (File.Exists(sampleFilePath))
         {
             Trace.TraceWarning("Missing cluster config. Fallback to sample config.");
-            builder.Configuration.AddJsonFile("configs/sample.cluster.settings.json" , optional: false , reloadOnChange: true);
+            builder.Configuration.AddJsonFile(sampleFilePath , optional: false , reloadOnChange: true);
         }
         else Trace.TraceError("Missing cluster settings.");
     }

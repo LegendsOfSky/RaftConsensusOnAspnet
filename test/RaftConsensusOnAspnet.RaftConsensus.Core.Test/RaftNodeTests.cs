@@ -1,9 +1,9 @@
-﻿using RaftConsensusOnAspnet.RaftConsensus.Core.Misc;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
+﻿using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers;
 using System.Diagnostics;
 using System.Threading.Channels;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
 using Xunit.Abstractions;
 

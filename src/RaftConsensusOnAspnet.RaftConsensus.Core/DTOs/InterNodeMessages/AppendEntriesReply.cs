@@ -1,4 +1,4 @@
-﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
+﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
 
 public record AppendEntriesReply : ReplyMessageBase
 {

@@ -1,7 +1,7 @@
 ﻿using Microsoft.Data.Sqlite;
 
 
-namespace RaftConsensusOnAspnet.RaftConsensus.Core.Misc;
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 
 public static class DbHelper
 {

@@ -2,8 +2,8 @@
 using System.Text;
 using System.Threading.Channels;
 using Microsoft.Data.Sqlite;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Messages;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Misc;
+using RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
