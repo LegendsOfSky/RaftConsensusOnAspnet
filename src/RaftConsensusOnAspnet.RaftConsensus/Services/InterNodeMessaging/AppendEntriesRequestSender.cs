@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using RaftConsensusOnAspnet.RaftConsensus.Core;
-using RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 

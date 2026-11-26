@@ -1,7 +1,7 @@
 ﻿using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 
-namespace RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 
 public record AppendEntriesArgs : RequestMessageBase
 {

@@ -1,4 +1,4 @@
-﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
+﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 
 public record VoteRequestReply : ReplyMessageBase
 {

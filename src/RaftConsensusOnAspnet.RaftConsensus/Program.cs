@@ -3,7 +3,7 @@ using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 using System.CommandLine;
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
-using RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 using RaftConsensusOnAspnet.RaftConsensus.Models.Config.Clusters;
 using RaftConsensusOnAspnet.RaftConsensus.Services.InterNodeMessaging;
