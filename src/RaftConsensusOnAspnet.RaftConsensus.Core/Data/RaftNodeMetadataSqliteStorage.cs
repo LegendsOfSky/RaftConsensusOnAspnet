@@ -10,20 +10,20 @@ public class RaftNodeMetadataSqliteStorage : IRaftNodeMetadataPersistentStorage
 {
     public int CurrentTerm
     {
-        get;
+        get => _currentTerm ??= ReadCurrentTermFromDb();
         set
         {
             WriteCurrentTermToDb(value);
-            field = ReadCurrentTermFromDb();
+            _currentTerm = null;
         }
     }
     public (Guid VoteFor , int TermOfVote) VoteInfo
     {
-        get;
+        get => _voteFor ??= ReadVoteInfoFromDb();
         set
         {
             WriteVoteInfoToDb(value.VoteFor , value.TermOfVote);
-            field = ReadVoteInfoFromDb();
+            _voteFor = null;
         }
     }
 
@@ -32,6 +32,8 @@ public class RaftNodeMetadataSqliteStorage : IRaftNodeMetadataPersistentStorage
     private readonly string dbFilePath;
     private readonly TraceSource debugTrace;
     private readonly TraceSource standardTrace;
+    private int? _currentTerm;
+    private (Guid VoteFor , int TermOfVote)? _voteFor;
 
 
     public RaftNodeMetadataSqliteStorage(string dbFilePathIn ,  Guid nodeId ,
