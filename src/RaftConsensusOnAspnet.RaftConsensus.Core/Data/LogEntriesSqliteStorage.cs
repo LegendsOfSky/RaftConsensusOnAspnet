@@ -4,9 +4,10 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.Data.Sqlite;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Interfaces;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 
-namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Data;
 
 public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
 {
