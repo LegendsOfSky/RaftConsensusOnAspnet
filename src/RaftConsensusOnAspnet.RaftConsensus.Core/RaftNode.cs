@@ -112,7 +112,7 @@ public class RaftNode
         persistentLogEntriesStorage = options.CustomLogEntriesPersistentStorage
             ?? new LogEntriesSqliteStorage(dbFilePath , NodeId , traces.StandardTraceListeners , traces.DebugTraceListeners);
         persistentMetadataStorage = options.CustomRaftNodeMetadataPersistentStorage
-            ?? new RaftNodeMetadataSqliteStorage(dbFilePath);
+            ?? new RaftNodeMetadataSqliteStorage(dbFilePath , NodeId , traces.StandardTraceListeners , traces.DebugTraceListeners);
         if (options.RemoveExistData)
         {
             persistentLogEntriesStorage.RemoveExistingData();

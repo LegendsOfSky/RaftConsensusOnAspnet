@@ -30,17 +30,34 @@ public class RaftNodeMetadataSqliteStorage : IRaftNodeMetadataPersistentStorage
     private const string TableName = "RaftNodeState";
 
     private readonly string dbFilePath;
+    private readonly TraceSource debugTrace;
+    private readonly TraceSource standardTrace;
 
 
-    public RaftNodeMetadataSqliteStorage(string dbFilePathIn)
+    public RaftNodeMetadataSqliteStorage(string dbFilePathIn ,  Guid nodeId ,
+                                         IEnumerable<TraceListener>? standardTraceListenersIn = null , IEnumerable<TraceListener>? debugTraceListenersIn = null)
     {
         dbFilePath = dbFilePathIn;
         CreateDatabaseSchemaIfNotExist();
+
+        /* Setup logging */
+        standardTrace = new TraceSource($"{"LogEntry",-12}.{nodeId}" , SourceLevels.All);  // <--+-< standard trace
+        standardTrace.Listeners.Clear();                                                   //    |
+        foreach (TraceListener listener in standardTraceListenersIn ?? [])                 //    |
+            standardTrace.Listeners.Add(listener);  // <-----------------------------------------+
+        debugTrace = new TraceSource($"{"LogEntry",-12}.{nodeId}" , SourceLevels.All);  // <--+-< debug trace
+        debugTrace.Listeners.Clear();                                                   //    |
+        foreach (TraceListener listener in debugTraceListenersIn ?? [])                 //    |
+            debugTrace.Listeners.Add(listener);  // <-----------------------------------------+
     }
 
 
     public void RemoveExistingData()
     {
+        const string TraceMessage = "Remove existing raft node metadata.";
+        standardTrace.TraceEvent(TraceEventType.Information , 0 , TraceMessage);
+        debugTrace.TraceEvent(TraceEventType.Information , 0 , TraceMessage);
+
         CurrentTerm = 0;
         VoteInfo = (Guid.Empty , 0);
     }

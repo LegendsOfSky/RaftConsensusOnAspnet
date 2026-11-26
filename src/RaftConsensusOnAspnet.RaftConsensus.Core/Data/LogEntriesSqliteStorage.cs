@@ -202,7 +202,14 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
         CachedLogEntries = null;
     }
 
-    public void RemoveExistingData() => Clear();
+    public void RemoveExistingData()
+    {
+        const string TraceMessage = "Remove existing log entries.";
+        standardTrace.TraceEvent(TraceEventType.Information , 0 , TraceMessage);
+        debugTrace.TraceEvent(TraceEventType.Information , 0 , TraceMessage);
+
+        Clear();
+    }
 
     /// <remarks> <b>REMARKS:</b> Invalidates <see cref="CachedLogEntries"/>. </remarks>
     public void RemoveRange(int start , int count)
