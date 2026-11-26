@@ -57,8 +57,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , electionInterval , int.MaxValue , 1 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = electionInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 1 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -117,8 +128,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue  , int.MaxValue , 1 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 1 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -179,8 +201,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , InitialElectionInterval  , int.MaxValue , 1 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = InitialElectionInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 1 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -233,8 +266,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , InitialElectionInterval , HeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = InitialElectionInterval ,
+                        HeartBeatInterval = HeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -304,8 +348,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionInterval , InitialHeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionInterval ,
+                        HeartBeatInterval = InitialHeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -358,8 +413,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionInterval , InitialHeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionInterval ,
+                        HeartBeatInterval = InitialHeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -411,8 +477,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , InitialElectionInterval , InitialHeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = InitialElectionInterval ,
+                        HeartBeatInterval = InitialHeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -476,8 +553,19 @@ public class RaftNodeTests
 
             // Advance node into term 2
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -533,8 +621,19 @@ public class RaftNodeTests
 
             // Advance node into term 2
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -590,8 +689,19 @@ public class RaftNodeTests
 
             // Advance node into term 2
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -651,8 +761,19 @@ public class RaftNodeTests
 
             // Add log entries to the node
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -727,8 +848,19 @@ public class RaftNodeTests
 
             // Add log entries to the node
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -803,8 +935,19 @@ public class RaftNodeTests
 
             // Add log entries to the node
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -879,8 +1022,19 @@ public class RaftNodeTests
 
             // Add log entries to the node
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Task nodeStart = node.StartAsync();
 
@@ -934,8 +1088,19 @@ public class RaftNodeTests
 
             // Add log entries to the node
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Task nodeStart = node.StartAsync();
 
@@ -989,8 +1154,19 @@ public class RaftNodeTests
 
             // Add log entries to the node
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Task nodeStart = node.StartAsync();
 
@@ -1047,8 +1223,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -1095,8 +1282,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -1143,8 +1341,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -1207,8 +1416,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -1283,8 +1503,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -1347,8 +1578,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -1441,8 +1683,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
@@ -1516,8 +1769,19 @@ public class RaftNodeTests
             TaskCompletionSource nodeBecomeCandidateTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -1562,8 +1826,19 @@ public class RaftNodeTests
             TaskCompletionSource nodeBecomeLeaderTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -1650,8 +1925,19 @@ public class RaftNodeTests
             TaskCompletionSource nodeBecomeCandidateTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -1694,8 +1980,19 @@ public class RaftNodeTests
             TaskCompletionSource nodeBecomeLeaderTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -1768,8 +2065,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 1 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 1 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -1813,8 +2121,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -1873,8 +2192,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 5 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 5 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -1933,8 +2263,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 5 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 5 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -1986,8 +2327,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 5 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 5 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -2031,8 +2383,19 @@ public class RaftNodeTests
             TaskCompletionSource nodeBecomeCandidateTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
@@ -2096,8 +2459,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = HeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -2161,8 +2535,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = HeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -2257,8 +2642,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = HeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -2350,8 +2746,19 @@ public class RaftNodeTests
                 );
 
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = HeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
@@ -2440,8 +2847,19 @@ public class RaftNodeTests
 
             // run node for initial data generation
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Task round1 = node.StartAsync();
             AppendEntriesReply reply = node.HandleAppendEntries(new AppendEntriesArgs
@@ -2465,8 +2883,19 @@ public class RaftNodeTests
 
             // round two for actual test
             node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = false ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Task round2 = node.StartAsync();
             Assert.Equal(2 , node.CurrentTerm);
@@ -2498,8 +2927,19 @@ public class RaftNodeTests
 
             // run node for initial data generation
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Task round1 = node.StartAsync();
             reply = node.HandleVoteRequest(new VoteRequestArgs
@@ -2517,8 +2957,19 @@ public class RaftNodeTests
 
             // round two for actual test
             node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: false , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = false ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Task round2 = node.StartAsync();
             reply = node.HandleVoteRequest(new VoteRequestArgs
@@ -2570,8 +3021,19 @@ public class RaftNodeTests
 
             // run node for initial data generation
             RaftNode node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = HeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
             node.SendAppendEntriesRequestsToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
@@ -2585,8 +3047,19 @@ public class RaftNodeTests
 
             // round two for actual test
             node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = HeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
             node.SendAppendEntriesRequestsToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
@@ -2600,8 +3073,19 @@ public class RaftNodeTests
 
             // round three to double-check if it works
             node = new RaftNode(
-                    s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = ElectionTimeoutInterval ,
+                        HeartBeatInterval = HeartBeatInterval ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
             node.SendAppendEntriesRequestsToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
@@ -2674,8 +3158,19 @@ public class RaftNodeTests
 
             // run node for initial data generation
             RaftNode node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Task round1 = node.StartAsync();
             reply = node.HandleVoteRequest(new VoteRequestArgs
@@ -2693,8 +3188,19 @@ public class RaftNodeTests
 
             // round two for actual test
             node = new RaftNode(
-                    s_node1Guid , int.MaxValue , int.MaxValue , 3 ,
-                    removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
+                    new RaftNodeOptions
+                    {
+                        NodeId = s_node1Guid ,
+                        ElectionTimeOutInterval = int.MaxValue ,
+                        HeartBeatInterval = int.MaxValue ,
+                        NodeCount = 3 ,
+                        RemoveExistData = true ,
+                    } ,
+                    new RaftNodeTraces
+                    {
+                        StandardTraceListeners = standardTraceListeners ,
+                        DebugTraceListeners = debugTraceListeners ,
+                    }
                 );
             Task round2 = node.StartAsync();
             reply = node.HandleVoteRequest(new VoteRequestArgs

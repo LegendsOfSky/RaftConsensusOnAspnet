@@ -128,8 +128,21 @@ public class Program
                         throw new InvalidOperationException("This node does not fit into the cluster option.");
 
                     s_RaftNode = new RaftNode(
-                            nodeId , electionTimeoutInterval , heartBeatInterval , s_ClusterInfo.Nodes.Count ,
-                            dataPath , true , standardTraceListeners , debugTraceListeners , nodeIdToDebugPos
+                            new RaftNodeOptions
+                            {
+                                NodeId = nodeId ,
+                                ElectionTimeOutInterval = electionTimeoutInterval ,
+                                HeartBeatInterval = heartBeatInterval ,
+                                NodeCount = s_ClusterInfo.Nodes.Count ,
+                                DatabaseDirectory = dataPath ,
+                                RemoveExistData = true ,
+                            } ,
+                            new RaftNodeTraces
+                            {
+                                StandardTraceListeners = standardTraceListeners ,
+                                DebugTraceListeners = debugTraceListeners ,
+                                NodeIdToDebugPos = nodeIdToDebugPos ,
+                            }
                         );
 
                     #region Setup request agent help raft node to send requests

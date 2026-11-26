@@ -103,43 +103,24 @@ public class RaftNode
 
 
     public RaftNode(RaftNodeOptions options , RaftNodeTraces traces)
-        : this(
-                options.NodeId ?? Guid.NewGuid() , options.ElectionTimeOutInterval , options.HeartBeatInterval , options.NodeCount ,
-                options.DatabaseDirectory , options.RemoveExistData ,
-                traces.StandardTraceListeners , traces.DebugTraceListeners , traces.NodeIdToDebugPos
-            ) { }
-
-    public RaftNode(int electionTimeOutIntervalIn , int heartBeatIntervalIn , int nodeCountIn ,
-                    string databaseDirectory = "data" , bool removeExistData = false ,
-                    IEnumerable<TraceListener>? standardTraceListenersIn = null , IEnumerable<TraceListener>? debugTraceListenersIn = null)
-        : this(
-                Guid.NewGuid() , electionTimeOutIntervalIn , heartBeatIntervalIn , nodeCountIn ,
-                databaseDirectory , removeExistData ,
-                standardTraceListenersIn , debugTraceListenersIn
-            ) { }
-
-    public RaftNode(Guid guid , int electionTimeOutIntervalIn , int heartBeatIntervalIn , int nodeCountIn ,
-                    string databaseDirectory = "data" , bool removeExistData = false ,
-                    IEnumerable<TraceListener>? standardTraceListenersIn = null , IEnumerable<TraceListener>? debugTraceListenersIn = null ,
-                    Dictionary<Guid , int>? nodeIdToDebugPos = null)
     {
-        if (!Directory.Exists(databaseDirectory))
-            Directory.CreateDirectory(databaseDirectory);
+        if (!Directory.Exists(options.DatabaseDirectory))
+            Directory.CreateDirectory(options.DatabaseDirectory);
 
-        NodeId = guid;
+        NodeId = options.NodeId ?? Guid.NewGuid();
 
         /* Initialize database pragma and schema */
-        dbFilePath = $"{databaseDirectory}/{NodeId}.db";
+        dbFilePath = $"{options.DatabaseDirectory}/{NodeId}.db";
         CreateDatabaseSchemaIfNotExist();
 
         #region Initialize basic raft fields/properties
         Role = NodeRole.Follower;
-        nodeCount = nodeCountIn;
+        nodeCount = options.NodeCount;
         commitIndex = 0;
         (nextIndexes , matchIndexes) = ([] , []);
-        (electionTimeoutInterval , heartBeatInterval) = (electionTimeOutIntervalIn , heartBeatIntervalIn);
-        logEntries = new LogEntryList(dbFilePath , NodeId , removeExistData , standardTraceListenersIn , debugTraceListenersIn);
-        if (!removeExistData)
+        (electionTimeoutInterval , heartBeatInterval) = (options.ElectionTimeOutInterval , options.HeartBeatInterval);
+        logEntries = new LogEntryList(dbFilePath , NodeId , options.RemoveExistData , traces.StandardTraceListeners , traces.DebugTraceListeners);
+        if (!options.RemoveExistData)
             CurrentTerm = ReadCurrentTermFromDb();
         else
         {
@@ -162,13 +143,13 @@ public class RaftNode
         #region Setup logging related stuff
         standardTrace = new TraceSource($"{"Raft",-12}.{NodeId}" , SourceLevels.All);  // <--+-< standard trace
         standardTrace.Listeners.Clear();                                               //    |
-        foreach (TraceListener listener in standardTraceListenersIn ?? [])             //    |
+        foreach (TraceListener listener in traces.StandardTraceListeners ?? [])        //    |
             standardTrace.Listeners.Add(listener);  // <-------------------------------------+
         debugTrace = new TraceSource($"{"Raft",-12}.{NodeId}" , SourceLevels.All);  // <--+-< debug trace
         debugTrace.Listeners.Clear();                                               //    |
-        foreach (TraceListener listener in debugTraceListenersIn ?? [])             //    |
+        foreach (TraceListener listener in traces.DebugTraceListeners ?? [])        //    |
             debugTrace.Listeners.Add(listener);  // <-------------------------------------+
-        NodeIdToDebugPos = nodeIdToDebugPos ?? [];
+        NodeIdToDebugPos = traces.NodeIdToDebugPos ?? [];
         if (!NodeIdToDebugPos.ContainsKey(NodeId))
             NodeIdToDebugPos.Add(NodeId , NodeIdToDebugPos.Count);
         #endregion
