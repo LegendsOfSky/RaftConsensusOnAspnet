@@ -132,7 +132,7 @@ public class RaftNode
         dbFilePath = $"{databaseDirectory}/{NodeId}.db";
         CreateDatabaseSchemaIfNotExist();
 
-        /* Basic raft fields */
+        #region Initialize basic raft fields/properties
         Role = NodeRole.Follower;
         nodeCount = nodeCountIn;
         commitIndex = 0;
@@ -146,8 +146,9 @@ public class RaftNode
             CurrentTerm = 0;
             VoteInfo = (Guid.Empty , 0);
         }
+        #endregion
 
-        /* For notifications and messaging */
+        #region Initialize fields for intra-node notification and inter-node messaging
         changeElectionIntervalTcs  = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         changeHeartBeatIntervalTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         changeNodeCountTcs         = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -156,8 +157,9 @@ public class RaftNode
         commitNewEntryTcs          = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         voteRequestReplyChannel   = Channel.CreateUnbounded<VoteRequestReply>();
         appendEntriesReplyChannel = Channel.CreateUnbounded<AppendEntriesReply>();
+        #endregion
 
-        /* Setup logging */
+        #region Setup logging related stuff
         standardTrace = new TraceSource($"{"Raft",-12}.{NodeId}" , SourceLevels.All);  // <--+-< standard trace
         standardTrace.Listeners.Clear();                                               //    |
         foreach (TraceListener listener in standardTraceListenersIn ?? [])             //    |
@@ -169,6 +171,7 @@ public class RaftNode
         NodeIdToDebugPos = nodeIdToDebugPos ?? [];
         if (!NodeIdToDebugPos.ContainsKey(NodeId))
             NodeIdToDebugPos.Add(NodeId , NodeIdToDebugPos.Count);
+        #endregion
     }
 
 
@@ -884,9 +887,8 @@ public class RaftNode
         return false;
     }
 
-    private bool TryProcessPreemptiveTaskWhenRunAsCandidate(Task completedTask ,
-                                                            Task raftStopSignal , Task waitForElectionTimerEnd , Task waitForRevertToFollowerSignal ,
-                                                            string loggingPrefix)
+    private bool TryProcessPreemptiveTaskWhenRunAsCandidate(
+        Task completedTask , Task raftStopSignal , Task waitForElectionTimerEnd , Task waitForRevertToFollowerSignal , string loggingPrefix)
     {
         if (completedTask == raftStopSignal)
             return true;

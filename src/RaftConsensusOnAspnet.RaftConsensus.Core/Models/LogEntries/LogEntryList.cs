@@ -51,8 +51,8 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         foreach (TraceListener listener in debugTraceListenersIn ?? [])                 //    |
             debugTrace.Listeners.Add(listener);  // <-----------------------------------------+
     }
-    
-    
+
+
     public void AddRange(IReadOnlyList<LogEntry> newEntries) => TryOverrideEntriesStartFromAndEraseFutureEntries(newEntries , Count);
 
     /// <remarks> <b>REMARKS:</b>
@@ -114,7 +114,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         CachedLogEntries = null;
         return true;
     }
-    
+
     /// <remarks> <b>REMARKS:</b> Invalidates <see cref="CachedLogEntries"/>. </remarks>
     public void RemoveRange(int start , int count)
     {
@@ -136,7 +136,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
         }
         CachedLogEntries = null;
     }
-    
+
     private static void CreateTableForStateMachineValues(SqliteConnection connection)
     {
         using SqliteCommand createStateMachineValuesTable = new SqliteCommand(
@@ -180,7 +180,7 @@ public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
                     """ , connection , transaction
             );
         removeEntries.ExecuteNonQuery();
-        
+
         using SqliteCommand removeGap = new SqliteCommand(
                 $"""
                     UPDATE LogEntries
