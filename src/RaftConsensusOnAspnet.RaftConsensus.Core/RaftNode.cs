@@ -121,7 +121,7 @@ public class RaftNode
         (nextIndexes , matchIndexes) = ([] , []);
         (electionTimeoutInterval , heartBeatInterval) = (options.ElectionTimeOutInterval , options.HeartBeatInterval);
         persistentLogEntriesStorage = options.CustomLogEntriesPersistentStorage
-            ?? new LogEntryList(dbFilePath , NodeId , options.RemoveExistData , traces.StandardTraceListeners , traces.DebugTraceListeners);
+            ?? new LogEntriesSqliteStorage(dbFilePath , NodeId , options.RemoveExistData , traces.StandardTraceListeners , traces.DebugTraceListeners);
         if (!options.RemoveExistData)
             CurrentTerm = ReadCurrentTermFromDb();
         else

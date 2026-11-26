@@ -8,7 +8,7 @@ using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
-public class LogEntryList : ILogEntriesPersistentStorage
+public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
 {
     public LogEntry this[int index]
     {
@@ -30,7 +30,7 @@ public class LogEntryList : ILogEntriesPersistentStorage
     private readonly TraceSource standardTrace;
 
 
-    public LogEntryList(string filePath , Guid nodeId , bool clearEntries = false ,
+    public LogEntriesSqliteStorage(string filePath , Guid nodeId , bool clearEntries = false ,
                         IEnumerable<TraceListener>? standardTraceListenersIn = null , IEnumerable<TraceListener>? debugTraceListenersIn = null)
     {
         dbFilePath = filePath;
