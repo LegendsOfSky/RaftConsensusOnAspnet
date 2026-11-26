@@ -110,11 +110,12 @@ public class RaftNode
         (nextIndexes , matchIndexes) = ([] , []);
         (electionTimeoutInterval , heartBeatInterval) = (options.ElectionTimeOutInterval , options.HeartBeatInterval);
         persistentLogEntriesStorage = options.CustomLogEntriesPersistentStorage
-            ?? new LogEntriesSqliteStorage(dbFilePath , NodeId , options.RemoveExistData , traces.StandardTraceListeners , traces.DebugTraceListeners);
+            ?? new LogEntriesSqliteStorage(dbFilePath , NodeId , traces.StandardTraceListeners , traces.DebugTraceListeners);
         persistentMetadataStorage = options.CustomRaftNodeMetadataPersistentStorage
             ?? new RaftNodeMetadataSqliteStorage(dbFilePath);
         if (options.RemoveExistData)
         {
+            persistentLogEntriesStorage.RemoveExistingData();
             persistentMetadataStorage.RemoveExistingData();
         }
         #endregion

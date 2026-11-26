@@ -31,7 +31,7 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
     private readonly TraceSource standardTrace;
 
 
-    public LogEntriesSqliteStorage(string filePath , Guid nodeId , bool clearEntries = false ,
+    public LogEntriesSqliteStorage(string filePath , Guid nodeId ,
                         IEnumerable<TraceListener>? standardTraceListenersIn = null , IEnumerable<TraceListener>? debugTraceListenersIn = null)
     {
         dbFilePath = filePath;
@@ -39,9 +39,6 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
 
         CreateTableForLogEntries(connection);
         CreateTableForStateMachineValues(connection);
-
-        if (clearEntries)
-            Clear();
 
         /* Setup logging */
         standardTrace = new TraceSource($"{"LogEntry",-12}.{nodeId}" , SourceLevels.All);  // <--+-< standard trace
@@ -116,6 +113,8 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
         CachedLogEntries = null;
         return true;
     }
+
+    public void RemoveExistingData() => Clear();
 
     /// <remarks> <b>REMARKS:</b> Invalidates <see cref="CachedLogEntries"/>. </remarks>
     public void RemoveRange(int start , int count)

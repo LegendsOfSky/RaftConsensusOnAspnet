@@ -8,7 +8,9 @@ public interface ILogEntriesPersistentStorage : IList<LogEntry> , IReadOnlyList<
     public new LogEntry this[int index] { get; }
     public new int Count { get; }
 
+
     public void AddRange(IReadOnlyList<LogEntry> newEntries);
     public bool TryOverrideEntriesStartFromAndEraseFutureEntries(IReadOnlyList<LogEntry> entriesToAppend , int startIndex);
+    public void RemoveExistingData();
     public void RemoveRange(int start , int count);
 }
