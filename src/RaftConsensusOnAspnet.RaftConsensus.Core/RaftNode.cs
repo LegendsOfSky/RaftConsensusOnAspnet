@@ -102,6 +102,13 @@ public class RaftNode
     private TaskCompletionSource commitNewEntryTcs;
 
 
+    public RaftNode(RaftNodeOptions options , RaftNodeTraces traces)
+        : this(
+                options.NodeId ?? Guid.NewGuid() , options.ElectionTimeOutInterval , options.HeartBeatInterval , options.NodeCount ,
+                options.DatabaseDirectory , options.RemoveExistData ,
+                traces.StandardTraceListeners , traces.DebugTraceListeners , traces.NodeIdToDebugPos
+            ) { }
+
     public RaftNode(int electionTimeOutIntervalIn , int heartBeatIntervalIn , int nodeCountIn ,
                     string databaseDirectory = "data" , bool removeExistData = false ,
                     IEnumerable<TraceListener>? standardTraceListenersIn = null , IEnumerable<TraceListener>? debugTraceListenersIn = null)
