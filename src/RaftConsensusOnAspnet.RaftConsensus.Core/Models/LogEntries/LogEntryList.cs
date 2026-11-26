@@ -2,12 +2,13 @@ using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Data.Sqlite;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Interfaces;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
-public class LogEntryList : IList<LogEntry> , IReadOnlyList<LogEntry>
+public class LogEntryList : ILogEntriesPersistentStorage
 {
     public LogEntry this[int index]
     {

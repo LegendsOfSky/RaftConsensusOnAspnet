@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.Channels;
 using Microsoft.Data.Sqlite;
 using RaftConsensusOnAspnet.RaftConsensus.Core.DTOs.InterNodeMessages;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Interfaces;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
@@ -23,7 +24,7 @@ public class RaftNode
         }
     }
     public Guid? LeaderId { get; private set; }
-    public IReadOnlyList<LogEntry> LogEntries => logEntries;
+    public IReadOnlyList<LogEntry> LogEntries => persistentLogEntriesStorage;
     public Guid NodeId { get; }
     /// <summary> Debug purpose, messing this up has no any effect on Raft behavior. (except printing incorrect node indicators on logs) </summary>
     public Dictionary<Guid , int> NodeIdToDebugPos
@@ -83,7 +84,7 @@ public class RaftNode
 
     private readonly Channel<AppendEntriesReply> appendEntriesReplyChannel;
     private readonly string dbFilePath;
-    private readonly LogEntryList logEntries;
+    private readonly ILogEntriesPersistentStorage persistentLogEntriesStorage;
     private readonly TraceSource debugTrace;
     private readonly TraceSource standardTrace;
     private readonly Channel<VoteRequestReply> voteRequestReplyChannel;
@@ -119,7 +120,8 @@ public class RaftNode
         commitIndex = 0;
         (nextIndexes , matchIndexes) = ([] , []);
         (electionTimeoutInterval , heartBeatInterval) = (options.ElectionTimeOutInterval , options.HeartBeatInterval);
-        logEntries = new LogEntryList(dbFilePath , NodeId , options.RemoveExistData , traces.StandardTraceListeners , traces.DebugTraceListeners);
+        persistentLogEntriesStorage = options.CustomLogEntriesPersistentStorage
+            ?? new LogEntryList(dbFilePath , NodeId , options.RemoveExistData , traces.StandardTraceListeners , traces.DebugTraceListeners);
         if (!options.RemoveExistData)
             CurrentTerm = ReadCurrentTermFromDb();
         else
@@ -162,8 +164,8 @@ public class RaftNode
         standardTrace.TraceEvent(TraceEventType.Start , 0 , "Raft node start.");
         debugTrace.TraceEvent(TraceEventType.Start , 0 , "Raft node start.");
         stopRaftTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (logEntries.Count == 0)
-            logEntries.Add(new LogEntry { Term = 0 });
+        if (persistentLogEntriesStorage.Count == 0)
+            persistentLogEntriesStorage.Add(new LogEntry { Term = 0 });
         while (!stopRaftTcs.Task.IsCompleted)
             switch (Role)
             {
@@ -185,12 +187,12 @@ public class RaftNode
         debugTrace.TraceEvent(TraceEventType.Verbose , 0 , $"{loggingPrefix}: BEGIN (Key = {key})");
 
         for (int i = commitIndex; i >= 0; i--)
-            if (logEntries[i].Key == key)
-                switch (logEntries[i].Operation)
+            if (persistentLogEntriesStorage[i].Key == key)
+                switch (persistentLogEntriesStorage[i].Operation)
                 {
                     case LogEntryOperation.Put:
-                        debugTrace.TraceInformation($"{loggingPrefix}: Value founded ({key}: {logEntries[i].GetValue()}).");
-                        return (true , true , logEntries[i].GetValue());
+                        debugTrace.TraceInformation($"{loggingPrefix}: Value founded ({key}: {persistentLogEntriesStorage[i].GetValue()}).");
+                        return (true , true , persistentLogEntriesStorage[i].GetValue());
                     case LogEntryOperation.Delete:
                         debugTrace.TraceInformation($"{loggingPrefix}: This value (key = {key}) has been deleted.");
                         return (true , false , null);
@@ -234,7 +236,7 @@ public class RaftNode
             return (true , false , null);
         }
 
-        if (operation == LogEntryOperation.Delete && !CheckKeyExist(key , logEntries.Count))
+        if (operation == LogEntryOperation.Delete && !CheckKeyExist(key , persistentLogEntriesStorage.Count))
         {
             debugTrace.TraceInformation($"{loggingPrefix}: No such key to delete.");
             return (false , false , false);
@@ -242,8 +244,8 @@ public class RaftNode
 
         Task waitForNewEntriesCommitedSignal = commitNewEntryTcs.Task;
         LogEntry entry = new Int32LogEntry(CurrentTerm , operation , key , (int?)value);
-        logEntries.Add(entry);
-        int thisLogIndex = logEntries.Index().First(kvp => kvp.Item.Equals(entry)).Index;
+        persistentLogEntriesStorage.Add(entry);
+        int thisLogIndex = persistentLogEntriesStorage.Index().First(kvp => kvp.Item.Equals(entry)).Index;
         while (true)
         {
             Task finishedTask = await Task.WhenAny(
@@ -348,7 +350,7 @@ public class RaftNode
             return reply;
         }
 
-        if (commitIndex <= args.RequesterLastLogIndex && logEntries[commitIndex].Term <= args.RequesterLastLogTerm)
+        if (commitIndex <= args.RequesterLastLogIndex && persistentLogEntriesStorage[commitIndex].Term <= args.RequesterLastLogTerm)
         {
             debugTrace.TraceInformation($"{loggingPrefix}: Vote granted because log of requester is as update as this node.");
             VoteInfo = (args.RequesterId , CurrentTerm);
@@ -357,7 +359,7 @@ public class RaftNode
 
         debugTrace.TraceInformation(
                 "{0}: By default, reject vote request (thisCommitIndex {1}, otherCommitIndex {2}, thisLastTerm {3}, otherLastTerm {4})." ,
-                loggingPrefix , commitIndex , args.RequesterLastLogIndex , logEntries[commitIndex].Term , args.RequesterLastLogTerm
+                loggingPrefix , commitIndex , args.RequesterLastLogIndex , persistentLogEntriesStorage[commitIndex].Term , args.RequesterLastLogTerm
             );
         return reply;
     }
@@ -410,14 +412,14 @@ public class RaftNode
         loggingPrefix = $"<{routePrefix} Term {CurrentTerm} {"HandleAppendEntries",-20}>";
 
         /* reply append failed when prior log is missing */
-        if (logEntries.Count <= args.PreviousLogIndex)
+        if (persistentLogEntriesStorage.Count <= args.PreviousLogIndex)
         {
             debugTrace.TraceInformation($"{loggingPrefix}: Append entries FAILED because some logs are missing prior new entries (Impl Ref #2).");
             return reply;
         }
 
         /* reply append failed when previous log has incorrect term */
-        if (logEntries[args.PreviousLogIndex].Term != args.PreviousLogTerm)
+        if (persistentLogEntriesStorage[args.PreviousLogIndex].Term != args.PreviousLogTerm)
         {
             debugTrace.TraceInformation($"{loggingPrefix}: Mismatch previous log.");
             return reply;
@@ -425,7 +427,7 @@ public class RaftNode
 
         debugTrace.TraceInformation($"{loggingPrefix}: Remove conflicting logs and subsequent logs (Impl Ref #3).");
         debugTrace.TraceInformation($"{loggingPrefix}: Append new entries (Impl Ref #4).");
-        if (!logEntries.TryOverrideEntriesStartFromAndEraseFutureEntries(args.Entries , args.PreviousLogIndex + 1))
+        if (!persistentLogEntriesStorage.TryOverrideEntriesStartFromAndEraseFutureEntries(args.Entries , args.PreviousLogIndex + 1))
         {
             standardTrace.TraceInformation("Append new entries failed.");
             return reply;
@@ -433,7 +435,7 @@ public class RaftNode
 
         debugTrace.TraceInformation($"{loggingPrefix}: Update commit index (Impl Ref #5).");
         if (args.LeaderCommit > commitIndex)
-            commitIndex = Math.Min(logEntries.Count - 1 , args.LeaderCommit);
+            commitIndex = Math.Min(persistentLogEntriesStorage.Count - 1 , args.LeaderCommit);
         debugTrace.TraceInformation($"{loggingPrefix}: Commit index has been set to {commitIndex}.");
 
         reply.AppendSuccess = true;
@@ -516,8 +518,8 @@ public class RaftNode
     private bool CheckKeyExist(string key , int checkBeforeIndex)
     {
         while (--checkBeforeIndex >= 0)
-            if (logEntries[checkBeforeIndex].Key == key)
-                switch (logEntries[checkBeforeIndex].Operation)
+            if (persistentLogEntriesStorage[checkBeforeIndex].Key == key)
+                switch (persistentLogEntriesStorage[checkBeforeIndex].Operation)
                 {
                     case LogEntryOperation.Put:    return true;
                     case LogEntryOperation.Delete: return false;
@@ -553,7 +555,7 @@ public class RaftNode
         string loggingPrefix = $"<{routePrefix} Term {CurrentTerm} {"initLeaderReqField",-20}>";
         debugTrace.TraceEvent(TraceEventType.Verbose , 0 , $"{loggingPrefix}: BEGIN");
 
-        nextIndexes = new Dictionary<Guid , int>(nodeCount) { [Guid.Empty] = logEntries.Count };
+        nextIndexes = new Dictionary<Guid , int>(nodeCount) { [Guid.Empty] = persistentLogEntriesStorage.Count };
         matchIndexes = new Dictionary<Guid , int>(nodeCount);
     }
 
@@ -775,7 +777,7 @@ public class RaftNode
                 {
                     AppendEntriesReply reply = await appendEntriesReplyChannel.Reader.ReadAsync();
 
-                    if (reply.MatchIndex >= logEntries.Count || reply.MatchIndex < 0)
+                    if (reply.MatchIndex >= persistentLogEntriesStorage.Count || reply.MatchIndex < 0)
                     {
                         debugTrace.TraceInformation($"{loggingPrefix}: Received reply with match index outside of possible values. This reply will be ignored.");
                         standardTrace.TraceInformation("Received reply with match index outside of possible values. This reply will be ignored.");
@@ -794,13 +796,13 @@ public class RaftNode
                     if (reply.AppendSuccess)
                         (nextIndexes[replyNodeId] , matchIndexes[replyNodeId]) = (replyMatchIndex + 1 , replyMatchIndex);
                     else
-                        nextIndexes[replyNodeId] = Math.Max(nextIndexes.GetValueOrDefault(replyNodeId , logEntries.Count) - 1 , 1);
+                        nextIndexes[replyNodeId] = Math.Max(nextIndexes.GetValueOrDefault(replyNodeId , persistentLogEntriesStorage.Count) - 1 , 1);
 
                     int newCommitIndex = matchIndexes
                         .Where(
                             candidateMatchIndex => matchIndexes.Count(kvp => kvp.Value >= candidateMatchIndex.Value) >= nodeCount / 2
                             )
-                        .Where(candidateNextIndex => logEntries[candidateNextIndex.Value].Term == CurrentTerm)
+                        .Where(candidateNextIndex => persistentLogEntriesStorage[candidateNextIndex.Value].Term == CurrentTerm)
                         .DefaultIfEmpty(new KeyValuePair<Guid , int>(Guid.Empty , 0))
                         .Max(kvp => kvp.Value);
                     if (newCommitIndex != commitIndex)
@@ -828,7 +830,7 @@ public class RaftNode
                 {
                     Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task> appendFunction
                         = (Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task>)appendFunctionDelegate;
-                    appendFunction.Invoke(requestId , NodeId , commitIndex , logEntries , nextIndexes);
+                    appendFunction.Invoke(requestId , NodeId , commitIndex , persistentLogEntriesStorage , nextIndexes);
                 }
             );
         return requestId;
@@ -845,7 +847,7 @@ public class RaftNode
         Array.ForEach(
                 SendVoteRequestToOtherNodes.GetInvocationList() ,
                 requestFunction
-                    => ((Func<Guid , Guid , int , int , Task>)requestFunction).Invoke(requestId , NodeId , commitIndex , logEntries[commitIndex].Term)
+                    => ((Func<Guid , Guid , int , int , Task>)requestFunction).Invoke(requestId , NodeId , commitIndex , persistentLogEntriesStorage[commitIndex].Term)
             );
         return requestId;
     }
