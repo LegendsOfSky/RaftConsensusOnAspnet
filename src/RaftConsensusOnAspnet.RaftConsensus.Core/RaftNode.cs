@@ -84,8 +84,8 @@ public class RaftNode
 
     private readonly Channel<AppendEntriesReply> appendEntriesReplyChannel;
     private readonly string dbFilePath;
-    private readonly ILogEntriesPersistentStorage persistentLogEntriesStorage;
     private readonly TraceSource debugTrace;
+    private readonly ILogEntriesPersistentStorage persistentLogEntriesStorage;
     private readonly TraceSource standardTrace;
     private readonly Channel<VoteRequestReply> voteRequestReplyChannel;
     private int nodeCount;
