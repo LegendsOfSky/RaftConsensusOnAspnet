@@ -74,7 +74,6 @@ public class RaftNode
     }
 
     private readonly Channel<AppendEntriesReply> appendEntriesReplyChannel;
-    private readonly string dbFilePath;
     private readonly TraceSource debugTrace;
     private readonly ILogEntriesPersistentStorage persistentLogEntriesStorage;
     private readonly IRaftNodeMetadataPersistentStorage persistentMetadataStorage;
@@ -101,7 +100,6 @@ public class RaftNode
             Directory.CreateDirectory(options.DatabaseDirectory);
 
         NodeId = options.NodeId ?? Guid.NewGuid();
-        dbFilePath = $"{options.DatabaseDirectory}/{NodeId}.db";
 
         #region Initialize basic raft fields/properties
         Role = NodeRole.Follower;
@@ -109,6 +107,10 @@ public class RaftNode
         commitIndex = 0;
         (nextIndexes , matchIndexes) = ([] , []);
         (electionTimeoutInterval , heartBeatInterval) = (options.ElectionTimeOutInterval , options.HeartBeatInterval);
+        #endregion
+
+        #region Initialize persistent storages
+        string dbFilePath = $"{options.DatabaseDirectory}/{NodeId}.db";
         persistentLogEntriesStorage = options.CustomLogEntriesPersistentStorage
             ?? new LogEntriesSqliteStorage(dbFilePath , NodeId , traces.StandardTraceListeners , traces.DebugTraceListeners);
         persistentMetadataStorage = options.CustomRaftNodeMetadataPersistentStorage
