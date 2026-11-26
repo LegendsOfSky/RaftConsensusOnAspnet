@@ -24,7 +24,7 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
         set => field = value is null ? null : field;
     }
 
-    public const string StateMachineValuesTableName = "StateMachineValues";
+    private const string StateMachineValuesTableName = "StateMachineValues";
 
     private readonly string dbFilePath;
     private readonly TraceSource debugTrace;
@@ -32,7 +32,7 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
 
 
     public LogEntriesSqliteStorage(string filePath , Guid nodeId ,
-                        IEnumerable<TraceListener>? standardTraceListenersIn = null , IEnumerable<TraceListener>? debugTraceListenersIn = null)
+                                   IEnumerable<TraceListener>? standardTraceListenersIn = null , IEnumerable<TraceListener>? debugTraceListenersIn = null)
     {
         dbFilePath = filePath;
         using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
@@ -52,9 +52,70 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
     }
 
 
+
+    #region Interface implementations
+    public void Add(LogEntry entry) => AddRange([entry]);
+
     public void AddRange(IReadOnlyList<LogEntry> newEntries) => TryOverrideEntriesStartFromAndEraseFutureEntries(newEntries , Count);
 
-    /// <remarks> <b>REMARKS:</b>
+    public void Clear() => WriteToDatabase([]);
+
+    public bool Contains(LogEntry item) => CachedLogEntries.Contains(item);
+
+    public void CopyTo(LogEntry[] array , int arrayIndex) => new List<LogEntry>(CachedLogEntries).CopyTo(array , arrayIndex);
+
+    public IEnumerator<LogEntry> GetEnumerator() => CachedLogEntries.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    public int IndexOf(LogEntry item) => new List<LogEntry>(CachedLogEntries).IndexOf(item);
+
+    public void Insert(int index , LogEntry entry)
+    {
+        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
+        using SqliteTransaction transaction = connection.BeginTransaction();
+        try
+        {
+#pragma warning disable S2077
+            using SqliteCommand createSpace = new SqliteCommand(
+                    $"""
+                    UPDATE LogEntries
+                    SET Id = Id + 1
+                    WHERE Id >= {index}
+                    """ , connection , transaction  // "ORDER BY" increments larger ID first to prevent ID collision (enforce unique constraint).
+                );
+            createSpace.ExecuteNonQuery();
+
+            using SqliteCommand addEntry = new SqliteCommand(
+                    $"""
+                    INSERT INTO LogEntries (Id , Guid , Term , Operation , LogType , Key , Value)
+                    VALUES (
+                            {index} , $guid , $term , $operation , $logType , $key , $value
+                        );
+                    """ , connection , transaction
+                );
+            addEntry.Parameters.AddWithValue("$guid"      , entry.Guid.ToString());
+            addEntry.Parameters.AddWithValue("$term"      , entry.Term           );
+            addEntry.Parameters.AddWithValue("$operation" , (int)entry.Operation);
+            addEntry.Parameters.AddWithValue("$logType"   , entry.GetLogType()   );
+            addEntry.Parameters.AddWithValue("$key"       , entry.Key              ?? (object)DBNull.Value);
+            addEntry.Parameters.AddWithValue("$value"     , entry.SerializeValue() ?? (object)DBNull.Value);
+            addEntry.ExecuteNonQuery();
+#pragma warning restore S2077
+
+            transaction.Commit();
+        }
+        catch (Exception e)
+        {
+            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot insert new log entry to database. Error: \n{e}");
+            transaction.Rollback();
+            throw;
+        }
+        CachedLogEntries = null;
+    }
+
+    /// <remarks>
+    ///     <b>REMARKS:</b>
     ///     <list type="bullet">
     ///         <item> Removes all entries after startIndex. </item>
     ///         <item> Invalidates <see cref="CachedLogEntries"/>. </item>
@@ -114,6 +175,33 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
         return true;
     }
 
+    public bool Remove(LogEntry item)
+    {
+        int index = new List<LogEntry>(CachedLogEntries).IndexOf(item);
+        if (index == -1)
+            return false;
+        RemoveAt(index);
+        return true;
+    }
+
+    public void RemoveAt(int index)
+    {
+        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
+        using SqliteTransaction transaction = connection.BeginTransaction();
+        try
+        {
+            RemoveEntriesInRangeViaTransactionConnection(index , 1  , transaction , connection);
+            transaction.Commit();
+        }
+        catch (Exception e)
+        {
+            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot remove log entries at {index}. Error: \n{e}");
+            transaction.Rollback();
+            throw;
+        }
+        CachedLogEntries = null;
+    }
+
     public void RemoveExistingData() => Clear();
 
     /// <remarks> <b>REMARKS:</b> Invalidates <see cref="CachedLogEntries"/>. </remarks>
@@ -137,6 +225,7 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
         }
         CachedLogEntries = null;
     }
+    #endregion
 
     private static void CreateTableForStateMachineValues(SqliteConnection connection)
     {
@@ -176,18 +265,18 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
 #pragma warning disable S2077
         using SqliteCommand removeEntries = new SqliteCommand(
                 $"""
-                    DELETE FROM LogEntries
-                    WHERE Id >= {startIndex} AND Id < {startIndex + count};
-                    """ , connection , transaction
+                DELETE FROM LogEntries
+                WHERE Id >= {startIndex} AND Id < {startIndex + count};
+                """ , connection , transaction
             );
         removeEntries.ExecuteNonQuery();
 
         using SqliteCommand removeGap = new SqliteCommand(
                 $"""
-                    UPDATE LogEntries
-                    SET Id = Id - {count}
-                    WHERE Id >= {startIndex};
-                    """ , connection , transaction
+                UPDATE LogEntries
+                SET Id = Id - {count}
+                WHERE Id >= {startIndex};
+                """ , connection , transaction
             );
         removeGap.ExecuteNonQuery();
 #pragma warning restore S2077
@@ -223,92 +312,4 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
 
     /// <summary> Overwrites the entire database by new entries. </summary>
     private void WriteToDatabase(IReadOnlyList<LogEntry> entriesToSerialize) => TryOverrideEntriesStartFromAndEraseFutureEntries(entriesToSerialize , 0);
-
-    #region Interface implementations
-    public void Add(LogEntry entry) => AddRange([entry]);
-
-    public void Clear() => WriteToDatabase([]);
-
-    public bool Contains(LogEntry item) => CachedLogEntries.Contains(item);
-
-    public void CopyTo(LogEntry[] array , int arrayIndex) => new List<LogEntry>(CachedLogEntries).CopyTo(array , arrayIndex);
-
-    public int IndexOf(LogEntry item) => new List<LogEntry>(CachedLogEntries).IndexOf(item);
-
-    public void Insert(int index , LogEntry entry)
-    {
-        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-        using SqliteTransaction transaction = connection.BeginTransaction();
-        try
-        {
-#pragma warning disable S2077
-            using SqliteCommand createSpace = new SqliteCommand(
-                    $"""
-                    UPDATE LogEntries
-                    SET Id = Id + 1
-                    WHERE Id >= {index}
-                    """ , connection , transaction  // "ORDER BY" increments larger ID first to prevent ID collision (enforce unique constraint).
-                );
-            createSpace.ExecuteNonQuery();
-
-            using SqliteCommand addEntry = new SqliteCommand(
-                    $"""
-                    INSERT INTO LogEntries (Id , Guid , Term , Operation , LogType , Key , Value)
-                    VALUES (
-                            {index} , $guid , $term , $operation , $logType , $key , $value
-                        );
-                    """ , connection , transaction
-                );
-            addEntry.Parameters.AddWithValue("$guid"      , entry.Guid.ToString());
-            addEntry.Parameters.AddWithValue("$term"      , entry.Term           );
-            addEntry.Parameters.AddWithValue("$operation" , (int)entry.Operation );
-            addEntry.Parameters.AddWithValue("$logType"   , entry.GetLogType()   );
-            addEntry.Parameters.AddWithValue("$key"       , entry.Key              ?? (object)DBNull.Value);
-            addEntry.Parameters.AddWithValue("$value"     , entry.SerializeValue() ?? (object)DBNull.Value);
-            addEntry.ExecuteNonQuery();
-#pragma warning restore S2077
-
-            transaction.Commit();
-        }
-        catch (Exception e)
-        {
-            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot insert new log entry to database. Error: \n{e}");
-            transaction.Rollback();
-            throw;
-        }
-        CachedLogEntries = null;
-    }
-
-    public bool Remove(LogEntry item)
-    {
-        int index = new List<LogEntry>(CachedLogEntries).IndexOf(item);
-        if (index == -1)
-            return false;
-        RemoveAt(index);
-        return true;
-    }
-
-    public void RemoveAt(int index)
-    {
-        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-        using SqliteTransaction transaction = connection.BeginTransaction();
-        try
-        {
-            RemoveEntriesInRangeViaTransactionConnection(index , 1  , transaction , connection);
-            transaction.Commit();
-        }
-        catch (Exception e)
-        {
-            standardTrace.TraceEvent(TraceEventType.Error , 0 , $"Cannot remove log entries at {index}. Error: \n{e}");
-            transaction.Rollback();
-            throw;
-        }
-        CachedLogEntries = null;
-    }
-
-
-    public IEnumerator<LogEntry> GetEnumerator() => CachedLogEntries.GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    #endregion
 }

@@ -105,10 +105,10 @@ public class RaftNodeMetadataSqliteStorage : IRaftNodeMetadataPersistentStorage
         {
             using SqliteCommand getCurrentTerm = new SqliteCommand(
                     $"""
-                     SELECT Key , Value
-                     FROM {TableName}
-                     WHERE Key = 'CurrentTerm';
-                     """ , connection , transaction
+                    SELECT Key , Value
+                    FROM {TableName}
+                    WHERE Key = 'CurrentTerm';
+                    """ , connection , transaction
                 );
             using SqliteDataReader reader = getCurrentTerm.ExecuteReader();
 
