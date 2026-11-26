@@ -45,6 +45,6 @@ internal class VoteRequestSender
             return;
         }
         Console.WriteLine($"Response for vote request is: RequestId = {reply.RequestId}, TermOfRequest = {reply.TermOfRequest}, VoteGranted = {reply.VoteGranted}");
-        await HostNode.VoteRequestReplyChannel.Writer.WriteAsync(reply);
+        await HostNode.VoteRequestReplyChannelWriter.WriteAsync(reply);
     }
 }

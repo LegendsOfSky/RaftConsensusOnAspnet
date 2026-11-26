@@ -236,7 +236,7 @@ public class RaftNodeTests
                     s_node1Guid , InitialElectionInterval , HeartBeatInterval , 3 ,
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
-            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
@@ -269,8 +269,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
         }
     }
@@ -414,7 +414,7 @@ public class RaftNodeTests
                     s_node1Guid , InitialElectionInterval , InitialHeartBeatInterval , 3 ,
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
-            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
@@ -447,8 +447,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
         }
     }
@@ -1565,7 +1565,7 @@ public class RaftNodeTests
                     s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
-            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
@@ -1608,8 +1608,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
         }
     }
@@ -1697,7 +1697,7 @@ public class RaftNodeTests
                     s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
-            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
@@ -1738,8 +1738,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
         }
     }
@@ -1816,7 +1816,7 @@ public class RaftNodeTests
                     s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 3 ,
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
-            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
@@ -1845,8 +1845,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
         }
     }
@@ -1876,7 +1876,7 @@ public class RaftNodeTests
                     s_node1Guid , ElectionTimeoutInterval , int.MaxValue , 5 ,
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
-            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
@@ -1905,8 +1905,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
         }
     }
@@ -1951,7 +1951,7 @@ public class RaftNodeTests
             {
                 await eventNotifyChannel.Writer.WriteAsync(true);
                 await Task.Delay(TestEvaluateWindow);
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(new VoteRequestReply
+                await node.VoteRequestReplyChannelWriter.WriteAsync(new VoteRequestReply
                 {
                     RequestId = requestId ,
                     TermOfRequest = node.CurrentTerm ,
@@ -2099,7 +2099,7 @@ public class RaftNodeTests
                     s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
-            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
@@ -2128,8 +2128,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
         }
     }
@@ -2164,7 +2164,7 @@ public class RaftNodeTests
                     s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
-            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
@@ -2214,8 +2214,8 @@ public class RaftNodeTests
                     AppendSuccess = appendSuccess ,
                     MatchIndex = 0 ,
                 };
-                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
 
             async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
@@ -2228,8 +2228,8 @@ public class RaftNodeTests
                     TermOfRequest = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
         }
     }
@@ -2260,7 +2260,7 @@ public class RaftNodeTests
                     s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
-            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
@@ -2307,8 +2307,8 @@ public class RaftNodeTests
                     MatchIndex = node.LogEntries.Count - 1 ,
                 };
                 await Task.Delay(TestEvaluateWindow);
-                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
 
             async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
@@ -2321,8 +2321,8 @@ public class RaftNodeTests
                     TermOfRequest = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
         }
     }
@@ -2353,7 +2353,7 @@ public class RaftNodeTests
                     s_node1Guid , ElectionTimeoutInterval , HeartBeatInterval , 3 ,
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
-            node.AppendEntriesToOtherNodes += AppendEntriesToOtherNodes;
+            node.SendAppendEntriesRequestsToOtherNodes += AppendEntriesToOtherNodes;
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
@@ -2397,8 +2397,8 @@ public class RaftNodeTests
                     AppendSuccess = true ,
                     MatchIndex = 2 ,
                 };
-                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
 
             async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
@@ -2411,8 +2411,8 @@ public class RaftNodeTests
                     TermOfRequest = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
             }
         }
     }
@@ -2574,7 +2574,7 @@ public class RaftNodeTests
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
             node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
-            node.AppendEntriesToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
+            node.SendAppendEntriesRequestsToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
             Task round1 = node.StartAsync();
@@ -2589,7 +2589,7 @@ public class RaftNodeTests
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
             node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
-            node.AppendEntriesToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
+            node.SendAppendEntriesRequestsToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
             Task round2 = node.StartAsync();
@@ -2604,7 +2604,7 @@ public class RaftNodeTests
                     removeExistData: true , standardTraceListenersIn: standardTraceListeners , debugTraceListenersIn: debugTraceListeners
                 );
             node.SendVoteRequestToOtherNodes += CreateSendVoteRequestToOtherNodesFunc(node);
-            node.AppendEntriesToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
+            node.SendAppendEntriesRequestsToOtherNodes += CreateAppendEntriesToOtherNodesFunc(node);
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
             Task round3 = node.StartAsync();
@@ -2628,8 +2628,8 @@ public class RaftNodeTests
                         TermOfRequest = node.CurrentTerm ,
                         VoteGranted = true ,
                     };
-                    await nodeIn.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                    await nodeIn.VoteRequestReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                    await nodeIn.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                    await nodeIn.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
                 };
 
             Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task> CreateAppendEntriesToOtherNodesFunc(RaftNode nodeIn)
@@ -2645,8 +2645,8 @@ public class RaftNodeTests
                         AppendSuccess = true ,
                         MatchIndex = logEntries.Count - 1 ,
                     };
-                    await nodeIn.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                    await nodeIn.AppendEntriesReplyChannel.Writer.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                    await nodeIn.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
+                    await nodeIn.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
                     await entriesAppended.Writer.WriteAsync(true);
                 };
         }

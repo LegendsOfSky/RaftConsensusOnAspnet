@@ -142,7 +142,7 @@ public class Program
 
                         AppendEntriesRequestSender appendRequestSender = new AppendEntriesRequestSender(s_HttpClientFactory , s_RaftNode , nodeOption.Ip , nodeOption.NodeId);
                         appendEntriesRequestSenders.Add(appendRequestSender);
-                        s_RaftNode.AppendEntriesToOtherNodes += appendRequestSender.SendAppendEntriesRequestAsync;
+                        s_RaftNode.SendAppendEntriesRequestsToOtherNodes += appendRequestSender.SendAppendEntriesRequestAsync;
                     }
                     #endregion
 

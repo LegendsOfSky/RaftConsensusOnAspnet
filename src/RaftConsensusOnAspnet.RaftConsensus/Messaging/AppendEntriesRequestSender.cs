@@ -48,6 +48,6 @@ public class AppendEntriesRequestSender
             return;
         }
         Console.WriteLine($"Response for append entries is: RequestId = {reply.RequestId}, AppendSuccess = {reply.AppendSuccess}");
-        await HostNode.AppendEntriesReplyChannel.Writer.WriteAsync(reply);
+        await HostNode.AppendEntriesReplyChannelWriter.WriteAsync(reply);
     }
 }

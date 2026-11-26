@@ -12,6 +12,7 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core;
 
 public class RaftNode
 {
+    public ChannelWriter<AppendEntriesReply> AppendEntriesReplyChannelWriter => appendEntriesReplyChannel.Writer;
     public int CurrentTerm
     {
         get;
@@ -21,9 +22,53 @@ public class RaftNode
             field = ReadCurrentTermFromDb();
         }
     }
-    public NodeRole Role { get; private set; }
     public Guid? LeaderId { get; private set; }
     public IReadOnlyList<LogEntry> LogEntries => logEntries;
+    public Guid NodeId { get; }
+    /// <summary> Debug purpose, messing this up has no any effect on Raft behavior. (except printing incorrect node indicators on logs) </summary>
+    public Dictionary<Guid , int> NodeIdToDebugPos
+    {
+        get;
+        set
+        {
+            if (stopRaftTcs is not null && !stopRaftTcs.Task.IsCompleted)
+                throw new InvalidOperationException();
+            field = value;
+        }
+    }
+    public NodeRole Role { get; private set; }
+    /// <remarks>
+    ///     Signature of the function:
+    ///     <code>
+    ///         async Task SendAppendEntriesRequestsToOtherNodes(Guid requestId , Guid requesterId , int commitIndex ,
+    ///                                                          IReadOnlyList&lt;LogEntry&gt; logEntries , IReadOnlyDictionary&lt;Guid , int&gt; nextIndexes);
+    ///     </code>
+    /// </remarks>
+    public Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task>? SendAppendEntriesRequestsToOtherNodes
+    {
+        get;
+        set
+        {
+            if (stopRaftTcs is not null && !stopRaftTcs.Task.IsCompleted)
+                throw new InvalidOperationException();
+            field = value;
+        }
+    }
+    /// <remarks>
+    ///     Signature of the function:
+    ///     <code> async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm); </code>
+    /// </remarks>
+    public Func<Guid , Guid , int , int , Task>? SendVoteRequestToOtherNodes
+    {
+        get;
+        set
+        {
+            if (stopRaftTcs is not null && !stopRaftTcs.Task.IsCompleted)
+                throw new InvalidOperationException();
+            field = value;
+        }
+    }
+    public ChannelWriter<VoteRequestReply> VoteRequestReplyChannelWriter => voteRequestReplyChannel.Writer;
     private (Guid VoteFor , int TermOfVote) VoteInfo
     {
         get;
@@ -36,26 +81,12 @@ public class RaftNode
 
     private const string TableName = "RaftNodeState";
 
-    /// <summary> Debug purpose, messing this up has no any effect on Raft behavior. (except printing invalid debug logs) </summary>
-    public readonly Dictionary<Guid , int> NodeIdToDebugPos;
-
-    public readonly Guid NodeId;
-    public readonly Channel<AppendEntriesReply> AppendEntriesReplyChannel;
-    public readonly Channel<VoteRequestReply> VoteRequestReplyChannel;
-    /// <remarks>
-    ///     Signature of the function:
-    ///     <code> async Task AppendEntriesToOtherNodes(Guid requestId , Guid requesterId , int commitIndex , IReadOnlyList&lt;LogEntry&gt; logEntries , IReadOnlyDictionary&lt;Guid , int&gt; nextIndexes); </code>
-    /// </remarks>
-    public Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task>? AppendEntriesToOtherNodes;
-    /// <remarks>
-    ///     Signature of the function:
-    ///     <code> async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm); </code>
-    /// </remarks>
-    public Func<Guid , Guid , int , int , Task>? SendVoteRequestToOtherNodes;
+    private readonly Channel<AppendEntriesReply> appendEntriesReplyChannel;
     private readonly string dbFilePath;
     private readonly LogEntryList logEntries;
     private readonly TraceSource debugTrace;
     private readonly TraceSource standardTrace;
+    private readonly Channel<VoteRequestReply> voteRequestReplyChannel;
     private int nodeCount;
     private int electionTimeoutInterval;
     private int heartBeatInterval;
@@ -116,8 +147,8 @@ public class RaftNode
         revertToFollowerTcs        = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         receiveHeartBeatTcs        = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         commitNewEntryTcs          = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        VoteRequestReplyChannel   = Channel.CreateUnbounded<VoteRequestReply>();
-        AppendEntriesReplyChannel = Channel.CreateUnbounded<AppendEntriesReply>();
+        voteRequestReplyChannel   = Channel.CreateUnbounded<VoteRequestReply>();
+        appendEntriesReplyChannel = Channel.CreateUnbounded<AppendEntriesReply>();
 
         /* Setup logging */
         standardTrace = new TraceSource($"{"Raft",-12}.{NodeId}" , SourceLevels.All);  // <--+-< standard trace
@@ -599,7 +630,7 @@ public class RaftNode
 
             while (true)
             {
-                Task waitForNewVoteRequestReply = VoteRequestReplyChannel.Reader.WaitToReadAsync().AsTask();
+                Task waitForNewVoteRequestReply = voteRequestReplyChannel.Reader.WaitToReadAsync().AsTask();
                 Task completedTask = await Task.WhenAny(
                         raftStopSignal , waitForElectionTimerEnd , waitForRevertToFollowerSignal ,
                         waitForElectionIntervalChange , waitForNodeCountChange , waitForNewVoteRequestReply
@@ -620,7 +651,7 @@ public class RaftNode
 
                 if (completedTask == waitForNewVoteRequestReply)
                 {
-                    VoteRequestReply reply = await VoteRequestReplyChannel.Reader.ReadAsync();
+                    VoteRequestReply reply = await voteRequestReplyChannel.Reader.ReadAsync();
 
                     /* ignore old reply */
                     if (reply.RequestId != requestId || reply.TermOfRequest != CurrentTerm)
@@ -735,7 +766,7 @@ public class RaftNode
             while (true)
             {
                 debugTrace.TraceInformation($"{loggingPrefix}: Wait for replies of append entries requests.");
-                Task waitForNewAppendEntriesRequestReply = AppendEntriesReplyChannel.Reader.WaitToReadAsync().AsTask();
+                Task waitForNewAppendEntriesRequestReply = appendEntriesReplyChannel.Reader.WaitToReadAsync().AsTask();
                 Task completedTask = await Task.WhenAny(
                         raftStopSignal ,
                         waitForHeartBeatTimerEnd ,
@@ -751,7 +782,7 @@ public class RaftNode
 
                 if (completedTask == waitForNewAppendEntriesRequestReply)
                 {
-                    AppendEntriesReply reply = await AppendEntriesReplyChannel.Reader.ReadAsync();
+                    AppendEntriesReply reply = await appendEntriesReplyChannel.Reader.ReadAsync();
 
                     if (reply.MatchIndex >= logEntries.Count || reply.MatchIndex < 0)
                     {
@@ -798,10 +829,10 @@ public class RaftNode
     {
         Guid requestId = Guid.NewGuid();
         debugTrace.TraceInformation($"{loggingPrefix}: Sending append entries request to other nodes.");
-        if (AppendEntriesToOtherNodes is null)
-            throw new ArgumentNullException(nameof(AppendEntriesToOtherNodes));
+        if (SendAppendEntriesRequestsToOtherNodes is null)
+            throw new ArgumentNullException(nameof(SendAppendEntriesRequestsToOtherNodes));
         Array.ForEach(
-                AppendEntriesToOtherNodes.GetInvocationList() ,
+                SendAppendEntriesRequestsToOtherNodes.GetInvocationList() ,
                 appendFunctionDelegate =>
                 {
                     Func<Guid , Guid , int , IReadOnlyList<LogEntry> , IReadOnlyDictionary<Guid , int> , Task> appendFunction
