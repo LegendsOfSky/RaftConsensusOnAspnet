@@ -17,12 +17,8 @@ public class RaftNode
     public ChannelWriter<AppendEntriesReply> AppendEntriesReplyChannelWriter => appendEntriesReplyChannel.Writer;
     public int CurrentTerm
     {
-        get;
-        private set
-        {
-            WriteCurrentTermToDb(value);
-            field = ReadCurrentTermFromDb();
-        }
+        get => persistentMetadataStorage.CurrentTerm;
+        private set => persistentMetadataStorage.CurrentTerm = value;
     }
     public Guid? LeaderId { get; private set; }
     public IReadOnlyList<LogEntry> LogEntries => persistentLogEntriesStorage;
@@ -73,20 +69,15 @@ public class RaftNode
     public ChannelWriter<VoteRequestReply> VoteRequestReplyChannelWriter => voteRequestReplyChannel.Writer;
     private (Guid VoteFor , int TermOfVote) VoteInfo
     {
-        get;
-        set
-        {
-            WriteVoteInfoToDb(value.VoteFor , value.TermOfVote);
-            field = ReadVoteInfoFromDb();
-        }
+        get => persistentMetadataStorage.VoteInfo;
+        set => persistentMetadataStorage.VoteInfo = value;
     }
-
-    private const string TableName = "RaftNodeState";
 
     private readonly Channel<AppendEntriesReply> appendEntriesReplyChannel;
     private readonly string dbFilePath;
     private readonly TraceSource debugTrace;
     private readonly ILogEntriesPersistentStorage persistentLogEntriesStorage;
+    private readonly IRaftNodeMetadataPersistentStorage persistentMetadataStorage;
     private readonly TraceSource standardTrace;
     private readonly Channel<VoteRequestReply> voteRequestReplyChannel;
     private int nodeCount;
@@ -110,10 +101,7 @@ public class RaftNode
             Directory.CreateDirectory(options.DatabaseDirectory);
 
         NodeId = options.NodeId ?? Guid.NewGuid();
-
-        /* Initialize database pragma and schema */
         dbFilePath = $"{options.DatabaseDirectory}/{NodeId}.db";
-        CreateDatabaseSchemaIfNotExist();
 
         #region Initialize basic raft fields/properties
         Role = NodeRole.Follower;
@@ -123,12 +111,11 @@ public class RaftNode
         (electionTimeoutInterval , heartBeatInterval) = (options.ElectionTimeOutInterval , options.HeartBeatInterval);
         persistentLogEntriesStorage = options.CustomLogEntriesPersistentStorage
             ?? new LogEntriesSqliteStorage(dbFilePath , NodeId , options.RemoveExistData , traces.StandardTraceListeners , traces.DebugTraceListeners);
-        if (!options.RemoveExistData)
-            CurrentTerm = ReadCurrentTermFromDb();
-        else
+        persistentMetadataStorage = options.CustomRaftNodeMetadataPersistentStorage
+            ?? new RaftNodeMetadataSqliteStorage(dbFilePath);
+        if (options.RemoveExistData)
         {
-            CurrentTerm = 0;
-            VoteInfo = (Guid.Empty , 0);
+            persistentMetadataStorage.RemoveExistingData();
         }
         #endregion
 
@@ -528,19 +515,6 @@ public class RaftNode
         return false;
     }
 
-    private void CreateDatabaseSchemaIfNotExist()
-    {
-        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-        using SqliteCommand createTable = connection.CreateCommand();
-        createTable.CommandText = $"""
-            CREATE TABLE IF NOT EXISTS {TableName} (
-                Key   TEXT PRIMARY KEY ,
-                Value TEXT
-            );
-            """;
-        createTable.ExecuteNonQuery();
-    }
-
     private void InitCandidateSignalReceiver(
         out Task raftStopSignal , out Task waitForElectionIntervalChange , out Task waitForNodeCountChange , out Task waitForRevertToFollowerSignal)
     {
@@ -558,45 +532,6 @@ public class RaftNode
 
         nextIndexes = new Dictionary<Guid , int>(nodeCount) { [Guid.Empty] = persistentLogEntriesStorage.Count };
         matchIndexes = new Dictionary<Guid , int>(nodeCount);
-    }
-
-    private int ReadCurrentTermFromDb()
-    {
-        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-        using SqliteCommand getCurrentTerm = new SqliteCommand(
-                $"""
-                SELECT Value
-                FROM {TableName}
-                WHERE Key = 'CurrentTerm';
-                """ , connection
-            );
-        using SqliteDataReader reader = getCurrentTerm.ExecuteReader();
-        return reader.Read() ? int.Parse(reader.GetString(0)) : 0;
-    }
-
-    private (Guid VoteFor , int TermOfVote) ReadVoteInfoFromDb()
-    {
-        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-        using SqliteCommand getVoteInfo = new SqliteCommand(
-                $"""
-                SELECT Key , Value
-                FROM {TableName}
-                WHERE Key = 'VoteFor' OR Key = 'TermOfVote';
-                """ , connection
-            );
-        using SqliteDataReader reader = getVoteInfo.ExecuteReader();
-        (Guid voteFor , int termOfVote) = (Guid.Empty , -1);
-        while (reader.Read())
-        {
-            string key = reader.GetString(0);
-            if (key == "VoteFor")
-                voteFor = reader.GetGuid(1);
-            else if (key == "TermOfVote")
-                termOfVote = int.Parse(reader.GetString(1));
-        }
-        return voteFor == Guid.Empty || termOfVote == -1
-            ? (Guid.Empty , -1)
-            : (voteFor , termOfVote);
     }
 
     private async Task RunAsCandidateAsync()
@@ -911,108 +846,6 @@ public class RaftNode
             return true;
         }
         return false;
-    }
-
-    private void WriteCurrentTermToDb(int currentTerm)
-    {
-        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-        using SqliteTransaction transaction = connection.BeginTransaction();
-        try
-        {
-            using SqliteCommand getCurrentTerm = new SqliteCommand(
-                    $"""
-                     SELECT Key , Value
-                     FROM {TableName}
-                     WHERE Key = 'CurrentTerm';
-                     """ , connection , transaction
-                );
-            using SqliteDataReader reader = getCurrentTerm.ExecuteReader();
-
-            using SqliteCommand setCurrentTerm = new SqliteCommand(
-                    reader.Read()
-                        ? $"""
-                            UPDATE RaftNodeState
-                            SET Value = '{currentTerm}'
-                            WHERE Key = 'CurrentTerm';
-                            """
-                        : $"""
-                            INSERT INTO RaftNodeState (Key , Value)
-                            VALUES ('CurrentTerm' , '{CurrentTerm}');
-                            """ ,
-                    connection , transaction
-                );
-            setCurrentTerm.ExecuteNonQuery();
-
-            transaction.Commit();
-        }
-        catch (Exception e)
-        {
-            Trace.TraceError($"Cannot write new entries to database. Error: \n{e}");
-            transaction.Rollback();
-            throw;
-        }
-    }
-
-    private void WriteVoteInfoToDb(Guid voteFor , int termOfVote)
-    {
-        using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-        using SqliteTransaction transaction = connection.BeginTransaction();
-        try
-        {
-            using SqliteCommand getVoteFor = new SqliteCommand(
-                    $"""
-                    SELECT Key
-                    FROM {TableName}
-                    WHERE Key = 'VoteFor';
-                    """ , connection , transaction
-                );
-            using SqliteDataReader getVoteForReader = getVoteFor.ExecuteReader();
-            using SqliteCommand setVoteFor = new SqliteCommand(
-                    getVoteForReader.Read()
-                        ?  $"""
-                            UPDATE {TableName}
-                            SET Value = '{voteFor}'
-                            WHERE Key = 'VoteFor';
-                            """
-                        :  $"""
-                            INSERT INTO {TableName} (Key , Value)
-                            VALUES ('VoteFor' , '{voteFor}');
-                            """ ,
-                    connection , transaction
-                );
-            setVoteFor.ExecuteNonQuery();
-
-            using SqliteCommand getTermOfVote = new SqliteCommand(
-                    $"""
-                    SELECT Key
-                    FROM {TableName}
-                    WHERE Key = 'TermOfVote';
-                    """ , connection , transaction
-                );
-            using SqliteDataReader getTermOfVoteReader = getTermOfVote.ExecuteReader();
-            using SqliteCommand setTermOfVote = new SqliteCommand(
-                    getTermOfVoteReader.Read()
-                        ? $"""
-                            UPDATE {TableName}
-                            SET Value = '{termOfVote}'
-                            WHERE Key = 'TermOfVote';
-                            """
-                        : $"""
-                            INSERT INTO {TableName} (Key , Value)
-                            VALUES ('TermOfVote' , '{termOfVote}');
-                            """ ,
-                    connection , transaction
-                );
-            setTermOfVote.ExecuteNonQuery();
-
-            transaction.Commit();
-        }
-        catch (Exception e)
-        {
-            Trace.TraceError($"Cannot write new entries to database. Error: \n{e}");
-            transaction.Rollback();
-            throw;
-        }
     }
 
     #region Debug Helper

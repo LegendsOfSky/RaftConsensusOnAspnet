@@ -6,6 +6,7 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core;
 public record RaftNodeOptions
 {
     public ILogEntriesPersistentStorage? CustomLogEntriesPersistentStorage { get; set; }
+    public IRaftNodeMetadataPersistentStorage? CustomRaftNodeMetadataPersistentStorage { get; set; }
     public string DatabaseDirectory { get; set; } = "data";
     public int ElectionTimeOutInterval { get; set; }
     public int HeartBeatInterval { get; set; }
