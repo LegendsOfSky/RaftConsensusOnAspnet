@@ -77,19 +77,19 @@ public class RaftNode
     private readonly IRaftNodeMetadataPersistentStorage persistentMetadataStorage;
     private readonly TraceSource standardTrace;
     private readonly Channel<VoteRequestReply> voteRequestReplyChannel;
-    private int nodeCount;
-    private int electionTimeoutInterval;
-    private int heartBeatInterval;
-    private int commitIndex;
-    private Dictionary<Guid , int> nextIndexes;
-    private Dictionary<Guid , int> matchIndexes;
-    private TaskCompletionSource? stopRaftTcs;
     private TaskCompletionSource changeElectionIntervalTcs;
     private TaskCompletionSource changeHeartBeatIntervalTcs;
     private TaskCompletionSource changeNodeCountTcs;
+    private int commitIndex;
+    private TaskCompletionSource commitNewEntryTcs;
+    private int electionTimeoutInterval;
+    private int heartBeatInterval;
+    private Dictionary<Guid , int> matchIndexes;
+    private Dictionary<Guid , int> nextIndexes;
+    private int nodeCount;
     private TaskCompletionSource revertToFollowerTcs;
     private TaskCompletionSource receiveHeartBeatTcs;
-    private TaskCompletionSource commitNewEntryTcs;
+    private TaskCompletionSource? stopRaftTcs;
 
 
     public RaftNode(RaftNodeOptions options , RaftNodeTraces traces)
