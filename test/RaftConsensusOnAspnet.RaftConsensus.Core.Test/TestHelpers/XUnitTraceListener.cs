@@ -1,9 +1,11 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers;
 
+[ExcludeFromCodeCoverage]
 public sealed class XUnitTraceListener : TraceListener
 {
     private readonly ITestOutputHelper testOutput;

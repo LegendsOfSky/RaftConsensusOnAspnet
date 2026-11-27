@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Data;
@@ -849,6 +850,7 @@ public class RaftNode
     }
 
     #region Debug Helper
+    [ExcludeFromCodeCoverage]
     private string ComputeRoutePrefix(Guid loggingNodeId , Guid? sourceNodeId , Guid? targetNodeId)
     {
         bool parameterExists = NodeIdToDebugPos.ContainsKey(loggingNodeId)
@@ -884,6 +886,7 @@ public class RaftNode
         return resultBuilder.ToString();
     }
 
+    [ExcludeFromCodeCoverage]
     private string GetDebugNodeIntId(Guid nodeId)
         => NodeIdToDebugPos.TryGetValue(nodeId , out int nodeIntId)
             ? nodeIntId.ToString()
