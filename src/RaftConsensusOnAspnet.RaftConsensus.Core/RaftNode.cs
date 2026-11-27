@@ -465,8 +465,7 @@ public class RaftNode
                 break;
 
             default:
-                debugTrace.TraceEvent(TraceEventType.Error , 0 , $"{loggingPrefix}: Error, incorrect state (Code navigation key: uKP8WWdVLb2ZlWqN).");
-                break;
+                throw new UnreachableException();
         }
     }
 
