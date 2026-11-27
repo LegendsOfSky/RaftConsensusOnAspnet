@@ -728,9 +728,7 @@ public class RaftNodeTests
                         Entries = [] ,
                     }
                 );
-            await Task.Delay(100);  /* Important tolerant windows. Because the append entries request has a higher term and the term update to be commited to
-                                     * the database. Therefore, it may possess a delay for the role update depending on implementation. This delay is to allow
-                                     * database to commit all necessary values before perform test check. */
+            await Task.Delay(DatabaseCommitBufferPeriod);
             Assert.Equal(NodeRole.Follower , node.Role);
 
             node.Stop();
