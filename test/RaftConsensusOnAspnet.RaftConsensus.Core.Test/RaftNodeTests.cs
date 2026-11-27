@@ -12,7 +12,7 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
 
 public class RaftNodeTests
 {
-    protected const int DatabaseCommitBufferPeriod = 100;
+    protected const int DatabaseCommitBufferPeriod = 200;
     protected const int ExtendedPeriod = 500;
     protected const int MaxTimeDeviation = 500;
     protected const int OvertimeFactor = 2;
