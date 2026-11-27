@@ -3,7 +3,7 @@ using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 
 
-namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test.RaftNodeTest;
 
 // ReSharper disable once InconsistentNaming
 [Collection(nameof(RaftNodeTest_HandleVoteRequest))]

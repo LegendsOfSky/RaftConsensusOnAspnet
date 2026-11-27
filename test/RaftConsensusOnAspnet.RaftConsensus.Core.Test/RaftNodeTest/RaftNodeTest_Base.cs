@@ -7,7 +7,7 @@ using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers;
 
 
-namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test.RaftNodeTest;
 
 [Collection(nameof(RaftNodeTest_Base))]
 [CollectionDefinition("Base test for RaftConsensusOnAspnet.RaftConsensus.Core.RaftNode")]
