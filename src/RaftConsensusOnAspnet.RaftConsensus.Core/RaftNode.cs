@@ -415,9 +415,11 @@ public class RaftNode
             return reply;
         }
 
-        debugTrace.TraceInformation($"{loggingPrefix}: Remove conflicting logs and subsequent logs (Impl Ref #3).");
+        int startIndex = args.PreviousLogIndex + 1;
+        if (LogEntries.Count > startIndex)
+            debugTrace.TraceInformation($"{loggingPrefix}: Remove conflicting logs and future logs (Impl Ref #3).");
         debugTrace.TraceInformation($"{loggingPrefix}: Append new entries (Impl Ref #4).");
-        if (!persistentLogEntriesStorage.TryOverrideEntriesStartFromAndEraseFutureEntries(args.Entries , args.PreviousLogIndex + 1))
+        if (!persistentLogEntriesStorage.TryOverrideEntriesStartFromAndEraseFutureEntries(args.Entries , startIndex))
         {
             standardTrace.TraceInformation("Append new entries failed.");
             return reply;
