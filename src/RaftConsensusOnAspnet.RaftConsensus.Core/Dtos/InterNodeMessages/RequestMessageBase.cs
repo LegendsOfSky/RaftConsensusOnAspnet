@@ -1,5 +1,9 @@
-﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
+﻿using System.Diagnostics.CodeAnalysis;
 
+
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
+
+[ExcludeFromCodeCoverage]
 public record RequestMessageBase : MessageBase
 {
     public Guid RequesterId { get; set; }

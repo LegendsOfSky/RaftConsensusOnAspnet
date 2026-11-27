@@ -1,5 +1,9 @@
-﻿namespace RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
+﻿using System.Diagnostics.CodeAnalysis;
 
+
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
+
+[ExcludeFromCodeCoverage]
 public record VoteRequestArgs : RequestMessageBase
 {
     public int RequesterLastLogTerm { get; set; }

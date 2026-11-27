@@ -1,8 +1,10 @@
-﻿using RaftConsensusOnAspnet.RaftConsensus.Core.Interfaces;
+﻿using System.Diagnostics.CodeAnalysis;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Interfaces;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core;
 
+[ExcludeFromCodeCoverage]
 public record RaftNodeOptions
 {
     public ILogEntriesPersistentStorage? CustomLogEntriesPersistentStorage { get; set; }

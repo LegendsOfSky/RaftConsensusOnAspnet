@@ -1,9 +1,11 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 
+[ExcludeFromCodeCoverage]
 public sealed class AlignedTraceListener : TraceListener
 {
     private readonly TextWriter textWriter;
