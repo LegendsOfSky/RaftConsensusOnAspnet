@@ -56,18 +56,22 @@ public class Program
         Option<int> electionTimeoutIntervalOption = new Option<int>("--timeout-interval")
         {
             Description = "How long before new election begin if no heart beat received or not enough votes acquired." ,
+            HelpName = "milliseconds" ,
             Recursive = true ,
             DefaultValueFactory = _ => 500 + Random.Shared.Next() % 500 ,
         };
         Option<int> heartBeatIntervalOption = new Option<int>("--heart-beat-interval")
         {
-            Description = "Interval between each heart beat." ,
+            Description = "Interval between each heart beat. It should be smaller than all possible election timeout interval among the Raft cluster." ,
+            HelpName = "milliseconds" ,
             Recursive = true ,
             DefaultValueFactory = _ => 100 + Random.Shared.Next() % 100 ,
         };
         Option<Guid> nodeIdOption = new Option<Guid>("--id")
         {
             Description = "Start raft node with this id." ,
+            // ReSharper disable once StringLiteralTypo
+            HelpName = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" ,
             Recursive = true ,
             DefaultValueFactory = _ => Guid.NewGuid() ,
         };
