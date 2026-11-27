@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
-using Xunit.Abstractions;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
@@ -23,7 +22,7 @@ public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
     {
         const string SecondGuidFragment = "9613";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -59,30 +58,34 @@ public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
             Task nodeStart = node.StartAsync();
-            node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [new LogEntry()] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [new LogEntry()] ,
+                    }
+                );
             Assert.Equal(2 , node.CurrentTerm);
 
             // Core test logic
-            VoteRequestReply reply = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-            });
+            VoteRequestReply reply = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                    }
+                );
             Assert.True(reply.VoteGranted , "Expect vote granted, but rejected");
 
             node.Stop();
@@ -131,30 +134,34 @@ public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
             Task nodeStart = node.StartAsync();
-            node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [new LogEntry()] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [new LogEntry()] ,
+                    }
+                );
             Assert.Equal(2 , node.CurrentTerm);
 
             // Core test logic
-            VoteRequestReply reply = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm + 1 ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-            });
+            VoteRequestReply reply = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                    }
+                );
             Assert.True(reply.VoteGranted , "Expect vote granted, but rejected");
 
             node.Stop();
@@ -203,30 +210,34 @@ public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
             Task nodeStart = node.StartAsync();
-            node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [new LogEntry()] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [new LogEntry()] ,
+                    }
+                );
             Assert.Equal(2 , node.CurrentTerm);
 
             // Core test logic
-            VoteRequestReply reply = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm - 1 ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-            });
+            VoteRequestReply reply = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm - 1 ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                    }
+                );
             Assert.False(reply.VoteGranted , "Expect vote rejected, but granted");
 
             node.Stop();
@@ -279,47 +290,53 @@ public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
             Task nodeStart = node.StartAsync();
-            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            appendEntriesReply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
+                    }
+                );
             Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(2 , node.CurrentTerm);
             Assert.Equal(4 , node.LogEntries.Count);
-            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            appendEntriesReply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = node.LogEntries.Count     - 1 ,
-                PreviousLogIndex = node.LogEntries.Count - 1 ,
-                PreviousLogTerm = node.LogEntries[^1].Term ,
-                Entries = [] ,
-            });
+                        LeaderCommit = node.LogEntries.Count     - 1 ,
+                        PreviousLogIndex = node.LogEntries.Count - 1 ,
+                        PreviousLogTerm = node.LogEntries[^1].Term ,
+                        Entries = [] ,
+                    }
+                );
             Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(2 , node.CurrentTerm);
             Assert.Equal(4 , node.LogEntries.Count);
 
             // Core test logic
-            VoteRequestReply voteResponse = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 2 ,  // requester last log index < requestee last log index
-            });
+            VoteRequestReply voteResponse = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 2 ,  // requester last log index < requestee last log index
+                    }
+                );
             Assert.False(voteResponse.VoteGranted , "Expect vote rejected, but granted.");
 
             node.Stop();
@@ -370,47 +387,53 @@ public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
             Task nodeStart = node.StartAsync();
-            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            appendEntriesReply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
+                    }
+                );
             Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(2 , node.CurrentTerm);
             Assert.Equal(4 , node.LogEntries.Count);
-            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            appendEntriesReply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = node.LogEntries.Count     - 1 ,
-                PreviousLogIndex = node.LogEntries.Count - 1 ,
-                PreviousLogTerm = node.LogEntries[^1].Term ,
-                Entries = [] ,
-            });
+                        LeaderCommit = node.LogEntries.Count     - 1 ,
+                        PreviousLogIndex = node.LogEntries.Count - 1 ,
+                        PreviousLogTerm = node.LogEntries[^1].Term ,
+                        Entries = [] ,
+                    }
+                );
             Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(2 , node.CurrentTerm);
             Assert.Equal(4 , node.LogEntries.Count);
 
             // Core test logic
-            VoteRequestReply voteResponse = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count ,  // requester last log index > requestee last log index
-            });
+            VoteRequestReply voteResponse = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count ,  // requester last log index > requestee last log index
+                    }
+                );
             Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
             node.Stop();
@@ -461,47 +484,53 @@ public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
             Assert.Equal(0 , node.CurrentTerm);
             Assert.Empty(node.LogEntries);
             Task nodeStart = node.StartAsync();
-            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            appendEntriesReply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [new LogEntry() , new LogEntry() , new LogEntry()] ,
+                    }
+                );
             Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(2 , node.CurrentTerm);
             Assert.Equal(4 , node.LogEntries.Count);
-            appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            appendEntriesReply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = node.LogEntries.Count     - 1 ,
-                PreviousLogIndex = node.LogEntries.Count - 1 ,
-                PreviousLogTerm = node.LogEntries[^1].Term ,
-                Entries = [] ,
-            });
+                        LeaderCommit = node.LogEntries.Count     - 1 ,
+                        PreviousLogIndex = node.LogEntries.Count - 1 ,
+                        PreviousLogTerm = node.LogEntries[^1].Term ,
+                        Entries = [] ,
+                    }
+                );
             Assert.True(appendEntriesReply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(2 , node.CurrentTerm);
             Assert.Equal(4 , node.LogEntries.Count);
 
             // Core test logic
-            VoteRequestReply voteResponse = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,  // requester last log index == requestee last log index
-            });
+            VoteRequestReply voteResponse = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,  // requester last log index == requestee last log index
+                    }
+                );
             Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
             node.Stop();
@@ -552,27 +581,31 @@ public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
             Task nodeStart = node.StartAsync();
 
             // Core test logic
-            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-            });
+            voteResponse = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                    }
+                );
             Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
             Guid node3Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000003");
-            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node3Id ,
-                RequesterTerm = node.CurrentTerm ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-            });
+            voteResponse = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node3Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                    }
+                );
             Assert.False(voteResponse.VoteGranted , "Expect vote reject (because requestee has voted for another node), but granted.");
 
             node.Stop();
@@ -623,26 +656,30 @@ public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
             Task nodeStart = node.StartAsync();
 
             // Core test logic
-            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-            });
+            voteResponse = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                    }
+                );
             Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
-            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-            });
+            voteResponse = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                    }
+                );
             Assert.True(voteResponse.VoteGranted , "Expect vote granted (because requestee has previously voted for requester), but rejected.");
 
             node.Stop();
@@ -694,26 +731,30 @@ public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
             Task nodeStart = node.StartAsync();
 
             // Core test logic
-            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-            });
+            voteResponse = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                    }
+                );
             Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
-            voteResponse = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node3Id ,
-                RequesterTerm = node.CurrentTerm + 1 ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-            });
+            voteResponse = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node3Id ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                    }
+                );
             Assert.True(voteResponse.VoteGranted , "Expect vote granted, but rejected.");
 
             node.Stop();

@@ -2,7 +2,6 @@
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
-using Xunit.Abstractions;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
@@ -25,7 +24,7 @@ public class RaftNodeTest_InitAndStart : RaftNodeTests
     [InlineData(2500)]
     private async Task ConstructorInit_ElectionTimeoutInit_StartElectionAfterNodeStartAtSpecificInterval(int electionInterval)
     {
-        Task waitUnitTestTimeout = Task.Delay((electionInterval + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((electionInterval + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -128,18 +127,20 @@ public class RaftNodeTest_InitAndStart : RaftNodeTests
                     }
                 );
             Task round1 = node.StartAsync();
-            AppendEntriesReply reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            AppendEntriesReply reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = 2 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [new LogEntry()] ,
-            });
+                        LeaderCommit = 2 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [new LogEntry()] ,
+                    }
+                );
             Assert.True(reply.AppendSuccess);
             await Task.Delay(200);
             Assert.Equal(2 , node.CurrentTerm);
@@ -213,15 +214,17 @@ public class RaftNodeTest_InitAndStart : RaftNodeTests
                     }
                 );
             Task round1 = node.StartAsync();
-            reply = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm + 1 ,
-                ReceiverId = node.NodeId ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-            });
+            reply = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
+                        ReceiverId = node.NodeId ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                    }
+                );
             Assert.True(reply.VoteGranted);
             node.Stop();
             await round1;
@@ -243,25 +246,29 @@ public class RaftNodeTest_InitAndStart : RaftNodeTests
                     }
                 );
             Task round2 = node.StartAsync();
-            reply = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
-                ReceiverId = node.NodeId ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-            });
+            reply = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        ReceiverId = node.NodeId ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                    }
+                );
             Assert.True(reply.VoteGranted);
-            reply = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                RequesterId = node3Id ,
-                RequesterTerm = node.CurrentTerm ,
-                ReceiverId = node.NodeId ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-            });
+            reply = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        RequesterId = node3Id ,
+                        RequesterTerm = node.CurrentTerm ,
+                        ReceiverId = node.NodeId ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                    }
+                );
             Assert.False(reply.VoteGranted);
             node.Stop();
             await round2;
@@ -452,15 +459,17 @@ public class RaftNodeTest_InitAndStart : RaftNodeTests
                     }
                 );
             Task round1 = node.StartAsync();
-            reply = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm + 1 ,
-                ReceiverId = node.NodeId ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-            });
+            reply = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
+                        ReceiverId = node.NodeId ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                    }
+                );
             Assert.True(reply.VoteGranted);
             node.Stop();
             await round1;
@@ -482,15 +491,17 @@ public class RaftNodeTest_InitAndStart : RaftNodeTests
                     }
                 );
             Task round2 = node.StartAsync();
-            reply = node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                RequesterId = node3Id ,
-                RequesterTerm = node.CurrentTerm + 1 ,
-                ReceiverId = node.NodeId ,
-                RequesterLastLogIndex = node.LogEntries.Count - 1 ,
-                RequesterLastLogTerm = node.LogEntries[^1].Term ,
-            });
+            reply = node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        RequesterId = node3Id ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
+                        ReceiverId = node.NodeId ,
+                        RequesterLastLogIndex = node.LogEntries.Count - 1 ,
+                        RequesterLastLogTerm = node.LogEntries[^1].Term ,
+                    }
+                );
             Assert.True(reply.VoteGranted);
             node.Stop();
             await round2;

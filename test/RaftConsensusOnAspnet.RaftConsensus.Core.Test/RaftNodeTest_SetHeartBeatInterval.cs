@@ -2,11 +2,9 @@
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
-using Xunit.Abstractions;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
-
 
 // ReSharper disable once InconsistentNaming
 [Collection(nameof(RaftNodeTest_SetHeartBeatInterval))]
@@ -19,7 +17,6 @@ public class RaftNodeTest_SetHeartBeatInterval : RaftNodeTests
     public RaftNodeTest_SetHeartBeatInterval(ITestOutputHelper testOutputIn) : base(testOutputIn) { }
 
 
-
     [Theory]
     [InlineData(1000)]
     [InlineData(1500)]
@@ -30,7 +27,7 @@ public class RaftNodeTest_SetHeartBeatInterval : RaftNodeTests
         const int ElectionInterval = 500;
         const int InitialHeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionInterval + ElectionInterval + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionInterval + ElectionInterval + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);

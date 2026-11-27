@@ -2,7 +2,6 @@
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
-using Xunit.Abstractions;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
@@ -27,7 +26,7 @@ public class RaftNodeTest_SetElectionTimeoutInterval : RaftNodeTests
     {
         const int DelayBeforeElectionTimeoutChanged = 200;
 
-        Task waitUnitTestTimeout = Task.Delay((DelayBeforeElectionTimeoutChanged + electionInterval + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((DelayBeforeElectionTimeoutChanged + electionInterval + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);

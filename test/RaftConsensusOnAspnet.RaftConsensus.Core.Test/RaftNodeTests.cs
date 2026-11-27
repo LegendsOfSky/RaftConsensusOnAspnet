@@ -1,11 +1,10 @@
-﻿using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
-using RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
-using Xunit.Abstractions;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
@@ -45,7 +44,7 @@ public class RaftNodeTests
 
         Task test , completedTask;
 
-        Task waitUnitTestTimeout = Task.Delay(MaxTestTimeForCandidateNodeTest + MaxTestTimeForLeaderNodeTest);
+        Task waitUnitTestTimeout = Task.Delay(MaxTestTimeForCandidateNodeTest + MaxTestTimeForLeaderNodeTest , TestContext.Current.CancellationToken);
 
         testOutput.WriteLine("Test over candidate node:");
         test = PerformTestOnCandidateNode();
@@ -91,18 +90,20 @@ public class RaftNodeTests
             Task nodeStart = node.StartAsync();
             await nodeBecomeCandidateTcs.Task;
             Assert.Equal(NodeRole.Candidate , node.Role);
-            node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = s_node2Guid ,
-                RequesterTerm = node.CurrentTerm + 1 ,
+            node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = s_node2Guid ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
 
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                LeaderCommit = 0 ,
-                Entries = [] ,
-            });
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        LeaderCommit = 0 ,
+                        Entries = [] ,
+                    }
+                );
             await Task.Delay(DatabaseCommitBufferPeriod);
             Assert.Equal(NodeRole.Follower , node.Role);
 
@@ -149,18 +150,20 @@ public class RaftNodeTests
             Task nodeStart = node.StartAsync();
             await nodeBecomeLeaderTcs.Task;
             Assert.Equal(NodeRole.Leader , node.Role);
-            node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = s_node2Guid ,
-                RequesterTerm = node.CurrentTerm + 1 ,
+            node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = s_node2Guid ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
 
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                LeaderCommit = 0 ,
-                Entries = [] ,
-            });
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        LeaderCommit = 0 ,
+                        Entries = [] ,
+                    }
+                );
             await Task.Delay(DatabaseCommitBufferPeriod);
             Assert.Equal(NodeRole.Follower , node.Role);
 
@@ -201,7 +204,7 @@ public class RaftNodeTests
 
         Task test , completedTask;
 
-        Task waitUnitTestTimeout = Task.Delay(MaxTestTimeForCandidateNodeTest + MaxTestTimeForLeaderNodeTest);
+        Task waitUnitTestTimeout = Task.Delay(MaxTestTimeForCandidateNodeTest + MaxTestTimeForLeaderNodeTest , TestContext.Current.CancellationToken);
 
         testOutput.WriteLine("Test over candidate node:");
         test = PerformTestOnCandidateNode();
@@ -247,16 +250,18 @@ public class RaftNodeTests
             Task nodeStart = node.StartAsync();
             await nodeBecomeCandidateTcs.Task;
             Assert.Equal(NodeRole.Candidate , node.Role);
-            node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = s_node2Guid ,
-                RequesterTerm = node.CurrentTerm + 1 ,
+            node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = s_node2Guid ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
 
-                RequesterLastLogIndex = 0 ,
-                RequesterLastLogTerm = 0 ,
-            });
+                        RequesterLastLogIndex = 0 ,
+                        RequesterLastLogTerm = 0 ,
+                    }
+                );
             await Task.Delay(DatabaseCommitBufferPeriod);
             Assert.Equal(NodeRole.Follower , node.Role);
 
@@ -303,16 +308,18 @@ public class RaftNodeTests
             Task nodeStart = node.StartAsync();
             await nodeBecomeLeaderTcs.Task;
             Assert.Equal(NodeRole.Leader , node.Role);
-            node.HandleVoteRequest(new VoteRequestArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = s_node2Guid ,
-                RequesterTerm = node.CurrentTerm + 1 ,
+            node.HandleVoteRequest(
+                    new VoteRequestArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = s_node2Guid ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
 
-                RequesterLastLogIndex = 0 ,
-                RequesterLastLogTerm = 0 ,
-            });
+                        RequesterLastLogIndex = 0 ,
+                        RequesterLastLogTerm = 0 ,
+                    }
+                );
             await Task.Delay(DatabaseCommitBufferPeriod);
             Assert.Equal(NodeRole.Follower , node.Role);
 
@@ -351,7 +358,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -407,7 +414,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -478,7 +485,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -549,7 +556,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 3 + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 3 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -595,15 +602,17 @@ public class RaftNodeTests
             {
                 await eventNotifyChannel.Writer.WriteAsync(true);
                 await Task.Delay(TestEvaluateWindow);
-                await node.VoteRequestReplyChannelWriter.WriteAsync(new VoteRequestReply
-                {
-                    RequestId = requestId ,
-                    TermOfRequest = node.CurrentTerm ,
-                    ReceiverId = requestId ,
-                    ReplierTerm = node.CurrentTerm ,
-                    VoteGranted = true ,
-                    ReplierId = s_node2Guid ,
-                });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(
+                        new VoteRequestReply
+                        {
+                            RequestId = requestId ,
+                            TermOfRequest = node.CurrentTerm ,
+                            ReceiverId = requestId ,
+                            ReplierTerm = node.CurrentTerm ,
+                            VoteGranted = true ,
+                            ReplierId = s_node2Guid ,
+                        }
+                    );
             }
         }
     }
@@ -613,7 +622,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 3 + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 3 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -665,7 +674,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
 
         testOutput.WriteLine("Test over candidate node:");
         Task test = PerformTest();
@@ -705,18 +714,20 @@ public class RaftNodeTests
             Task nodeStart = node.StartAsync();
             await nodeBecomeCandidateTcs.Task;
             Assert.Equal(NodeRole.Candidate , node.Role);
-            node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = s_node2Guid ,
-                RequesterTerm = node.CurrentTerm ,
+            node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = s_node2Guid ,
+                        RequesterTerm = node.CurrentTerm ,
 
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                LeaderCommit = 0 ,
-                Entries = [] ,
-            });
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        LeaderCommit = 0 ,
+                        Entries = [] ,
+                    }
+                );
             await Task.Delay(100);  /* Important tolerant windows. Because the append entries request has a higher term and the term update to be commited to
                                      * the database. Therefore, it may possess a delay for the role update depending on implementation. This delay is to allow
                                      * database to commit all necessary values before perform test check. */
@@ -744,7 +755,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -817,7 +828,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -856,22 +867,24 @@ public class RaftNodeTests
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
-            AppendEntriesReply appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                RequesterId = s_node2Guid ,
-                RequesterTerm = 1 ,
-                ReceiverId = node.NodeId ,
+            AppendEntriesReply appendEntriesReply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        RequesterId = s_node2Guid ,
+                        RequesterTerm = 1 ,
+                        ReceiverId = node.NodeId ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries =
-                [
-                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test1" , 1) ,
-                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test2" , 2) ,
-                ] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries =
+                        [
+                            new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test1" , 1) ,
+                            new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test2" , 2) ,
+                        ] ,
+                    }
+                );
             Assert.True(appendEntriesReply.AppendSuccess , "Expect 2 test entry to be appended to the node, but failed.");
             Assert.Equal(3 , node.LogEntries.Count);  // Total log entries count should be 2 newly appended and an initial entry.
             nextIndexes = await nextIndexesFromNode.Reader.ReadAsync();  // wait until test node become leader
@@ -928,7 +941,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -963,22 +976,24 @@ public class RaftNodeTests
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
-            AppendEntriesReply appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                RequesterId = s_node2Guid ,
-                RequesterTerm = 1 ,
-                ReceiverId = node.NodeId ,
+            AppendEntriesReply appendEntriesReply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        RequesterId = s_node2Guid ,
+                        RequesterTerm = 1 ,
+                        ReceiverId = node.NodeId ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries =
-                [
-                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test1" , 1) ,
-                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test2" , 2) ,
-                ] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries =
+                        [
+                            new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test1" , 1) ,
+                            new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test2" , 2) ,
+                        ] ,
+                    }
+                );
             Assert.True(appendEntriesReply.AppendSuccess , "Expect 2 test entry to be appended to the node, but failed.");
             Assert.Equal(3 , node.LogEntries.Count);  // Total log entries count should be 2 newly appended and an initial entry.
             Assert.Equal(0 , await commitIndexChannel.Reader.ReadAsync());
@@ -1032,7 +1047,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -1067,22 +1082,24 @@ public class RaftNodeTests
             node.SendVoteRequestToOtherNodes += SendVoteRequestToOtherNodes;
 
             Task nodeStart = node.StartAsync();
-            AppendEntriesReply appendEntriesReply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                RequesterId = s_node2Guid ,
-                RequesterTerm = 1 ,
-                ReceiverId = node.NodeId ,
+            AppendEntriesReply appendEntriesReply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        RequesterId = s_node2Guid ,
+                        RequesterTerm = 1 ,
+                        ReceiverId = node.NodeId ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries =
-                [
-                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test1" , 1) ,
-                    new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test2" , 2) ,
-                ] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries =
+                        [
+                            new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test1" , 1) ,
+                            new Int32LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.Put , "test2" , 2) ,
+                        ] ,
+                    }
+                );
             Assert.True(appendEntriesReply.AppendSuccess , "Expect 2 test entry to be appended to the node, but failed.");
             Assert.Equal(3 , node.LogEntries.Count);  // Total log entries count should be 2 newly appended and an initial entry.
             Assert.Equal(0 , await commitIndexChannel.Reader.ReadAsync());

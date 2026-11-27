@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
-using Xunit.Abstractions;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
@@ -23,7 +22,7 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTests
     {
         const string SecondGuidFragment = "8838";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -61,18 +60,20 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTests
             Assert.Empty(node.LogEntries);
 
             Task nodeStart = node.StartAsync();
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [] ,
+                    }
+                );
             Assert.True(reply.AppendSuccess , "Expect append entries success, but rejected.");
             Assert.Equal(0 , node.CurrentTerm);
 
@@ -124,18 +125,20 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTests
             Assert.Empty(node.LogEntries);
 
             Task nodeStart = node.StartAsync();
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm + 1 ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [] ,
+                    }
+                );
             Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(1 , node.CurrentTerm);
 
@@ -187,33 +190,37 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTests
             Assert.Empty(node.LogEntries);
 
             Task nodeStart = node.StartAsync();
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm + 1 ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [] ,
+                    }
+                );
             Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(1 , node.CurrentTerm);
 
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm - 1 ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm - 1 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [] ,
+                    }
+                );
             Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
 
             node.Stop();
@@ -266,47 +273,53 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTests
             Assert.Empty(node.LogEntries);
 
             Task nodeStart = node.StartAsync();
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm + 1 ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [new LogEntry(Guid.NewGuid() , node.CurrentTerm + 1 , LogEntryOperation.None , null)] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [new LogEntry(Guid.NewGuid() , node.CurrentTerm + 1 , LogEntryOperation.None , null)] ,
+                    }
+                );
             Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(1 , node.CurrentTerm);
 
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 1 ,
-                PreviousLogTerm = node.LogEntries[^1].Term - 1 ,
-                Entries = [] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 1 ,
+                        PreviousLogTerm = node.LogEntries[^1].Term - 1 ,
+                        Entries = [] ,
+                    }
+                );
             Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
 
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 1 ,
-                PreviousLogTerm = node.LogEntries[^1].Term + 1 ,
-                Entries = [] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 1 ,
+                        PreviousLogTerm = node.LogEntries[^1].Term + 1 ,
+                        Entries = [] ,
+                    }
+                );
             Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
 
             node.Stop();
@@ -357,33 +370,37 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTests
             Assert.Empty(node.LogEntries);
 
             Task nodeStart = node.StartAsync();
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm + 1 ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm + 1 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [] ,
+                    }
+                );
             Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(1 , node.CurrentTerm);
 
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = node.CurrentTerm ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = node.CurrentTerm ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 1 ,
-                PreviousLogTerm = 1 ,
-                Entries = [] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 1 ,
+                        PreviousLogTerm = 1 ,
+                        Entries = [] ,
+                    }
+                );
             Assert.False(reply.AppendSuccess , "Expect append entries failed, but succeed.");
 
             node.Stop();
@@ -436,62 +453,68 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTests
             Assert.Empty(node.LogEntries);
 
             Task nodeStart = node.StartAsync();
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 1 ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 1 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries =
-                [
-                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
-                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
-                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
-                ] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries =
+                        [
+                            new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                            new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                            new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                        ] ,
+                    }
+                );
             Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(4 , node.LogEntries.Count);
             Assert.Equal(1 , node.CurrentTerm);
             foreach (LogEntry entry in node.LogEntries.Skip(1))
                 Assert.Equal(1 , entry.Term);
 
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 2 ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 2 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries =
-                [
-                    new LogEntry(Guid.NewGuid() , 2 , LogEntryOperation.None , null) ,
-                    new LogEntry(Guid.NewGuid() , 2 , LogEntryOperation.None , null) ,
-                ] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries =
+                        [
+                            new LogEntry(Guid.NewGuid() , 2 , LogEntryOperation.None , null) ,
+                            new LogEntry(Guid.NewGuid() , 2 , LogEntryOperation.None , null) ,
+                        ] ,
+                    }
+                );
             Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(3 , node.LogEntries.Count);
             foreach (LogEntry entry in node.LogEntries.Skip(1))
                 Assert.Equal(2 , entry.Term);
 
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 3 ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 3 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries = [] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries = [] ,
+                    }
+                );
             Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Single(node.LogEntries);
 
@@ -545,23 +568,25 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTests
             Assert.Empty(node.LogEntries);
 
             Task nodeStart = node.StartAsync();
-            reply = node.HandleAppendEntries(new AppendEntriesArgs
-            {
-                RequestId = Guid.NewGuid() ,
-                ReceiverId = node.NodeId ,
-                RequesterId = node2Id ,
-                RequesterTerm = 1 ,
+            reply = node.HandleAppendEntries(
+                    new AppendEntriesArgs
+                    {
+                        RequestId = Guid.NewGuid() ,
+                        ReceiverId = node.NodeId ,
+                        RequesterId = node2Id ,
+                        RequesterTerm = 1 ,
 
-                LeaderCommit = 0 ,
-                PreviousLogIndex = 0 ,
-                PreviousLogTerm = 0 ,
-                Entries =
-                [
-                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
-                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
-                    new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
-                ] ,
-            });
+                        LeaderCommit = 0 ,
+                        PreviousLogIndex = 0 ,
+                        PreviousLogTerm = 0 ,
+                        Entries =
+                        [
+                            new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                            new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                            new LogEntry(Guid.NewGuid() , 1 , LogEntryOperation.None , null) ,
+                        ] ,
+                    }
+                );
             Assert.True(reply.AppendSuccess , "Expect append entries success, but failed.");
             Assert.Equal(4 , node.LogEntries.Count);
             Assert.Equal(1 , node.CurrentTerm);
