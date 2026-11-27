@@ -2,6 +2,7 @@
 using System.Threading.Channels;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Test.Fakes.Data;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test.UnitTests.RaftNodeTest;
@@ -55,6 +56,8 @@ public class RaftNodeTest_SetHeartBeatInterval : RaftNodeTest_Base
                         HeartBeatInterval = InitialHeartBeatInterval ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(nodeId , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(nodeId , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -124,6 +127,8 @@ public class RaftNodeTest_SetHeartBeatInterval : RaftNodeTest_Base
                         HeartBeatInterval = InitialHeartBeatInterval ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(nodeId , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(nodeId , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -192,6 +197,8 @@ public class RaftNodeTest_SetHeartBeatInterval : RaftNodeTest_Base
                         HeartBeatInterval = InitialHeartBeatInterval ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(nodeId , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(nodeId , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
