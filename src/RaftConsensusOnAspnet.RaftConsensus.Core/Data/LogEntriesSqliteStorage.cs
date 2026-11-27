@@ -24,8 +24,6 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
         set => field = value is null ? null : field;
     }
 
-    private const string StateMachineValuesTableName = "StateMachineValues";
-
     private readonly string dbFilePath;
     private readonly TraceSource debugTrace;
     private readonly TraceSource standardTrace;
@@ -36,9 +34,7 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
     {
         dbFilePath = filePath;
         using SqliteConnection connection = DbHelper.CreateNewConnection(dbFilePath);
-
         CreateTableForLogEntries(connection);
-        CreateTableForStateMachineValues(connection);
 
         /* Setup logging */
         standardTrace = new TraceSource($"{"LogEntry",-12}.{nodeId}" , SourceLevels.All);  // <--+-< standard trace
@@ -233,20 +229,6 @@ public class LogEntriesSqliteStorage : ILogEntriesPersistentStorage
         CachedLogEntries = null;
     }
     #endregion
-
-    private static void CreateTableForStateMachineValues(SqliteConnection connection)
-    {
-        using SqliteCommand createStateMachineValuesTable = new SqliteCommand(
-                $"""
-                CREATE TABLE IF NOT EXISTS {StateMachineValuesTableName} (
-                    Key   TEXT NOT NULL UNIQUE ,
-                    Value TEXT NOT NULL ,
-                    Type  TEXT NOT NULL
-                );
-                """ , connection
-            );
-        createStateMachineValuesTable.ExecuteNonQuery();
-    }
 
     private static void CreateTableForLogEntries(SqliteConnection connection)
     {
