@@ -9,7 +9,7 @@ namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
 // ReSharper disable once InconsistentNaming
 [Collection(nameof(RaftNodeTest_SetElectionTimeoutInterval))]
 [CollectionDefinition($"{nameof(RaftNode.SetElectionTimeoutInterval)} test for RaftConsensusOnAspnet.RaftConsensus.Core.RaftNode")]
-public class RaftNodeTest_SetElectionTimeoutInterval : RaftNodeTests
+public class RaftNodeTest_SetElectionTimeoutInterval : RaftNodeTest_Base
 {
     private const string InitialGuidFragment = "6c320080";
 

@@ -9,9 +9,9 @@ using RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers;
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
 
-[Collection(nameof(RaftNodeTests))]
+[Collection(nameof(RaftNodeTest_Base))]
 [CollectionDefinition("Base test for RaftConsensusOnAspnet.RaftConsensus.Core.RaftNode")]
-public class RaftNodeTests
+public class RaftNodeTest_Base
 {
     protected const int DatabaseCommitBufferPeriod = 200;
     protected const int ExtendedPeriod = 500;
@@ -20,17 +20,12 @@ public class RaftNodeTests
     protected const int RegularTestTimeout = 1000;
     protected const int TestEvaluateWindow = 100;
     protected const string OverTimeMessage = "Test overtime";
-
-    private static readonly Guid s_node1Guid = Guid.Parse("00000000-0000-0000-0000-000000000001");
-    private static readonly Guid s_node2Guid = Guid.Parse("00000000-0000-0000-0000-000000000002");
-    private static readonly Guid s_node3Guid = Guid.Parse("00000000-0000-0000-0000-000000000003");
-    private static readonly Guid s_node4Guid = Guid.Parse("00000000-0000-0000-0000-000000000004");
-    private static readonly Guid s_node5Guid = Guid.Parse("00000000-0000-0000-0000-000000000005");
+    private const string InitialGuidFragment = "246b99fd";
 
     private readonly ITestOutputHelper testOutput;
 
 
-    public RaftNodeTests(ITestOutputHelper testOutputIn) => testOutput = testOutputIn;
+    public RaftNodeTest_Base(ITestOutputHelper testOutputIn) => testOutput = testOutputIn;
 
 
     #region Test on raft rules for each Raft role
@@ -41,6 +36,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int MaxTestTimeForCandidateNodeTest = (ElectionTimeoutInterval + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
         const int MaxTestTimeForLeaderNodeTest = (ElectionTimeoutInterval * 2 + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
+        const string SecondGuidFragment = "d826";
 
         Task test , completedTask;
 
@@ -67,13 +63,15 @@ public class RaftNodeTests
                     $"{nameof(HandleAppendEntries_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower)}_OnCandidateNode" , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
 
             TaskCompletionSource nodeBecomeCandidateTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
@@ -95,7 +93,7 @@ public class RaftNodeTests
                     {
                         RequestId = Guid.NewGuid() ,
                         ReceiverId = node.NodeId ,
-                        RequesterId = s_node2Guid ,
+                        RequesterId = node2Id ,
                         RequesterTerm = node.CurrentTerm + 1 ,
 
                         PreviousLogIndex = 0 ,
@@ -126,13 +124,16 @@ public class RaftNodeTests
                     $"{nameof(HandleAppendEntries_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower)}_OnLeaderNode" , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
+            Guid node3Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000003");
 
             TaskCompletionSource nodeBecomeLeaderTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
@@ -155,7 +156,7 @@ public class RaftNodeTests
                     {
                         RequestId = Guid.NewGuid() ,
                         ReceiverId = node.NodeId ,
-                        RequesterId = s_node2Guid ,
+                        RequesterId = node2Id ,
                         RequesterTerm = node.CurrentTerm + 1 ,
 
                         PreviousLogIndex = 0 ,
@@ -189,8 +190,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
         }
     }
@@ -201,6 +202,7 @@ public class RaftNodeTests
         const int ElectionTimeoutInterval = 500;
         const int MaxTestTimeForCandidateNodeTest = (ElectionTimeoutInterval + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
         const int MaxTestTimeForLeaderNodeTest = (ElectionTimeoutInterval * 2 + DatabaseCommitBufferPeriod + ExtendedPeriod) * OvertimeFactor;
+        const string SecondGuidFragment = "fb87";
 
         Task test , completedTask;
 
@@ -227,13 +229,15 @@ public class RaftNodeTests
                     $"{nameof(HandleVoteRequest_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower)}_OnCandidateNode" , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
 
             TaskCompletionSource nodeBecomeCandidateTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
@@ -255,7 +259,7 @@ public class RaftNodeTests
                     {
                         RequestId = Guid.NewGuid() ,
                         ReceiverId = node.NodeId ,
-                        RequesterId = s_node2Guid ,
+                        RequesterId = node2Id ,
                         RequesterTerm = node.CurrentTerm + 1 ,
 
                         RequesterLastLogIndex = 0 ,
@@ -284,13 +288,16 @@ public class RaftNodeTests
                     $"{nameof(HandleVoteRequest_RequesterTermLargerThanRequesteeTerm_AdvanceToRequesterTermAndBecomeFollower)}_OnLeaderNode" , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
+            Guid node3Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000003");
 
             TaskCompletionSource nodeBecomeLeaderTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
@@ -313,7 +320,7 @@ public class RaftNodeTests
                     {
                         RequestId = Guid.NewGuid() ,
                         ReceiverId = node.NodeId ,
-                        RequesterId = s_node2Guid ,
+                        RequesterId = node2Id ,
                         RequesterTerm = node.CurrentTerm + 1 ,
 
                         RequesterLastLogIndex = 0 ,
@@ -345,8 +352,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
         }
     }
@@ -357,6 +364,7 @@ public class RaftNodeTests
     private async Task StartAsync_FollowerNoHeartBeatOrVoteRequestBeforeElectionTimeout_BecomeCandidate()
     {
         const int ElectionTimeoutInterval = 500;
+        const string SecondGuidFragment = "94a1";
 
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
@@ -373,11 +381,12 @@ public class RaftNodeTests
                     nameof(StartAsync_FollowerNoHeartBeatOrVoteRequestBeforeElectionTimeout_BecomeCandidate) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 1 ,
@@ -413,6 +422,7 @@ public class RaftNodeTests
     private async Task StartAsync_CandidateWhenAllVoteGranted_BecomeLeader()
     {
         const int ElectionTimeoutInterval = 500;
+        const string SecondGuidFragment = "5c5b";
 
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
@@ -429,11 +439,14 @@ public class RaftNodeTests
                     nameof(StartAsync_CandidateWhenAllVoteGranted_BecomeLeader) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
+            Guid node3Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000003");
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
@@ -474,8 +487,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
         }
     }
@@ -484,6 +497,7 @@ public class RaftNodeTests
     private async Task StartAsync_CandidateWhenMajorVoteGranted_BecomeLeader()
     {
         const int ElectionTimeoutInterval = 500;
+        const string SecondGuidFragment = "3767";
 
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
@@ -500,11 +514,14 @@ public class RaftNodeTests
                     nameof(StartAsync_CandidateWhenMajorVoteGranted_BecomeLeader) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
+            Guid node3Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000003");
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 5 ,
@@ -545,8 +562,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
         }
     }
@@ -555,6 +572,7 @@ public class RaftNodeTests
     private async Task StartAsync_CandidateWhenMinorVoteGranted_StartNewElection()
     {
         const int ElectionTimeoutInterval = 500;
+        const string SecondGuidFragment = "4ea0";
 
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 3 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
@@ -571,11 +589,13 @@ public class RaftNodeTests
                     nameof(StartAsync_CandidateWhenMinorVoteGranted_StartNewElection) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 5 ,
@@ -610,7 +630,7 @@ public class RaftNodeTests
                             ReceiverId = requestId ,
                             ReplierTerm = node.CurrentTerm ,
                             VoteGranted = true ,
-                            ReplierId = s_node2Guid ,
+                            ReplierId = node2Id ,
                         }
                     );
             }
@@ -621,6 +641,7 @@ public class RaftNodeTests
     private async Task StartAsync_CandidateWhenNoVoteResponse_StartNewElection()
     {
         const int ElectionTimeoutInterval = 500;
+        const string SecondGuidFragment = "9198";
 
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 3 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
@@ -637,11 +658,12 @@ public class RaftNodeTests
                     nameof(StartAsync_CandidateWhenNoVoteResponse_StartNewElection) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 5 ,
@@ -673,6 +695,7 @@ public class RaftNodeTests
     private async Task StartAsync_CandidateAppendEntriesReceivedFromLeaderWithSameTerm_BecomeFollower()
     {
         const int ElectionTimeoutInterval = 500;
+        const string SecondGuidFragment = "6871";
 
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
 
@@ -691,13 +714,15 @@ public class RaftNodeTests
                     $"{nameof(StartAsync_CandidateAppendEntriesReceivedFromLeaderWithSameTerm_BecomeFollower)}_OnCandidateNode" , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
 
             TaskCompletionSource nodeBecomeCandidateTcs = new  TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
@@ -719,7 +744,7 @@ public class RaftNodeTests
                     {
                         RequestId = Guid.NewGuid() ,
                         ReceiverId = node.NodeId ,
-                        RequesterId = s_node2Guid ,
+                        RequesterId = node2Id ,
                         RequesterTerm = node.CurrentTerm ,
 
                         PreviousLogIndex = 0 ,
@@ -752,6 +777,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
+        const string SecondGuidFragment = "ce4a";
 
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
@@ -769,11 +795,14 @@ public class RaftNodeTests
                     nameof(StartAsync_LeaderAfterInit_SendAppendEntriesToOtherNodes) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
+            Guid node3Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000003");
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = HeartBeatInterval ,
                         NodeCount = 3 ,
@@ -814,8 +843,8 @@ public class RaftNodeTests
                     ReplierTerm = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
         }
     }
@@ -825,6 +854,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
+        const string SecondGuidFragment = "e2ae";
 
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
@@ -845,11 +875,14 @@ public class RaftNodeTests
                     nameof(StartAsync_LeaderReceivedAppendEntriesFailed_DecrementNextIndex) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
+            Guid node3Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000003");
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = HeartBeatInterval ,
                         NodeCount = 3 ,
@@ -869,7 +902,7 @@ public class RaftNodeTests
                     new AppendEntriesArgs
                     {
                         RequestId = Guid.NewGuid() ,
-                        RequesterId = s_node2Guid ,
+                        RequesterId = node2Id ,
                         RequesterTerm = 1 ,
                         ReceiverId = node.NodeId ,
 
@@ -913,8 +946,8 @@ public class RaftNodeTests
                     AppendSuccess = appendSuccess ,
                     MatchIndex = 0 ,
                 };
-                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
 
             async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
@@ -927,8 +960,8 @@ public class RaftNodeTests
                     TermOfRequest = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
         }
     }
@@ -938,6 +971,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
+        const string SecondGuidFragment = "61aa";
 
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
@@ -954,11 +988,14 @@ public class RaftNodeTests
                     nameof(StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueInCurrentTerm_SetCommitIndexToThatValue) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
+            Guid node3Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000003");
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = HeartBeatInterval ,
                         NodeCount = 3 ,
@@ -978,7 +1015,7 @@ public class RaftNodeTests
                     new AppendEntriesArgs
                     {
                         RequestId = Guid.NewGuid() ,
-                        RequesterId = s_node2Guid ,
+                        RequesterId = node2Id ,
                         RequesterTerm = 1 ,
                         ReceiverId = node.NodeId ,
 
@@ -1019,8 +1056,8 @@ public class RaftNodeTests
                     MatchIndex = node.LogEntries.Count - 1 ,
                 };
                 await Task.Delay(TestEvaluateWindow);
-                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
 
             async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
@@ -1033,8 +1070,8 @@ public class RaftNodeTests
                     TermOfRequest = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
         }
     }
@@ -1044,6 +1081,7 @@ public class RaftNodeTests
     {
         const int ElectionTimeoutInterval = 500;
         const int HeartBeatInterval = 500;
+        const string SecondGuidFragment = "1c8f";
 
         Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval * 3 + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
@@ -1060,11 +1098,14 @@ public class RaftNodeTests
                     nameof(StartAsync_LeaderReceivedMajorityOfMatchIndexLargerThanAnValueButNotInCurrentTerm_DoNothing) , null ,
                     out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
                 );
+            Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
+            Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
+            Guid node3Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000003");
 
             RaftNode node = new RaftNode(
                     new RaftNodeOptions
                     {
-                        NodeId = s_node1Guid ,
+                        NodeId = node1Id ,
                         ElectionTimeOutInterval = ElectionTimeoutInterval ,
                         HeartBeatInterval = HeartBeatInterval ,
                         NodeCount = 3 ,
@@ -1084,7 +1125,7 @@ public class RaftNodeTests
                     new AppendEntriesArgs
                     {
                         RequestId = Guid.NewGuid() ,
-                        RequesterId = s_node2Guid ,
+                        RequesterId = node2Id ,
                         RequesterTerm = 1 ,
                         ReceiverId = node.NodeId ,
 
@@ -1122,8 +1163,8 @@ public class RaftNodeTests
                     AppendSuccess = true ,
                     MatchIndex = 2 ,
                 };
-                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.AppendEntriesReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
 
             async Task SendVoteRequestToOtherNodes(Guid requestId , Guid requesterId , int lastLogIndex , int lastLogTerm)
@@ -1136,8 +1177,8 @@ public class RaftNodeTests
                     TermOfRequest = node.CurrentTerm ,
                     VoteGranted = true ,
                 };
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node2Guid });
-                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = s_node3Guid });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node2Id });
+                await node.VoteRequestReplyChannelWriter.WriteAsync(replyTemplate with { ReplierId = node3Id });
             }
         }
     }
