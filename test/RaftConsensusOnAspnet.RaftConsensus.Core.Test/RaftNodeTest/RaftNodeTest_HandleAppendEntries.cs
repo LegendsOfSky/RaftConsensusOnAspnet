@@ -87,7 +87,7 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTest_Base
     {
         const string SecondGuidFragment = "4bd4";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -152,7 +152,7 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTest_Base
     {
         const string SecondGuidFragment = "62b1";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -235,7 +235,7 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTest_Base
     {
         const string SecondGuidFragment = "d9b2";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -332,7 +332,7 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTest_Base
     {
         const string SecondGuidFragment = "5845";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -415,7 +415,7 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTest_Base
     {
         const string SecondGuidFragment = "6627";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -530,7 +530,7 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTest_Base
     {
         const string SecondGuidFragment = "828b";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);

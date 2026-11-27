@@ -27,7 +27,10 @@ public class RaftNodeTest_SetHeartBeatInterval : RaftNodeTest_Base
         const int ElectionInterval = 500;
         const int InitialHeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionInterval + ElectionInterval + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
+        Task waitUnitTestTimeout = Task.Delay(
+                (ElectionInterval + ElectionInterval + ExtendedPeriod) * OvertimeFactor ,
+                TestContext.Current.CancellationToken
+            );
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -93,7 +96,10 @@ public class RaftNodeTest_SetHeartBeatInterval : RaftNodeTest_Base
         const int ElectionInterval = 500;
         const int InitialHeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionInterval * 2 + InitialHeartBeatInterval + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(
+                (ElectionInterval * 2 + InitialHeartBeatInterval + ExtendedPeriod) * OvertimeFactor ,
+                TestContext.Current.CancellationToken
+            );
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -158,7 +164,10 @@ public class RaftNodeTest_SetHeartBeatInterval : RaftNodeTest_Base
         const int InitialElectionInterval = 500;
         const int InitialHeartBeatInterval = 500;
 
-        Task waitUnitTestTimeout = Task.Delay((InitialElectionInterval + InitialElectionInterval + heartBeatInterval + ExtendedPeriod) * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(
+                (InitialElectionInterval + InitialElectionInterval + heartBeatInterval + ExtendedPeriod) * OvertimeFactor ,
+                TestContext.Current.CancellationToken
+            );
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);

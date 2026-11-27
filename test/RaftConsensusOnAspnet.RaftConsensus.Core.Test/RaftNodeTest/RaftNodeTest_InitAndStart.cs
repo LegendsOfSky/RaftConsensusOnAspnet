@@ -24,7 +24,10 @@ public class RaftNodeTest_InitAndStart : RaftNodeTest_Base
     [InlineData(2500)]
     private async Task ConstructorInit_ElectionTimeoutInit_StartElectionAfterNodeStartAtSpecificInterval(int electionInterval)
     {
-        Task waitUnitTestTimeout = Task.Delay((electionInterval + ExtendedPeriod) * OvertimeFactor , TestContext.Current.CancellationToken);
+        Task waitUnitTestTimeout = Task.Delay(
+                (electionInterval + ExtendedPeriod) * OvertimeFactor ,
+                TestContext.Current.CancellationToken
+            );
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -93,7 +96,7 @@ public class RaftNodeTest_InitAndStart : RaftNodeTest_Base
     {
         const string SecondGuidFragment = "29d3";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -177,7 +180,7 @@ public class RaftNodeTest_InitAndStart : RaftNodeTest_Base
     {
         const string SecondGuidFragment = "b50f";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -282,7 +285,10 @@ public class RaftNodeTest_InitAndStart : RaftNodeTest_Base
         const int HeartBeatInterval = 500;
         const string SecondGuidFragment = "4cd9";
 
-        Task waitUnitTestTimeout = Task.Delay((ElectionTimeoutInterval * 2 + HeartBeatInterval + ExtendedPeriod) * 3 * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(
+                (ElectionTimeoutInterval * 2 + HeartBeatInterval + ExtendedPeriod) * 3 * OvertimeFactor ,
+                TestContext.Current.CancellationToken
+            );
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
@@ -422,7 +428,7 @@ public class RaftNodeTest_InitAndStart : RaftNodeTest_Base
     {
         const string SecondGuidFragment = "bca1";
 
-        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor);
+        Task waitUnitTestTimeout = Task.Delay(RegularTestTimeout * OvertimeFactor , TestContext.Current.CancellationToken);
         Task test = PerformTest();
         Task completeTask = await Task.WhenAny(waitUnitTestTimeout , test);
         Assert.True(test == completeTask , OverTimeMessage);
