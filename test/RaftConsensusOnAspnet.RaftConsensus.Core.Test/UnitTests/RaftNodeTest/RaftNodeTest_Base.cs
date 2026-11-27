@@ -1231,5 +1231,11 @@ public class RaftNodeTest_Base
             new AlignedTraceListener($"debug/{fileName}") ,
         ];
     }
+
+    protected void InitInMemoryTrace(out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners)
+    {
+        standardTraceListeners = [];
+        debugTraceListeners = [new XUnitTraceListener(testOutput)];
+    }
     #endregion
 }

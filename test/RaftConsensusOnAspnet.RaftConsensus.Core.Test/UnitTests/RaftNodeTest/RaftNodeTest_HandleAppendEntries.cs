@@ -35,10 +35,7 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTest_Base
         {
             AppendEntriesReply reply;
 
-            InitTraces(
-                    nameof(HandleAppendEntries_RequesterTermEqualToRequestee_ReplyAppendSuccess) , null ,
-                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
-                );
+            InitInMemoryTrace(out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners);
             Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
             Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
 
@@ -102,10 +99,7 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTest_Base
         {
             AppendEntriesReply reply;
 
-            InitTraces(
-                    nameof(HandleAppendEntries_RequesterTermHigherThanRequestee_ReplyAppendSuccess) , null ,
-                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
-                );
+            InitInMemoryTrace(out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners);
             Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
             Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
 
@@ -555,10 +549,7 @@ public class RaftNodeTest_HandleAppendEntries : RaftNodeTest_Base
         {
             AppendEntriesReply reply;
 
-            InitTraces(
-                    nameof(HandleAppendEntries_AppendEntriesWithCorrectArgs_AppendSuccess) , null ,
-                    out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners
-                );
+            InitInMemoryTrace(out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners);
             Guid node1Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000001");
             Guid node2Id = Guid.Parse($"{InitialGuidFragment}-{SecondGuidFragment}-0000-0000-000000000002");
 
