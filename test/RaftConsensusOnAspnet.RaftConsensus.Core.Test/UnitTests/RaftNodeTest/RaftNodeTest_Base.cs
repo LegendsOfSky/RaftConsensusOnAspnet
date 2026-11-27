@@ -4,10 +4,11 @@ using RaftConsensusOnAspnet.RaftConsensus.Core.Dtos.InterNodeMessages;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Miscs;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Models.LogEntries;
+using RaftConsensusOnAspnet.RaftConsensus.Core.Test.Fakes.Data;
 using RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers;
 
 
-namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test.RaftNodeTest;
+namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test.UnitTests.RaftNodeTest;
 
 [Collection(nameof(RaftNodeTest_Base))]
 [CollectionDefinition("Base test for RaftConsensusOnAspnet.RaftConsensus.Core.RaftNode")]
@@ -25,7 +26,10 @@ public class RaftNodeTest_Base
     private readonly ITestOutputHelper testOutput;
 
 
-    public RaftNodeTest_Base(ITestOutputHelper testOutputIn) => testOutput = testOutputIn;
+    public RaftNodeTest_Base(ITestOutputHelper testOutputIn)
+    {
+        testOutput = testOutputIn;
+    }
 
 
     #region Test on raft rules for each Raft role
@@ -76,6 +80,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -138,6 +144,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -242,6 +250,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -302,6 +312,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -391,6 +403,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 1 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -451,6 +465,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -526,6 +542,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 5 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -600,6 +618,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 5 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -668,6 +688,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 5 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -727,6 +749,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = int.MaxValue ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -807,6 +831,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = HeartBeatInterval ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -887,6 +913,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = HeartBeatInterval ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -1000,6 +1028,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = HeartBeatInterval ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -1110,6 +1140,8 @@ public class RaftNodeTest_Base
                         HeartBeatInterval = HeartBeatInterval ,
                         NodeCount = 3 ,
                         RemoveExistData = true ,
+                        CustomLogEntriesPersistentStorage = new FakeLogEntriesToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
+                        CustomRaftNodeMetadataPersistentStorage = new FakeRaftNodeMetadataToxicStorage(node1Id , standardTraceListeners , debugTraceListeners) ,
                     } ,
                     new RaftNodeTraces
                     {
@@ -1198,6 +1230,12 @@ public class RaftNodeTest_Base
             new XUnitTraceListener(testOutput) ,
             new AlignedTraceListener($"debug/{fileName}") ,
         ];
+    }
+
+    protected void InitInMemoryTrace(out TraceListener[] standardTraceListeners , out TraceListener[] debugTraceListeners)
+    {
+        standardTraceListeners = [];
+        debugTraceListeners = [new XUnitTraceListener(testOutput)];
     }
     #endregion
 }
