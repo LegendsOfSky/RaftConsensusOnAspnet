@@ -31,8 +31,6 @@ public class RaftNodeTests
 
     public RaftNodeTests(ITestOutputHelper testOutputIn) => testOutput = testOutputIn;
 
-    protected RaftNodeTests() { }
-
 
     #region HandleVoteRequest() Test
     #region Test over `RequestVote RPC Receiver Implementation 1`, as written in Raft specification
