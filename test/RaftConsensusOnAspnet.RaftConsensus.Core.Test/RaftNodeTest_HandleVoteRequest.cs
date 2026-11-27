@@ -7,6 +7,8 @@ using Xunit.Abstractions;
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
 
 // ReSharper disable once InconsistentNaming
+[Collection(nameof(RaftNodeTest_HandleVoteRequest))]
+[CollectionDefinition($"{nameof(RaftNode.HandleVoteRequest)} test for RaftConsensusOnAspnet.RaftConsensus.Core.RaftNode")]
 public class RaftNodeTest_HandleVoteRequest : RaftNodeTests
 {
     private const string InitialGuidFragment = "bc516d81";

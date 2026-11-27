@@ -10,6 +10,8 @@ using Xunit.Abstractions;
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test;
 
+[Collection(nameof(RaftNodeTests))]
+[CollectionDefinition("Base test for RaftConsensusOnAspnet.RaftConsensus.Core.RaftNode")]
 public class RaftNodeTests
 {
     protected const int DatabaseCommitBufferPeriod = 200;
