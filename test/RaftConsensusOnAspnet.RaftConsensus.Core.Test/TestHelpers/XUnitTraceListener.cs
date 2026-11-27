@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics;
-using Xunit.Abstractions;
+using System.Globalization;
 
 
 namespace RaftConsensusOnAspnet.RaftConsensus.Core.Test.TestHelpers;
@@ -53,7 +53,8 @@ public sealed class XUnitTraceListener : TraceListener
 
     private void WriteAligned(string source , TraceEventType type , int id , string? message)
     {
-        string time = DateTime.Now.ToString("HH:mm:ss.fffffff");
+        // ReSharper disable once StringLiteralTypo
+        string time = DateTime.Now.ToString("HH:mm:ss.fffffff" , CultureInfo.InvariantCulture);
         string line = $"{source} {type,-11} {id,4} {time} {message}";
 
         lock (gate)
